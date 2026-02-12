@@ -24,6 +24,7 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: err.message });
 });
 
+// Iniciar servidor
 app.listen(PORT, () => {
   console.log(`✓ Servidor corriendo en http://localhost:${PORT}`);
   console.log(`✓ Aplicación Arman Travel iniciada`);
