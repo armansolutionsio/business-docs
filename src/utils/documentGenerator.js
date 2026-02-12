@@ -1,5 +1,5 @@
 const PDFDocument = require('pdfkit');
-const { Document, Packer, Paragraph, Table, TableRow, TableCell, AlignmentType, WidthType, BorderStyle, ShadingType } = require('docx');
+const { Document, Packer, Paragraph, Table, TableRow, TableCell, AlignmentType, WidthType, BorderStyle, ShadingType, ImageRun, TextRun } = require('docx');
 const fs = require('fs');
 const path = require('path');
 
@@ -71,40 +71,34 @@ async function generateWord(documentType, data) {
     const title = getDocumentTitle(documentType);
     const children = [];
 
-    // Header
-    const headerCells = [
-      new TableCell({
-        shading: { fill: COLORS.primary.substring(1), type: ShadingType.CLEAR },
-        margins: { top: 200, bottom: 200, left: 100, right: 100 },
-        children: [
-          new Paragraph({
-            text: BRAND_NAME,
-            bold: true,
-            size: 44,
-            color: COLORS.white.substring(1),
-            spacing: { after: 50 }
-          }),
-          new Paragraph({
-            text: COMPANY_NAME,
-            size: 18,
-            color: 'E8E8E8',
-            spacing: { after: 50 }
-          }),
-          new Paragraph({
-            text: `${COMPANY_ADDRESS} | ${COMPANY_PHONE}`,
-            size: 16,
-            color: 'E8E8E8'
-          })
-        ]
-      })
+    // Header (logo + branding)
+    const logoBuffer = logoExists ? fs.readFileSync(logoPath) : null;
+    const leftCellChildren = [];
+    if (logoBuffer) {
+      leftCellChildren.push(new Paragraph({ children: [new ImageRun({ data: logoBuffer, transformation: { width: 80, height: 80 } })] }));
+    } else {
+      leftCellChildren.push(new Paragraph({ text: BRAND_NAME, bold: true, size: 36, color: COLORS.primary.substring(1) }));
+    }
+
+    const rightCellChildren = [
+      new Paragraph({ text: COMPANY_NAME, bold: true, size: 18, color: COLORS.text.substring(1) }),
+      new Paragraph({ text: COMPANY_ADDRESS, size: 14, color: COLORS.text.substring(1) }),
+      new Paragraph({ text: `${COMPANY_PHONE} | ${COMPANY_EMAIL}`, size: 14, color: COLORS.text.substring(1) })
     ];
 
-    children.push(
-      new Table({
-        width: { size: 100, type: WidthType.PERCENTAGE },
-        rows: [new TableRow({ children: headerCells })]
-      })
-    );
+    const headerTable = new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      rows: [
+        new TableRow({
+          children: [
+            new TableCell({ margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: leftCellChildren }),
+            new TableCell({ margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: rightCellChildren })
+          ]
+        })
+      ]
+    });
+
+    children.push(headerTable);
 
     children.push(new Paragraph({ text: '', spacing: { after: 100 } }));
 
@@ -358,13 +352,27 @@ function drawImage(doc, imageData, title) {
 
   drawSection(doc, title);
   doc.moveDown(0.3);
-  
   try {
-    doc.image(Buffer.from(imageData.split(',')[1], 'base64'), 50, doc.y, { width: 300, height: 200 });
-    doc.moveDown(6);
+    const buffer = Buffer.from(imageData.split(',')[1], 'base64');
+    const maxWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right - 20; // leave some padding
+    const maxHeight = 300;
+    // Use fit so image preserves aspect ratio and doesn't overflow
+    doc.image(buffer, {
+      fit: [maxWidth, maxHeight],
+      align: 'center'
+    });
+    // Add some vertical spacing after image
+    doc.moveDown(2);
   } catch (e) {
     console.log('Error loading image:', e.message);
   }
+}
+
+// Helper: convert base64 (data url) to Buffer
+function base64DataToBuffer(dataUrl) {
+  if (!dataUrl) return null;
+  const parts = dataUrl.split(',');
+  return Buffer.from(parts[1], 'base64');
 }
 
 function drawTotal(doc, amount, label) {
@@ -554,19 +562,31 @@ function wordQuote(data) {
   sections.push(createSectionTitle('SOLICITANTE'));
   sections.push(new Paragraph({ text: data.requesterName || '-', size: 22, spacing: { after: 200 } }));
   
-  if (data.flightDescription) {
+  if (data.images?.flight || data.flightDescription) {
     sections.push(createSectionTitle('DATOS DEL VUELO'));
-    sections.push(new Paragraph({ text: data.flightDescription, size: 20, spacing: { after: 200 } }));
+    if (data.images?.flight) {
+      const p = createImageParagraph(data.images.flight.data, 450, 300);
+      if (p) sections.push(p);
+    }
+    if (data.flightDescription) sections.push(new Paragraph({ text: data.flightDescription, size: 20, spacing: { after: 200 } }));
   }
-  
-  if (data.hotelDescription) {
+
+  if (data.images?.hotel || data.hotelDescription) {
     sections.push(createSectionTitle('DATOS DEL HOSPEDAJE'));
-    sections.push(new Paragraph({ text: data.hotelDescription, size: 20, spacing: { after: 200 } }));
+    if (data.images?.hotel) {
+      const p = createImageParagraph(data.images.hotel.data, 450, 300);
+      if (p) sections.push(p);
+    }
+    if (data.hotelDescription) sections.push(new Paragraph({ text: data.hotelDescription, size: 20, spacing: { after: 200 } }));
   }
-  
-  if (data.transferDescription) {
+
+  if (data.images?.transfer || data.transferDescription) {
     sections.push(createSectionTitle('INFO DE LOS TRASLADOS'));
-    sections.push(new Paragraph({ text: data.transferDescription, size: 20, spacing: { after: 200 } }));
+    if (data.images?.transfer) {
+      const p = createImageParagraph(data.images.transfer.data, 450, 300);
+      if (p) sections.push(p);
+    }
+    if (data.transferDescription) sections.push(new Paragraph({ text: data.transferDescription, size: 20, spacing: { after: 200 } }));
   }
   
   sections.push(createSectionTitle('SERVICIOS'));
@@ -583,9 +603,13 @@ function wordBudget(data) {
     sections.push(createSectionTitle('PROYECTO'));
     sections.push(new Paragraph({ text: data.description, size: 20, spacing: { after: 200 } }));
   }
-  if (data.flightDescription) {
+  if (data.images?.flight || data.flightDescription) {
     sections.push(createSectionTitle('DATOS DEL VUELO'));
-    sections.push(new Paragraph({ text: data.flightDescription, size: 20, spacing: { after: 200 } }));
+    if (data.images?.flight) {
+      const p = createImageParagraph(data.images.flight.data, 450, 300);
+      if (p) sections.push(p);
+    }
+    if (data.flightDescription) sections.push(new Paragraph({ text: data.flightDescription, size: 20, spacing: { after: 200 } }));
   }
   sections.push(createSectionTitle('DETALLES'));
   sections.push(createItemsTable(data.items));
@@ -604,6 +628,31 @@ function wordProposal(data) {
   if (data.solution) {
     sections.push(createSectionTitle('PROPUESTA'));
     sections.push(new Paragraph({ text: data.solution, size: 20, spacing: { after: 200 } }));
+  }
+  // Allow images/descriptions in proposals
+  if (data.images?.flight || data.flightDescription) {
+    sections.push(createSectionTitle('DATOS DEL VUELO'));
+    if (data.images?.flight) {
+      const p = createImageParagraph(data.images.flight.data, 450, 300);
+      if (p) sections.push(p);
+    }
+    if (data.flightDescription) sections.push(new Paragraph({ text: data.flightDescription, size: 20, spacing: { after: 200 } }));
+  }
+  if (data.images?.hotel || data.hotelDescription) {
+    sections.push(createSectionTitle('DATOS DEL HOSPEDAJE'));
+    if (data.images?.hotel) {
+      const p = createImageParagraph(data.images.hotel.data, 450, 300);
+      if (p) sections.push(p);
+    }
+    if (data.hotelDescription) sections.push(new Paragraph({ text: data.hotelDescription, size: 20, spacing: { after: 200 } }));
+  }
+  if (data.images?.transfer || data.transferDescription) {
+    sections.push(createSectionTitle('INFO DE LOS TRASLADOS'));
+    if (data.images?.transfer) {
+      const p = createImageParagraph(data.images.transfer.data, 450, 300);
+      if (p) sections.push(p);
+    }
+    if (data.transferDescription) sections.push(new Paragraph({ text: data.transferDescription, size: 20, spacing: { after: 200 } }));
   }
   sections.push(createTotalSection(data.investment, 'INVERSIÓN REQUERIDA'));
   return sections;
@@ -631,6 +680,12 @@ function createSectionTitle(text) {
     border: { bottom: { color: COLORS.secondary.substring(1), space: 1, style: BorderStyle.SINGLE, size: 12 } },
     spacing: { before: 100, after: 100 }
   });
+}
+
+function createImageParagraph(dataUrl, width = 450, height = 300) {
+  const buffer = base64DataToBuffer(dataUrl);
+  if (!buffer) return null;
+  return new Paragraph({ children: [new ImageRun({ data: buffer, transformation: { width, height } })], spacing: { after: 200 } });
 }
 
 function createItemsTable(items, showQty = false) {
