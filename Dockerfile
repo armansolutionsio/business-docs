@@ -14,7 +14,8 @@ RUN apk add --no-cache \
 COPY package.json package-lock.json ./
 
 # Instalar dependencias de Node
-RUN npm ci --only=production
+# Use npm install to avoid lockfile mismatch during image builds when package.json changed
+RUN npm install --production --no-audit --no-fund
 
 # Copiar toda la aplicación
 COPY . .

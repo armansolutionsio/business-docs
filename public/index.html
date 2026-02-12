@@ -30,19 +30,37 @@
         .header {
             background: linear-gradient(135deg, #4B6B9B 0%, #1FA3B0 100%);
             color: white;
-            padding: 40px 20px;
-            text-align: center;
+            padding: 20px 20px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .header .brand {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .header .brand img {
+            width: 72px;
+            height: 72px;
+            object-fit: contain;
+            background: rgba(255,255,255,0.08);
+            padding: 8px;
+            border-radius: 8px;
         }
 
         .header h1 {
-            font-size: 48px;
-            margin-bottom: 5px;
+            font-size: 28px;
+            margin-bottom: 0;
             font-weight: 700;
         }
 
         .header p {
-            font-size: 16px;
-            opacity: 0.9;
+            font-size: 14px;
+            opacity: 0.95;
+            margin: 0;
         }
 
         .tabs {
@@ -147,7 +165,7 @@
 
         .item-row {
             display: grid;
-            grid-template-columns: 1fr 1fr 1fr auto;
+            grid-template-columns: 1fr 100px 120px 120px auto;
             gap: 10px;
             margin-bottom: 10px;
             align-items: flex-end;
@@ -320,8 +338,13 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>Arman Travel</h1>
-            <p>Sistema de Gestión de Documentos Comerciales</p>
+            <div class="brand">
+                <img src="logo.png" alt="Arman Travel" onerror="this.style.display='none'">
+                <div>
+                    <h1>Arman Travel</h1>
+                    <p>Sistema de Gestión de Documentos Comerciales</p>
+                </div>
+            </div>
         </div>
 
         <div class="tabs" id="tabs">

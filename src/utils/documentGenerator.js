@@ -2,6 +2,9 @@ const PDFDocument = require('pdfkit');
 const { Document, Packer, Paragraph, Table, TableRow, TableCell, AlignmentType, WidthType, BorderStyle, ShadingType, ImageRun, TextRun } = require('docx');
 const fs = require('fs');
 const path = require('path');
+const PizZip = require('pizzip');
+const Docxtemplater = require('docxtemplater');
+const ImageModule = require('docxtemplater-image-module-free');
 
 const COLORS = {
   primary: '#4B6B9B',
@@ -68,45 +71,62 @@ async function generatePDF(documentType, data) {
 
 async function generateWord(documentType, data) {
   try {
+    // If a .docx template exists, use docxtemplater to fill placeholders and images
+    const templatePath = path.join(__dirname, 'cotizador-ejemplo.docx');
+    if (fs.existsSync(templatePath)) {
+      try {
+        const content = fs.readFileSync(templatePath, 'binary');
+        const zip = new PizZip(content);
+        const doc = new Docxtemplater(zip, { paragraphLoop: true, linebreaks: true });
+
+        const imageModule = new ImageModule({
+          centered: false,
+          getImage: function(tagValue) {
+            if (!tagValue) return null;
+            // tagValue may be a data URL or Buffer
+            if (typeof tagValue === 'string' && tagValue.startsWith('data:')) {
+              return base64DataToBuffer(tagValue);
+            }
+            if (Buffer.isBuffer(tagValue)) return tagValue;
+            return null;
+          },
+          getSize: function(img, tagValue) {
+            // Return size [width, height] in pixels — keep reasonable defaults
+            return [450, 300];
+          }
+        });
+
+        doc.attachModule(imageModule);
+
+        // Build template data
+        const tplData = Object.assign({}, data);
+        // Map images to template keys (use flight_image, hotel_image, transfer_image)
+        tplData.flight_image = data.images?.flight?.data || null;
+        tplData.hotel_image = data.images?.hotel?.data || null;
+        tplData.transfer_image = data.images?.transfer?.data || null;
+        // Map items into simple structure
+        tplData.items = (data.items || []).map(it => ({ description: it.description, quantity: it.quantity, price: it.price, subtotal: (it.quantity * it.price).toFixed(2) }));
+
+        doc.setData(tplData);
+        doc.render();
+        const buf = doc.getZip().generate({ type: 'nodebuffer' });
+        return buf;
+      } catch (err) {
+        // If template processing fails, fall back to programmatic generation below
+        console.error('Template render error:', err);
+      }
+    }
     const title = getDocumentTitle(documentType);
     const children = [];
 
-    // Header (logo + branding)
-    const logoBuffer = logoExists ? fs.readFileSync(logoPath) : null;
-    const leftCellChildren = [];
-    if (logoBuffer) {
-      leftCellChildren.push(new Paragraph({ children: [new ImageRun({ data: logoBuffer, transformation: { width: 80, height: 80 } })] }));
-    } else {
-      leftCellChildren.push(new Paragraph({ text: BRAND_NAME, bold: true, size: 36, color: COLORS.primary.substring(1) }));
-    }
-
-    const rightCellChildren = [
-      new Paragraph({ text: COMPANY_NAME, bold: true, size: 18, color: COLORS.text.substring(1) }),
-      new Paragraph({ text: COMPANY_ADDRESS, size: 14, color: COLORS.text.substring(1) }),
-      new Paragraph({ text: `${COMPANY_PHONE} | ${COMPANY_EMAIL}`, size: 14, color: COLORS.text.substring(1) })
-    ];
-
-    const headerTable = new Table({
-      width: { size: 100, type: WidthType.PERCENTAGE },
-      rows: [
-        new TableRow({
-          children: [
-            new TableCell({ margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: leftCellChildren }),
-            new TableCell({ margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: rightCellChildren })
-          ]
-        })
-      ]
-    });
-
-    children.push(headerTable);
-
-    children.push(new Paragraph({ text: '', spacing: { after: 100 } }));
-
+    // NOTE: Do not inject logos or header/footer content here — the user-provided
+    // .docx template will include any header/footer branding. We only render
+    // body content (title, info, items, images).
     children.push(
       new Paragraph({
         text: title,
         bold: true,
-        size: 48,
+        size: 40,
         color: COLORS.primary.substring(1),
         spacing: { after: 200, before: 100 }
       })
@@ -201,39 +221,7 @@ async function generateWord(documentType, data) {
         break;
     }
 
-    // Footer
-    children.push(new Paragraph({ text: '', spacing: { before: 400 } }));
-    children.push(
-      new Table({
-        width: { size: 100, type: WidthType.PERCENTAGE },
-        rows: [
-          new TableRow({
-            children: [
-              new TableCell({
-                shading: { fill: COLORS.primary.substring(1), type: ShadingType.CLEAR },
-                margins: { top: 100, bottom: 100, left: 100, right: 100 },
-                children: [
-                  new Paragraph({
-                    text: COMPANY_NAME,
-                    bold: true,
-                    color: COLORS.white.substring(1),
-                    size: 18,
-                    alignment: AlignmentType.CENTER,
-                    spacing: { after: 50 }
-                  }),
-                  new Paragraph({
-                    text: `${COMPANY_EMAIL} | ${COMPANY_PHONE}`,
-                    color: 'E8E8E8',
-                    size: 16,
-                    alignment: AlignmentType.CENTER
-                  })
-                ]
-              })
-            ]
-          })
-        ]
-      })
-    );
+    // Do not add footer here. Template will handle footer/logo if needed.
 
     const doc = new Document({ sections: [{ children }] });
     const buffer = await Packer.toBuffer(doc);
@@ -244,21 +232,10 @@ async function generateWord(documentType, data) {
 }
 
 function drawPDFHeader(doc) {
-  if (logoExists) {
-    try {
-      doc.image(logoPath, 40, 35, { width: 50 });
-    } catch (e) {}
-  }
-
-  doc.fontSize(18).font('Helvetica-Bold').fillColor(COLORS.primary);
-  doc.text(BRAND_NAME, logoExists ? 100 : 40, 40);
-
-  doc.fontSize(8).font('Helvetica').fillColor(COLORS.text);
-  doc.text(COMPANY_NAME, logoExists ? 100 : 40, 60);
-  doc.text(`${COMPANY_PHONE} | ${COMPANY_EMAIL}`, logoExists ? 100 : 40);
-
-  doc.moveTo(40, 95).lineTo(555, 95).strokeColor(COLORS.border).lineWidth(1).stroke();
-  doc.y = 110;
+  // Intentionally do not draw header logo or header text here. The user's
+  // .docx template will include any header/footer branding. Keep the
+  // PDF cursor in a safe top area to avoid overlapping content.
+  doc.y = doc.page.margins.top + 10;
 }
 
 function drawDocumentTitle(doc, type) {
@@ -308,43 +285,76 @@ function drawSection(doc, title) {
   doc.y = y + 15;
 }
 
+function formatCurrency(amount) {
+  const n = Number(amount || 0);
+  const fixed = n.toFixed(2);
+  const parts = fixed.split('.');
+  const integer = parts[0];
+  const decimals = parts[1];
+  const withThousands = integer.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  // Spanish style: thousands '.' and decimal ','
+  return `${withThousands},${decimals}`;
+}
+
 function drawItemsTable(doc, items, showQty = false) {
   if (!items || items.length === 0) return;
 
-  const y = doc.y;
-  const col1 = 50;
-  const col2 = showQty ? 350 : 400;
-  const col3 = 450;
-  const col4 = 520;
+  const startX = 40;
+  const tableWidth = doc.page.width - startX - doc.page.margins.right;
+  const descWidth = showQty ? Math.round(tableWidth * 0.55) : Math.round(tableWidth * 0.6);
+  const qtyWidth = showQty ? Math.round(tableWidth * 0.1) : 0;
+  const priceWidth = Math.round(tableWidth * 0.15);
+  const subtotalWidth = showQty ? Math.round(tableWidth * 0.15) : Math.round(tableWidth * 0.25);
 
-  doc.rect(40, y, 515, 20).fill(COLORS.primary);
-  doc.fontSize(8).font('Helvetica-Bold').fillColor(COLORS.white);
-  doc.text('DESCRIPCIÓN', col1, y + 5);
-  if (showQty) doc.text('CANT.', col2, y + 5);
-  doc.text('PRECIO', col3, y + 5);
-  if (!showQty) doc.text('SUBTOTAL', col4, y + 5);
+  // Header
+  const headerY = doc.y;
+  doc.rect(startX, headerY, tableWidth, 22).fill(COLORS.primary);
+  doc.fontSize(9).font('Helvetica-Bold').fillColor(COLORS.white);
+  doc.text('DESCRIPCIÓN', startX + 6, headerY + 6, { width: descWidth });
+  if (showQty) doc.text('CANT.', startX + 6 + descWidth, headerY + 6, { width: qtyWidth, align: 'center' });
+  doc.text('PRECIO', startX + 6 + descWidth + qtyWidth, headerY + 6, { width: priceWidth, align: 'right' });
+  if (!showQty) doc.text('SUBTOTAL', startX + 6 + descWidth + qtyWidth + priceWidth, headerY + 6, { width: subtotalWidth, align: 'right' });
 
-  let row = y + 25;
+  let cursorY = headerY + 26;
+
   items.forEach((item, idx) => {
+    // Compute description height with wrapping
+    doc.fontSize(10).font('Helvetica');
+    const descHeight = doc.heightOfString(String(item.description || '-'), { width: descWidth });
+    const rowHeight = Math.max(18, descHeight) + 8;
+
+    // Page break if not enough space
+    if (cursorY + rowHeight + doc.page.margins.bottom > doc.page.height) {
+      doc.addPage();
+      cursorY = doc.y;
+    }
+
+    // Row background
     if (idx % 2 === 0) {
-      doc.rect(40, row - 2, 515, 18).fill(COLORS.lightGray);
+      doc.rect(startX, cursorY - 4, tableWidth, rowHeight).fill(COLORS.lightGray);
     }
 
-    const subtotal = showQty ? (item.quantity * item.price).toFixed(2) : item.price;
+    // Text
+    doc.fillColor(COLORS.text).fontSize(10).font('Helvetica');
+    doc.text(String(item.description || '-'), startX + 6, cursorY, { width: descWidth });
 
-    doc.fontSize(9).font('Helvetica').fillColor(COLORS.text);
-    doc.text(item.description, col1, row, { width: showQty ? 290 : 340 });
-    
     if (showQty) {
-      doc.text(item.quantity.toString(), col2, row, { align: 'center' });
+      doc.text(String(item.quantity || 0), startX + 6 + descWidth, cursorY, { width: qtyWidth, align: 'center' });
     }
-    doc.text(`$${parseFloat(item.price).toFixed(2)}`, col3, row, { align: 'right' });
-    if (!showQty) doc.text(`$${parseFloat(subtotal).toFixed(2)}`, col4, row, { align: 'right' });
 
-    row += 20;
+    const priceStr = `$ ${formatCurrency(item.price)} `;
+    doc.text(priceStr, startX + 6 + descWidth + qtyWidth, cursorY, { width: priceWidth, align: 'right' });
+
+    if (!showQty) {
+      const subtotal = (Number(item.quantity || 1) * Number(item.price || 0));
+      const subtotalStr = `$ ${formatCurrency(subtotal)} `;
+      doc.text(subtotalStr, startX + 6 + descWidth + qtyWidth + priceWidth, cursorY, { width: subtotalWidth, align: 'right' });
+    }
+
+    cursorY += rowHeight + 4;
   });
 
-  doc.y = row;
+  doc.y = cursorY + 6;
 }
 
 function drawImage(doc, imageData, title) {
@@ -354,15 +364,39 @@ function drawImage(doc, imageData, title) {
   doc.moveDown(0.3);
   try {
     const buffer = Buffer.from(imageData.split(',')[1], 'base64');
-    const maxWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right - 20; // leave some padding
-    const maxHeight = 300;
-    // Use fit so image preserves aspect ratio and doesn't overflow
-    doc.image(buffer, {
-      fit: [maxWidth, maxHeight],
-      align: 'center'
-    });
-    // Add some vertical spacing after image
-    doc.moveDown(2);
+    const maxWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right - 40; // padding
+    const maxHeight = doc.page.height - doc.page.margins.top - doc.page.margins.bottom - 120; // leave room
+
+    // Try to get image intrinsic dimensions via PDFKit's image loading
+    let img;
+    try {
+      img = doc.openImage(buffer);
+    } catch (e) {
+      img = null;
+    }
+
+    let drawWidth = maxWidth;
+    let drawHeight = maxHeight;
+    if (img) {
+      const ratio = Math.min(maxWidth / img.width, maxHeight / img.height, 1);
+      drawWidth = Math.round(img.width * ratio);
+      drawHeight = Math.round(img.height * ratio);
+    } else {
+      // fallback fixed height
+      drawHeight = Math.min(300, maxHeight);
+      drawWidth = Math.min(maxWidth, drawHeight * 1.5);
+    }
+
+    // If image doesn't fit on current page, add a new page
+    const remainingHeight = doc.page.height - doc.y - doc.page.margins.bottom;
+    if (drawHeight + 40 > remainingHeight) {
+      doc.addPage();
+    }
+
+    const x = (doc.page.width - drawWidth) / 2;
+    doc.image(buffer, x, doc.y, { width: drawWidth, height: drawHeight });
+    // Move cursor after the image
+    doc.y = doc.y + drawHeight + 10;
   } catch (e) {
     console.log('Error loading image:', e.message);
   }
@@ -745,14 +779,14 @@ function createItemsTable(items, showQty = false) {
     cells.push(new TableCell({
       shading: { fill: idx % 2 === 0 ? COLORS.lightGray.substring(1) : COLORS.white.substring(1), type: ShadingType.CLEAR },
       margins: { top: 50, bottom: 50, left: 50, right: 50 },
-      children: [new Paragraph({ text: `$${parseFloat(item.price).toFixed(2)}`, size: 20, alignment: AlignmentType.RIGHT })]
+      children: [new Paragraph({ text: `$ ${formatCurrency(item.price)}`, size: 18, alignment: AlignmentType.RIGHT })]
     }));
 
     if (!showQty) {
       cells.push(new TableCell({
         shading: { fill: idx % 2 === 0 ? COLORS.lightGray.substring(1) : COLORS.white.substring(1), type: ShadingType.CLEAR },
         margins: { top: 50, bottom: 50, left: 50, right: 50 },
-        children: [new Paragraph({ text: `$${parseFloat(item.quantity * item.price).toFixed(2)}`, size: 20, alignment: AlignmentType.RIGHT })]
+        children: [new Paragraph({ text: `$ ${formatCurrency(item.quantity * item.price)}`, size: 18, alignment: AlignmentType.RIGHT })]
       }));
     }
 

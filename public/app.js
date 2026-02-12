@@ -279,9 +279,10 @@ function renderItems() {
         const subtotal = item.quantity * item.price;
         html += `
             <div class="item-row">
-                <input type="text" value="${item.description}" readonly>
+                <input type="text" value="${escapeHtml(item.description)}" readonly>
                 <input type="number" value="${item.quantity}" readonly>
-                <input type="number" value="${item.price}" readonly>
+                <input type="text" value="${formatCurrency(item.price)}" readonly>
+                <input type="text" value="${formatCurrency(subtotal)}" readonly>
                 <button type="button" class="remove-item" onclick="removeItem(${item.id})">Eliminar</button>
             </div>
         `;
@@ -316,8 +317,26 @@ function updateTotal() {
         }
     }
 
-    document.getElementById('totalAmount').textContent = total.toFixed(2);
+    document.getElementById('totalAmount').textContent = formatCurrency(total);
     appState.formData.total = total;
+}
+
+// Formatea números con miles '.' y decimales ',' con dos decimales
+function formatCurrency(value) {
+    const n = Number(value) || 0;
+    const parts = n.toFixed(2).split('.');
+    let intPart = parts[0];
+    const decPart = parts[1];
+    intPart = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    return `${intPart},${decPart}`;
+}
+
+// Escape simple HTML in text fields
+function escapeHtml(text) {
+    if (!text) return '';
+    return String(text).replace(/[&<>"']/g, function (s) {
+        return ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'})[s];
+    });
 }
 
 // Setup de cálculo de total
