@@ -2,13 +2,7 @@ const express = require('express');
 const router = express.Router();
 const {
   generatePDF,
-  generateWord,
-  generateInvoice,
-  generateReceipt,
-  generateQuote,
-  generateBudget,
-  generateProposal,
-  generateDeliveryNote
+  generateWord
 } = require('../utils/documentGenerator');
 
 // Generar PDF

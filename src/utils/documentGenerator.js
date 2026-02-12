@@ -1,104 +1,66 @@
 const PDFDocument = require('pdfkit');
-const { Document, Packer, Paragraph, Table, TableRow, TableCell, HeadingLevel, AlignmentType, WidthType, BorderStyle } = require('docx');
+const { Document, Packer, Paragraph, Table, TableRow, TableCell, AlignmentType, WidthType, BorderStyle, ShadingType, ImageRun, TextRun } = require('docx');
 const fs = require('fs');
 const path = require('path');
+const PizZip = require('pizzip');
+const Docxtemplater = require('docxtemplater');
+const ImageModule = require('docxtemplater-image-module-free');
 
-// Configuración de marca Arman Travel
-const BRAND_CONFIG = {
-  company: 'Arman Solutions S.R.L',
-  brand: 'Arman Travel',
-  slogan: 'Sistema de Gestión de Documentos',
-  colors: {
-    primary: '#4B6B9B',      // Azul
-    secondary: '#1FA3B0',    // Turquesa
-    accent: '#2D8A99',       // Turquesa más oscuro
-    text: '#333333',
-    lightGray: '#F5F5F5'
-  },
-  font: 'Helvetica',
-  logoPath: path.join(__dirname, '../../public/logo.png')
+const COLORS = {
+  primary: '#4B6B9B',
+  secondary: '#1FA3B0',
+  text: '#2C3E50',
+  lightGray: '#ECF0F1',
+  border: '#BDC3C7',
+  white: '#FFFFFF'
 };
 
-// Verificar si existe el logo
-const logoExists = fs.existsSync(BRAND_CONFIG.logoPath);
+const BRAND_NAME = 'Arman Travel';
+const COMPANY_NAME = 'Arman Solutions S.R.L';
+const COMPANY_ADDRESS = 'Corrientes 1234, CABA';
+const COMPANY_PHONE = '+54 11 1234-5678';
+const COMPANY_EMAIL = 'info@armantravel.com';
 
-// Plantilla para PDF
+const logoPath = path.join(__dirname, '../../public/logo.png');
+const logoExists = fs.existsSync(logoPath);
+
 async function generatePDF(documentType, data) {
-  return new Promise(async (resolve, reject) => {
+  return new Promise((resolve, reject) => {
     try {
       const doc = new PDFDocument({
         size: 'A4',
-        margin: 40
+        margin: 40,
+        bufferPages: true
       });
 
       let chunks = [];
       doc.on('data', chunk => chunks.push(chunk));
       doc.on('end', () => resolve(Buffer.concat(chunks)));
 
-      // Encabezado con logo si existe
-      if (logoExists) {
-        try {
-          doc.image(BRAND_CONFIG.logoPath, 50, 40, { width: 50, height: 50 });
-        } catch (e) {
-          console.warn('Logo no pudo ser cargado en PDF:', e.message);
-        }
-      }
+      drawPDFHeader(doc);
+      drawDocumentTitle(doc, documentType);
+      drawDocumentInfo(doc, documentType, data);
 
-      // Título y empresa
-      doc.fontSize(24).font('Helvetica-Bold').fillColor(BRAND_CONFIG.colors.primary);
-      doc.text(BRAND_CONFIG.brand, logoExists ? 110 : 50, 50);
-      
-      doc.fontSize(10).font('Helvetica').fillColor('#666');
-      doc.text(`${BRAND_CONFIG.company} | ${BRAND_CONFIG.slogan}`, logoExists ? 110 : 50);
-      
-      // Línea divisoria
-      doc.moveTo(50, doc.y + 10).lineTo(550, doc.y + 10).strokeColor(BRAND_CONFIG.colors.secondary).stroke();
-      doc.moveDown(1.5);
-
-      // Tipo de documento
-      doc.fontSize(18).font('Helvetica-Bold').fillColor(BRAND_CONFIG.colors.primary);
-      doc.text(getDocumentTitle(documentType), { align: 'center' });
-      doc.moveDown(0.5);
-
-      // Línea decorativa
-      const docTitleY = doc.y;
-      doc.moveTo(150, docTitleY).lineTo(500, docTitleY).strokeColor(BRAND_CONFIG.colors.secondary).stroke();
-      doc.moveDown(1);
-
-      // Datos del documento según tipo
       switch(documentType) {
         case 'invoice':
-          generateInvoicePDF(doc, data);
+          drawInvoice(doc, data);
           break;
         case 'receipt':
-          generateReceiptPDF(doc, data);
+          drawReceipt(doc, data);
           break;
         case 'quote':
-          generateQuotePDF(doc, data);
+          drawQuote(doc, data);
           break;
         case 'budget':
-          generateBudgetPDF(doc, data);
+          drawBudget(doc, data);
           break;
         case 'proposal':
-          generateProposalPDF(doc, data);
+          drawProposal(doc, data);
           break;
         case 'delivery-note':
-          generateDeliveryNotePDF(doc, data);
+          drawDeliveryNote(doc, data);
           break;
       }
-
-      // Espacio para firma (si es necesario)
-      doc.moveDown(1.5);
-      doc.fontSize(9).fillColor('#999').text('Firma Autorizada: _____________________');
-      
-      // Pie de página
-      doc.fontSize(8).fillColor('#999999');
-      doc.text(`${BRAND_CONFIG.brand} - ${BRAND_CONFIG.company}`, {
-        align: 'center'
-      });
-      doc.text(`Documento generado el ${new Date().toLocaleDateString('es-AR')}`, {
-        align: 'center'
-      });
 
       doc.end();
     } catch (error) {
@@ -107,104 +69,161 @@ async function generatePDF(documentType, data) {
   });
 }
 
-// Plantilla para Word
 async function generateWord(documentType, data) {
   try {
-    const sections = [];
+    // If a .docx template exists, use docxtemplater to fill placeholders and images
+    const templatePath = path.join(__dirname, 'cotizador-ejemplo.docx');
+    if (fs.existsSync(templatePath)) {
+      try {
+        const content = fs.readFileSync(templatePath, 'binary');
+        const zip = new PizZip(content);
+        const doc = new Docxtemplater(zip, { paragraphLoop: true, linebreaks: true });
 
-    // Encabezado
-    sections.push(
-      new Paragraph({
-        text: BRAND_CONFIG.brand,
-        heading: HeadingLevel.HEADING_1,
-        size: 48,
-        bold: true,
-        color: BRAND_CONFIG.colors.primary.replace('#', ''),
-        alignment: AlignmentType.LEFT
-      }),
-      new Paragraph({
-        text: `${BRAND_CONFIG.company} | ${BRAND_CONFIG.slogan}`,
-        size: 20,
-        color: '666666',
-        alignment: AlignmentType.LEFT,
-        spacing: { after: 300 }
-      })
-    );
+        const imageModule = new ImageModule({
+          centered: false,
+          getImage: function(tagValue) {
+            if (!tagValue) return null;
+            // tagValue may be a data URL or Buffer
+            if (typeof tagValue === 'string' && tagValue.startsWith('data:')) {
+              return base64DataToBuffer(tagValue);
+            }
+            if (Buffer.isBuffer(tagValue)) return tagValue;
+            return null;
+          },
+          getSize: function(img, tagValue) {
+            // Return size [width, height] in pixels — keep reasonable defaults
+            return [450, 300];
+          }
+        });
 
-    // Tipo de documento
-    sections.push(
+        doc.attachModule(imageModule);
+
+        // Build template data
+        const tplData = Object.assign({}, data);
+        // Map images to template keys (use flight_image, hotel_image, transfer_image)
+        tplData.flight_image = data.images?.flight?.data || null;
+        tplData.hotel_image = data.images?.hotel?.data || null;
+        tplData.transfer_image = data.images?.transfer?.data || null;
+        // Map items into simple structure
+        tplData.items = (data.items || []).map(it => ({ description: it.description, quantity: it.quantity, price: it.price, subtotal: (it.quantity * it.price).toFixed(2) }));
+
+        doc.setData(tplData);
+        doc.render();
+        const buf = doc.getZip().generate({ type: 'nodebuffer' });
+        return buf;
+      } catch (err) {
+        // If template processing fails, fall back to programmatic generation below
+        console.error('Template render error:', err);
+      }
+    }
+    const title = getDocumentTitle(documentType);
+    const children = [];
+
+    // NOTE: Do not inject logos or header/footer content here — the user-provided
+    // .docx template will include any header/footer branding. We only render
+    // body content (title, info, items, images).
+    children.push(
       new Paragraph({
-        text: getDocumentTitle(documentType),
-        heading: HeadingLevel.HEADING_2,
-        size: 28,
+        text: title,
         bold: true,
-        color: BRAND_CONFIG.colors.primary.replace('#', ''),
-        alignment: AlignmentType.CENTER,
+        size: 40,
+        color: COLORS.primary.substring(1),
         spacing: { after: 200, before: 100 }
       })
     );
 
-    // Datos según tipo
-    let contentSections = [];
+    // Info table
+    children.push(
+      new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        rows: [
+          new TableRow({
+            height: { value: 600, rule: 'auto' },
+            children: [
+              new TableCell({
+                shading: { fill: COLORS.lightGray.substring(1), type: ShadingType.CLEAR },
+                margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                children: [
+                  new Paragraph({
+                    text: 'Nº',
+                    bold: true,
+                    size: 16,
+                    color: COLORS.secondary.substring(1)
+                  }),
+                  new Paragraph({
+                    text: data.number || '-',
+                    size: 20,
+                    color: COLORS.text.substring(1)
+                  })
+                ]
+              }),
+              new TableCell({
+                shading: { fill: COLORS.lightGray.substring(1), type: ShadingType.CLEAR },
+                margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                children: [
+                  new Paragraph({
+                    text: 'FECHA',
+                    bold: true,
+                    size: 16,
+                    color: COLORS.secondary.substring(1)
+                  }),
+                  new Paragraph({
+                    text: data.date || new Date().toLocaleDateString('es-AR'),
+                    size: 20,
+                    color: COLORS.text.substring(1)
+                  })
+                ]
+              }),
+              new TableCell({
+                shading: { fill: COLORS.lightGray.substring(1), type: ShadingType.CLEAR },
+                margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                children: [
+                  new Paragraph({
+                    text: documentType === 'quote' ? 'VIGENCIA' : 'ESTADO',
+                    bold: true,
+                    size: 16,
+                    color: COLORS.secondary.substring(1)
+                  }),
+                  new Paragraph({
+                    text: documentType === 'quote' ? (data.validity || '30 días') : 'Emitido',
+                    size: 20,
+                    color: COLORS.text.substring(1)
+                  })
+                ]
+              })
+            ]
+          })
+        ]
+      })
+    );
+
+    children.push(new Paragraph({ text: '', spacing: { after: 200 } }));
+
+    // Content
     switch(documentType) {
       case 'invoice':
-        contentSections = generateInvoiceWord(data);
+        children.push(...wordInvoice(data));
         break;
       case 'receipt':
-        contentSections = generateReceiptWord(data);
+        children.push(...wordReceipt(data));
         break;
       case 'quote':
-        contentSections = generateQuoteWord(data);
+        children.push(...wordQuote(data));
         break;
       case 'budget':
-        contentSections = generateBudgetWord(data);
+        children.push(...wordBudget(data));
         break;
       case 'proposal':
-        contentSections = generateProposalWord(data);
+        children.push(...wordProposal(data));
         break;
       case 'delivery-note':
-        contentSections = generateDeliveryNoteWord(data);
+        children.push(...wordDeliveryNote(data));
         break;
     }
 
-    sections.push(...contentSections);
+    // Do not add footer here. Template will handle footer/logo if needed.
 
-    // Espacio para firma
-    sections.push(
-      new Paragraph({
-        text: ' ',
-        spacing: { before: 400 }
-      }),
-      new Paragraph({
-        text: 'Firma Autorizada: _____________________',
-        size: 18,
-        color: '999999'
-      })
-    );
-
-    // Pie de página
-    sections.push(
-      new Paragraph({
-        text: `${BRAND_CONFIG.brand} - ${BRAND_CONFIG.company}`,
-        size: 16,
-        alignment: AlignmentType.CENTER,
-        color: '999999',
-        spacing: { before: 200 }
-      }),
-      new Paragraph({
-        text: `Documento generado el ${new Date().toLocaleDateString('es-AR')}`,
-        size: 14,
-        alignment: AlignmentType.CENTER,
-        color: '999999'
-      })
-    );
-
-    const doc = new Document({
-      sections: [{
-        children: sections
-      }]
-    });
-
+    const doc = new Document({ sections: [{ children }] });
     const buffer = await Packer.toBuffer(doc);
     return buffer;
   } catch (error) {
@@ -212,537 +231,604 @@ async function generateWord(documentType, data) {
   }
 }
 
-// Funciones auxiliares
-function getDocumentTitle(type) {
-  const titles = {
-    invoice: 'FACTURA',
-    receipt: 'RECIBO',
-    quote: 'COTIZACIÓN',
-    budget: 'PRESUPUESTO',
-    proposal: 'PROPUESTA',
-    'delivery-note': 'REMITO'
-  };
-  return titles[type] || 'DOCUMENTO';
+function drawPDFHeader(doc) {
+  // Intentionally do not draw header logo or header text here. The user's
+  // .docx template will include any header/footer branding. Keep the
+  // PDF cursor in a safe top area to avoid overlapping content.
+  doc.y = doc.page.margins.top + 10;
 }
 
-// Generadores PDF específicos
-function generateInvoicePDF(doc, data) {
-  doc.fontSize(11).font('Helvetica').fillColor(BRAND_CONFIG.colors.text);
-  
-  // Información de factura
-  doc.fontSize(10).font('Helvetica-Bold').text(`Factura Nº: ${data.number || '-'}`);
-  doc.fontSize(9).font('Helvetica').text(`Fecha: ${data.date || new Date().toLocaleDateString()}`);
-  
-  doc.moveDown(1);
-  doc.fontSize(10).font('Helvetica-Bold').text('DATOS DEL CLIENTE:');
-  doc.fontSize(9).font('Helvetica').text(data.clientName || '-');
-  if (data.clientDNI) doc.text(`DNI/CUIT: ${data.clientDNI}`);
-  if (data.clientPhone) doc.text(`Teléfono: ${data.clientPhone}`);
-  
-  // Items
-  doc.moveDown(1);
-  doc.fontSize(10).font('Helvetica-Bold').text('DETALLES:');
-  doc.fontSize(9).font('Helvetica');
-  
-  if (data.items && data.items.length > 0) {
-    data.items.forEach(item => {
-      const subtotal = (item.quantity * item.price).toFixed(2);
-      doc.text(`• ${item.description} - Cantidad: ${item.quantity} - Precio: $${item.price} = $${subtotal}`);
-    });
-  }
-  
-  // Total
-  doc.moveDown(1);
-  doc.fontSize(12).font('Helvetica-Bold').fillColor(BRAND_CONFIG.colors.secondary);
-  doc.text(`TOTAL: $${parseFloat(data.total || 0).toFixed(2)}`, { align: 'right' });
+function drawDocumentTitle(doc, type) {
+  const title = getDocumentTitle(type);
+  const y = doc.y;
+
+  doc.rect(40, y, 515, 45).fill(COLORS.primary);
+
+  doc.fontSize(28).font('Helvetica-Bold').fillColor(COLORS.white);
+  doc.text(title, 50, y + 8, { width: 495 });
+
+  doc.y = y + 55;
 }
 
-function generateReceiptPDF(doc, data) {
-  doc.fontSize(11).font('Helvetica').fillColor(BRAND_CONFIG.colors.text);
-  
-  doc.fontSize(10).font('Helvetica-Bold').text(`Recibo Nº: ${data.number || '-'}`);
-  doc.fontSize(9).font('Helvetica').text(`Fecha: ${data.date || new Date().toLocaleDateString()}`);
-  
-  doc.moveDown(1);
-  doc.fontSize(10).font('Helvetica-Bold').text('RECIBIMOS DE:');
-  doc.fontSize(9).font('Helvetica').text(data.paidBy || '-');
-  
-  doc.moveDown(1);
-  doc.fontSize(10).font('Helvetica-Bold').text('CONCEPTO:');
-  doc.fontSize(9).font('Helvetica').text(data.concept || '-');
-  
-  doc.moveDown(1);
-  doc.fontSize(12).font('Helvetica-Bold').fillColor(BRAND_CONFIG.colors.secondary);
-  doc.text(`MONTO: $${parseFloat(data.amount || 0).toFixed(2)}`, { align: 'right' });
+function drawDocumentInfo(doc, type, data) {
+  const y = doc.y;
+  const boxHeight = 35;
+
+  doc.rect(40, y, 515, boxHeight).fill(COLORS.lightGray);
+
+  doc.fontSize(8).font('Helvetica-Bold').fillColor(COLORS.secondary);
+  doc.text(`Nº`, 50, y + 7);
+  doc.fontSize(10).font('Helvetica').fillColor(COLORS.text);
+  doc.text(data.number || '-', 50, y + 18);
+
+  doc.fontSize(8).font('Helvetica-Bold').fillColor(COLORS.secondary);
+  doc.text('FECHA', 200, y + 7);
+  doc.fontSize(10).font('Helvetica').fillColor(COLORS.text);
+  doc.text(data.date || new Date().toLocaleDateString('es-AR'), 200, y + 18);
+
+  doc.fontSize(8).font('Helvetica-Bold').fillColor(COLORS.secondary);
+  doc.text(type === 'quote' ? 'VIGENCIA' : 'ESTADO', 380, y + 7);
+  doc.fontSize(10).font('Helvetica').fillColor(COLORS.text);
+  doc.text(type === 'quote' ? (data.validity || '30 días') : 'Emitido', 380, y + 18);
+
+  doc.y = y + boxHeight + 20;
 }
 
-function generateQuotePDF(doc, data) {
-  doc.fontSize(11).font('Helvetica').fillColor(BRAND_CONFIG.colors.text);
+function drawSection(doc, title) {
+  doc.moveDown(0.3);
+  const y = doc.y;
   
-  doc.fontSize(10).font('Helvetica-Bold').text(`Cotización Nº: ${data.number || '-'}`);
-  doc.fontSize(9).font('Helvetica').text(`Fecha: ${data.date || new Date().toLocaleDateString()}`);
-  if (data.validity) doc.text(`Vigencia: ${data.validity}`);
-  
-  doc.moveDown(1);
-  doc.fontSize(10).font('Helvetica-Bold').text('SOLICITANTE:');
-  doc.fontSize(9).font('Helvetica').text(data.requesterName || '-');
-  
-  doc.moveDown(1);
-  doc.fontSize(10).font('Helvetica-Bold').text('SERVICIOS/PRODUCTOS:');
-  doc.fontSize(9).font('Helvetica');
-  
-  if (data.items && data.items.length > 0) {
-    data.items.forEach(item => {
-      doc.text(`• ${item.description} - $${item.price}`);
-    });
-  }
-  
-  doc.moveDown(1);
-  doc.fontSize(12).font('Helvetica-Bold').fillColor(BRAND_CONFIG.colors.secondary);
-  doc.text(`TOTAL: $${parseFloat(data.total || 0).toFixed(2)}`, { align: 'right' });
+  doc.moveTo(40, y).lineTo(555, y).strokeColor(COLORS.secondary).lineWidth(2).stroke();
+  doc.fontSize(10).font('Helvetica-Bold').fillColor(COLORS.primary);
+  doc.text(title, 50, y - 10);
+
+  doc.y = y + 15;
 }
 
-function generateBudgetPDF(doc, data) {
-  doc.fontSize(11).font('Helvetica').fillColor(BRAND_CONFIG.colors.text);
-  
-  doc.fontSize(10).font('Helvetica-Bold').text(`Presupuesto Nº: ${data.number || '-'}`);
-  doc.fontSize(9).font('Helvetica').text(`Fecha: ${data.date || new Date().toLocaleDateString()}`);
-  
-  doc.moveDown(1);
-  doc.fontSize(10).font('Helvetica-Bold').text('CLIENTE:');
-  doc.fontSize(9).font('Helvetica').text(data.clientName || '-');
-  
-  if (data.description) {
-    doc.moveDown(0.5);
-    doc.fontSize(10).font('Helvetica-Bold').text('PROYECTO:');
-    doc.fontSize(9).font('Helvetica').text(data.description);
-  }
-  
-  doc.moveDown(1);
-  doc.fontSize(10).font('Helvetica-Bold').text('DETALLES:');
-  doc.fontSize(9).font('Helvetica');
-  
-  if (data.items && data.items.length > 0) {
-    data.items.forEach(item => {
-      doc.text(`• ${item.description} - $${item.price}`);
-    });
-  }
-  
-  doc.moveDown(1);
-  doc.fontSize(12).font('Helvetica-Bold').fillColor(BRAND_CONFIG.colors.secondary);
-  doc.text(`PRESUPUESTO TOTAL: $${parseFloat(data.total || 0).toFixed(2)}`, { align: 'right' });
+function formatCurrency(amount) {
+  const n = Number(amount || 0);
+  const fixed = n.toFixed(2);
+  const parts = fixed.split('.');
+  const integer = parts[0];
+  const decimals = parts[1];
+  const withThousands = integer.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  // Spanish style: thousands '.' and decimal ','
+  return `${withThousands},${decimals}`;
 }
 
-function generateProposalPDF(doc, data) {
-  doc.fontSize(11).font('Helvetica').fillColor(BRAND_CONFIG.colors.text);
-  
-  doc.fontSize(10).font('Helvetica-Bold').text(`Propuesta Nº: ${data.number || '-'}`);
-  doc.fontSize(9).font('Helvetica').text(`Fecha: ${data.date || new Date().toLocaleDateString()}`);
-  
-  doc.moveDown(1);
-  doc.fontSize(10).font('Helvetica-Bold').text('PARA:');
-  doc.fontSize(9).font('Helvetica').text(data.clientName || '-');
-  
-  if (data.summary) {
-    doc.moveDown(0.5);
-    doc.fontSize(10).font('Helvetica-Bold').text('RESUMEN EJECUTIVO:');
-    doc.fontSize(9).font('Helvetica').text(data.summary);
-  }
-  
-  if (data.solution) {
-    doc.moveDown(0.5);
-    doc.fontSize(10).font('Helvetica-Bold').text('SOLUCIÓN PROPUESTA:');
-    doc.fontSize(9).font('Helvetica').text(data.solution);
-  }
-  
-  doc.moveDown(1);
-  doc.fontSize(12).font('Helvetica-Bold').fillColor(BRAND_CONFIG.colors.secondary);
-  doc.text(`INVERSIÓN: $${parseFloat(data.investment || 0).toFixed(2)}`, { align: 'right' });
+function drawItemsTable(doc, items, showQty = false) {
+  if (!items || items.length === 0) return;
+
+  const startX = 40;
+  const tableWidth = doc.page.width - startX - doc.page.margins.right;
+  const descWidth = showQty ? Math.round(tableWidth * 0.55) : Math.round(tableWidth * 0.6);
+  const qtyWidth = showQty ? Math.round(tableWidth * 0.1) : 0;
+  const priceWidth = Math.round(tableWidth * 0.15);
+  const subtotalWidth = showQty ? Math.round(tableWidth * 0.15) : Math.round(tableWidth * 0.25);
+
+  // Header
+  const headerY = doc.y;
+  doc.rect(startX, headerY, tableWidth, 22).fill(COLORS.primary);
+  doc.fontSize(9).font('Helvetica-Bold').fillColor(COLORS.white);
+  doc.text('DESCRIPCIÓN', startX + 6, headerY + 6, { width: descWidth });
+  if (showQty) doc.text('CANT.', startX + 6 + descWidth, headerY + 6, { width: qtyWidth, align: 'center' });
+  doc.text('PRECIO', startX + 6 + descWidth + qtyWidth, headerY + 6, { width: priceWidth, align: 'right' });
+  if (!showQty) doc.text('SUBTOTAL', startX + 6 + descWidth + qtyWidth + priceWidth, headerY + 6, { width: subtotalWidth, align: 'right' });
+
+  let cursorY = headerY + 26;
+
+  items.forEach((item, idx) => {
+    // Compute description height with wrapping
+    doc.fontSize(10).font('Helvetica');
+    const descHeight = doc.heightOfString(String(item.description || '-'), { width: descWidth });
+    const rowHeight = Math.max(18, descHeight) + 8;
+
+    // Page break if not enough space
+    if (cursorY + rowHeight + doc.page.margins.bottom > doc.page.height) {
+      doc.addPage();
+      cursorY = doc.y;
+    }
+
+    // Row background
+    if (idx % 2 === 0) {
+      doc.rect(startX, cursorY - 4, tableWidth, rowHeight).fill(COLORS.lightGray);
+    }
+
+    // Text
+    doc.fillColor(COLORS.text).fontSize(10).font('Helvetica');
+    doc.text(String(item.description || '-'), startX + 6, cursorY, { width: descWidth });
+
+    if (showQty) {
+      doc.text(String(item.quantity || 0), startX + 6 + descWidth, cursorY, { width: qtyWidth, align: 'center' });
+    }
+
+    const priceStr = `$ ${formatCurrency(item.price)} `;
+    doc.text(priceStr, startX + 6 + descWidth + qtyWidth, cursorY, { width: priceWidth, align: 'right' });
+
+    if (!showQty) {
+      const subtotal = (Number(item.quantity || 1) * Number(item.price || 0));
+      const subtotalStr = `$ ${formatCurrency(subtotal)} `;
+      doc.text(subtotalStr, startX + 6 + descWidth + qtyWidth + priceWidth, cursorY, { width: subtotalWidth, align: 'right' });
+    }
+
+    cursorY += rowHeight + 4;
+  });
+
+  doc.y = cursorY + 6;
 }
 
-function generateDeliveryNotePDF(doc, data) {
-  doc.fontSize(11).font('Helvetica').fillColor(BRAND_CONFIG.colors.text);
-  
-  doc.fontSize(10).font('Helvetica-Bold').text(`Remito Nº: ${data.number || '-'}`);
-  doc.fontSize(9).font('Helvetica').text(`Fecha: ${data.date || new Date().toLocaleDateString()}`);
-  
-  doc.moveDown(1);
-  doc.fontSize(10).font('Helvetica-Bold').text('DESTINATARIO:');
-  doc.fontSize(9).font('Helvetica').text(data.recipientName || '-');
-  
-  doc.moveDown(1);
-  doc.fontSize(10).font('Helvetica-Bold').text('PRODUCTOS/SERVICIOS:');
-  doc.fontSize(9).font('Helvetica');
-  
-  if (data.items && data.items.length > 0) {
-    data.items.forEach(item => {
-      doc.text(`• ${item.description} - Cantidad: ${item.quantity}`);
-    });
-  }
-  
-  if (data.observations) {
-    doc.moveDown(0.5);
-    doc.fontSize(10).font('Helvetica-Bold').text('OBSERVACIONES:');
-    doc.fontSize(9).font('Helvetica').text(data.observations);
-  }
-}
+function drawImage(doc, imageData, title) {
+  if (!imageData) return;
 
-// Generadores Word específicos
-function generateInvoiceWord(data) {
-  return [
-    new Paragraph({
-      text: `Factura Nº: ${data.number || '-'}`,
-      bold: true,
-      spacing: { after: 50 }
-    }),
-    new Paragraph({
-      text: `Fecha: ${data.date || new Date().toLocaleDateString()}`,
-      spacing: { after: 200 }
-    }),
-    new Paragraph({
-      text: 'DATOS DEL CLIENTE:',
-      bold: true,
-      spacing: { after: 50 }
-    }),
-    new Paragraph({
-      text: data.clientName || '-',
-      spacing: { after: 50 }
-    }),
-    ...(data.clientDNI ? [new Paragraph({
-      text: `DNI/CUIT: ${data.clientDNI}`,
-      spacing: { after: 50 }
-    })] : []),
-    ...(data.clientPhone ? [new Paragraph({
-      text: `Teléfono: ${data.clientPhone}`,
-      spacing: { after: 200 }
-    })] : [new Paragraph({ text: '', spacing: { after: 200 } })]),
-    new Paragraph({
-      text: 'DETALLES:',
-      bold: true,
-      spacing: { after: 100 }
-    }),
-    ...(data.items?.map(item => new Paragraph({
-      text: `• ${item.description} - Cantidad: ${item.quantity} - Precio: $${item.price}`,
-      spacing: { after: 50 }
-    })) || []),
-    new Paragraph({
-      text: `TOTAL: $${parseFloat(data.total || 0).toFixed(2)}`,
-      bold: true,
-      color: BRAND_CONFIG.colors.secondary.replace('#', ''),
-      alignment: AlignmentType.RIGHT,
-      spacing: { before: 200 }
-    })
-  ];
-}
-
-function generateReceiptWord(data) {
-  return [
-    new Paragraph({
-      text: `Recibo Nº: ${data.number || '-'}`,
-      bold: true,
-      spacing: { after: 50 }
-    }),
-    new Paragraph({
-      text: `Fecha: ${data.date || new Date().toLocaleDateString()}`,
-      spacing: { after: 200 }
-    }),
-    new Paragraph({
-      text: 'RECIBIMOS DE:',
-      bold: true,
-      spacing: { after: 100 }
-    }),
-    new Paragraph({
-      text: data.paidBy || '-',
-      spacing: { after: 200 }
-    }),
-    new Paragraph({
-      text: 'CONCEPTO:',
-      bold: true,
-      spacing: { after: 100 }
-    }),
-    new Paragraph({
-      text: data.concept || '-',
-      spacing: { after: 200 }
-    }),
-    new Paragraph({
-      text: `MONTO: $${parseFloat(data.amount || 0).toFixed(2)}`,
-      bold: true,
-      color: BRAND_CONFIG.colors.secondary.replace('#', ''),
-      alignment: AlignmentType.RIGHT
-    })
-  ];
-}
-
-function generateQuoteWord(data) {
-  return [
-    new Paragraph({
-      text: `Cotización Nº: ${data.number || '-'}`,
-      bold: true,
-      spacing: { after: 50 }
-    }),
-    new Paragraph({
-      text: `Fecha: ${data.date || new Date().toLocaleDateString()}`,
-      spacing: { after: 50 }
-    }),
-    ...(data.validity ? [new Paragraph({
-      text: `Vigencia: ${data.validity}`,
-      spacing: { after: 200 }
-    })] : [new Paragraph({ text: '', spacing: { after: 200 } })]),
-    new Paragraph({
-      text: 'SOLICITANTE:',
-      bold: true,
-      spacing: { after: 100 }
-    }),
-    new Paragraph({
-      text: data.requesterName || '-',
-      spacing: { after: 200 }
-    }),
-    new Paragraph({
-      text: 'SERVICIOS/PRODUCTOS:',
-      bold: true,
-      spacing: { after: 100 }
-    }),
-    ...(data.items?.map(item => new Paragraph({
-      text: `• ${item.description} - $${item.price}`,
-      spacing: { after: 50 }
-    })) || []),
-    new Paragraph({
-      text: `TOTAL: $${parseFloat(data.total || 0).toFixed(2)}`,
-      bold: true,
-      color: BRAND_CONFIG.colors.secondary.replace('#', ''),
-      alignment: AlignmentType.RIGHT,
-      spacing: { before: 200 }
-    })
-  ];
-}
-
-function generateBudgetWord(data) {
-  return [
-    new Paragraph({
-      text: `Presupuesto Nº: ${data.number || '-'}`,
-      bold: true,
-      spacing: { after: 50 }
-    }),
-    new Paragraph({
-      text: `Fecha: ${data.date || new Date().toLocaleDateString()}`,
-      spacing: { after: 200 }
-    }),
-    new Paragraph({
-      text: 'CLIENTE:',
-      bold: true,
-      spacing: { after: 100 }
-    }),
-    new Paragraph({
-      text: data.clientName || '-',
-      spacing: { after: 200 }
-    }),
-    ...(data.description ? [
-      new Paragraph({
-        text: 'PROYECTO:',
-        bold: true,
-        spacing: { after: 100 }
-      }),
-      new Paragraph({
-        text: data.description,
-        spacing: { after: 200 }
-      })
-    ] : []),
-    new Paragraph({
-      text: 'DETALLES:',
-      bold: true,
-      spacing: { after: 100 }
-    }),
-    ...(data.items?.map(item => new Paragraph({
-      text: `• ${item.description} - $${item.price}`,
-      spacing: { after: 50 }
-    })) || []),
-    new Paragraph({
-      text: `PRESUPUESTO TOTAL: $${parseFloat(data.total || 0).toFixed(2)}`,
-      bold: true,
-      color: BRAND_CONFIG.colors.secondary.replace('#', ''),
-      alignment: AlignmentType.RIGHT,
-      spacing: { before: 200 }
-    })
-  ];
-}
-
-function generateProposalWord(data) {
-  return [
-    new Paragraph({
-      text: `Propuesta Nº: ${data.number || '-'}`,
-      bold: true,
-      spacing: { after: 50 }
-    }),
-    new Paragraph({
-      text: `Fecha: ${data.date || new Date().toLocaleDateString()}`,
-      spacing: { after: 200 }
-    }),
-    new Paragraph({
-      text: 'PARA:',
-      bold: true,
-      spacing: { after: 100 }
-    }),
-    new Paragraph({
-      text: data.clientName || '-',
-      spacing: { after: 200 }
-    }),
-    ...(data.summary ? [
-      new Paragraph({
-        text: 'RESUMEN EJECUTIVO:',
-        bold: true,
-        spacing: { after: 100 }
-      }),
-      new Paragraph({
-        text: data.summary,
-        spacing: { after: 200 }
-      })
-    ] : []),
-    ...(data.solution ? [
-      new Paragraph({
-        text: 'SOLUCIÓN PROPUESTA:',
-        bold: true,
-        spacing: { after: 100 }
-      }),
-      new Paragraph({
-        text: data.solution,
-        spacing: { after: 200 }
-      })
-    ] : []),
-    new Paragraph({
-      text: `INVERSIÓN: $${parseFloat(data.investment || 0).toFixed(2)}`,
-      bold: true,
-      color: BRAND_CONFIG.colors.secondary.replace('#', ''),
-      alignment: AlignmentType.RIGHT
-    })
-  ];
-}
-
-function generateDeliveryNoteWord(data) {
-  return [
-    new Paragraph({
-      text: `Remito Nº: ${data.number || '-'}`,
-      bold: true,
-      spacing: { after: 50 }
-    }),
-    new Paragraph({
-      text: `Fecha: ${data.date || new Date().toLocaleDateString()}`,
-      spacing: { after: 200 }
-    }),
-    new Paragraph({
-      text: 'DESTINATARIO:',
-      bold: true,
-      spacing: { after: 100 }
-    }),
-    new Paragraph({
-      text: data.recipientName || '-',
-      spacing: { after: 200 }
-    }),
-    new Paragraph({
-      text: 'PRODUCTOS/SERVICIOS:',
-      bold: true,
-      spacing: { after: 100 }
-    }),
-    ...(data.items?.map(item => new Paragraph({
-      text: `• ${item.description} - Cantidad: ${item.quantity}`,
-      spacing: { after: 50 }
-    })) || []),
-    ...(data.observations ? [
-      new Paragraph({
-        text: `OBSERVACIONES: ${data.observations}`,
-        spacing: { before: 200 }
-      })
-    ] : [])
-  ];
-}
-
-module.exports = {
-  generatePDF,
-  generateWord
-};
-
-// Plantilla para Word
-async function generateWord(documentType, data) {
+  drawSection(doc, title);
+  doc.moveDown(0.3);
   try {
-    const sections = [];
+    const buffer = Buffer.from(imageData.split(',')[1], 'base64');
+    const maxWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right - 40; // padding
+    const maxHeight = doc.page.height - doc.page.margins.top - doc.page.margins.bottom - 120; // leave room
 
-    // Encabezado
-    sections.push(
-      new Paragraph({
-        text: BRAND_CONFIG.brand,
-        heading: HeadingLevel.HEADING_1,
-        size: 48,
-        bold: true,
-        color: BRAND_CONFIG.colors.primary.replace('#', '')
-      }),
-      new Paragraph({
-        text: BRAND_CONFIG.company,
-        size: 20,
-        color: BRAND_CONFIG.colors.text.replace('#', '')
-      })
-    );
-
-    // Tipo de documento
-    sections.push(
-      new Paragraph({
-        text: getDocumentTitle(documentType),
-        heading: HeadingLevel.HEADING_2,
-        size: 28,
-        bold: true,
-        color: BRAND_CONFIG.colors.primary.replace('#', ''),
-        alignment: AlignmentType.CENTER,
-        spacing: { after: 200 }
-      })
-    );
-
-    // Datos según tipo
-    let contentSections = [];
-    switch(documentType) {
-      case 'invoice':
-        contentSections = generateInvoiceWord(data);
-        break;
-      case 'receipt':
-        contentSections = generateReceiptWord(data);
-        break;
-      case 'quote':
-        contentSections = generateQuoteWord(data);
-        break;
-      case 'budget':
-        contentSections = generateBudgetWord(data);
-        break;
-      case 'proposal':
-        contentSections = generateProposalWord(data);
-        break;
-      case 'delivery-note':
-        contentSections = generateDeliveryNoteWord(data);
-        break;
+    // Try to get image intrinsic dimensions via PDFKit's image loading
+    let img;
+    try {
+      img = doc.openImage(buffer);
+    } catch (e) {
+      img = null;
     }
 
-    sections.push(...contentSections);
+    let drawWidth = maxWidth;
+    let drawHeight = maxHeight;
+    if (img) {
+      const ratio = Math.min(maxWidth / img.width, maxHeight / img.height, 1);
+      drawWidth = Math.round(img.width * ratio);
+      drawHeight = Math.round(img.height * ratio);
+    } else {
+      // fallback fixed height
+      drawHeight = Math.min(300, maxHeight);
+      drawWidth = Math.min(maxWidth, drawHeight * 1.5);
+    }
 
-    // Pie de página
-    sections.push(
-      new Paragraph({
-        text: `${BRAND_CONFIG.brand} - ${BRAND_CONFIG.company}`,
-        size: 18,
-        alignment: AlignmentType.CENTER,
-        color: '999999'
-      })
-    );
+    // If image doesn't fit on current page, add a new page
+    const remainingHeight = doc.page.height - doc.y - doc.page.margins.bottom;
+    if (drawHeight + 40 > remainingHeight) {
+      doc.addPage();
+    }
 
-    const doc = new Document({
-      sections: [{
-        children: sections
-      }]
-    });
-
-    const buffer = await Packer.toBuffer(doc);
-    return buffer;
-  } catch (error) {
-    throw error;
+    const x = (doc.page.width - drawWidth) / 2;
+    doc.image(buffer, x, doc.y, { width: drawWidth, height: drawHeight });
+    // Move cursor after the image
+    doc.y = doc.y + drawHeight + 10;
+  } catch (e) {
+    console.log('Error loading image:', e.message);
   }
 }
 
-// Funciones auxiliares
+// Helper: convert base64 (data url) to Buffer
+function base64DataToBuffer(dataUrl) {
+  if (!dataUrl) return null;
+  const parts = dataUrl.split(',');
+  return Buffer.from(parts[1], 'base64');
+}
+
+function drawTotal(doc, amount, label) {
+  doc.moveDown(1);
+  const y = doc.y;
+
+  doc.rect(355, y, 200, 50).fill(COLORS.secondary);
+  doc.fontSize(9).font('Helvetica-Bold').fillColor(COLORS.white);
+  doc.text(label, 365, y + 8, { width: 180 });
+  doc.fontSize(20).font('Helvetica-Bold').fillColor(COLORS.white);
+  doc.text(`$${parseFloat(amount || 0).toFixed(2)}`, 365, y + 22, { width: 180, align: 'right' });
+
+  doc.y = y + 60;
+}
+
+function drawInvoice(doc, data) {
+  drawSection(doc, 'DATOS DEL CLIENTE');
+  
+  doc.fontSize(10).font('Helvetica').fillColor(COLORS.text);
+  doc.text(data.clientName || '-', 50);
+  if (data.clientDNI) doc.text(`DNI/CUIT: ${data.clientDNI}`, 50);
+  if (data.clientPhone) doc.text(`Teléfono: ${data.clientPhone}`, 50);
+  doc.moveDown(0.5);
+
+  if (data.items && data.items.length > 0) {
+    drawSection(doc, 'DETALLE');
+    drawItemsTable(doc, data.items, true);
+  }
+
+  drawTotal(doc, data.total, 'TOTAL A PAGAR');
+}
+
+function drawReceipt(doc, data) {
+  drawSection(doc, 'RECIBIMOS DE');
+  doc.fontSize(11).font('Helvetica').fillColor(COLORS.text);
+  doc.text(data.paidBy || '-', 50);
+  doc.moveDown(1);
+
+  drawSection(doc, 'CONCEPTO');
+  doc.fontSize(11).font('Helvetica').fillColor(COLORS.text);
+  doc.text(data.concept || '-', 50);
+  doc.moveDown(1);
+
+  drawTotal(doc, data.amount, 'MONTO RECIBIDO');
+}
+
+function drawQuote(doc, data) {
+  drawSection(doc, 'SOLICITANTE');
+  doc.fontSize(11).font('Helvetica').fillColor(COLORS.text);
+  doc.text(data.requesterName || '-', 50);
+  doc.moveDown(1);
+
+  if (data.images?.flight || data.flightDescription) {
+    if (data.images?.flight) drawImage(doc, data.images.flight.data, 'DATOS DEL VUELO');
+    if (data.flightDescription) {
+      drawSection(doc, 'INFORMACIÓN DEL VUELO');
+      doc.fontSize(9).font('Helvetica').fillColor(COLORS.text);
+      doc.text(data.flightDescription, 50, doc.y, { width: 450 });
+      doc.moveDown(0.5);
+    }
+  }
+
+  if (data.images?.hotel || data.hotelDescription) {
+    if (data.images?.hotel) drawImage(doc, data.images.hotel.data, 'DATOS DEL HOSPEDAJE');
+    if (data.hotelDescription) {
+      drawSection(doc, 'INFORMACIÓN DEL HOSPEDAJE');
+      doc.fontSize(9).font('Helvetica').fillColor(COLORS.text);
+      doc.text(data.hotelDescription, 50, doc.y, { width: 450 });
+      doc.moveDown(0.5);
+    }
+  }
+
+  if (data.images?.transfer || data.transferDescription) {
+    if (data.images?.transfer) drawImage(doc, data.images.transfer.data, 'INFO DE LOS TRASLADOS');
+    if (data.transferDescription) {
+      drawSection(doc, 'INFORMACIÓN DE TRASLADOS');
+      doc.fontSize(9).font('Helvetica').fillColor(COLORS.text);
+      doc.text(data.transferDescription, 50, doc.y, { width: 450 });
+      doc.moveDown(0.5);
+    }
+  }
+
+  if (data.items && data.items.length > 0) {
+    drawSection(doc, 'SERVICIOS');
+    drawItemsTable(doc, data.items);
+  }
+
+  drawTotal(doc, data.total, 'TOTAL COTIZADO');
+}
+
+function drawBudget(doc, data) {
+  drawSection(doc, 'CLIENTE');
+  doc.fontSize(11).font('Helvetica').fillColor(COLORS.text);
+  doc.text(data.clientName || '-', 50);
+  doc.moveDown(1);
+
+  if (data.description) {
+    drawSection(doc, 'PROYECTO');
+    doc.fontSize(10).font('Helvetica').fillColor(COLORS.text);
+    doc.text(data.description, 50, doc.y, { width: 400 });
+    doc.moveDown(0.8);
+  }
+
+  if (data.images?.flight || data.flightDescription) {
+    if (data.images?.flight) drawImage(doc, data.images.flight.data, 'DATOS DEL VUELO');
+    if (data.flightDescription) {
+      drawSection(doc, 'INFORMACIÓN DEL VUELO');
+      doc.fontSize(9).font('Helvetica').fillColor(COLORS.text);
+      doc.text(data.flightDescription, 50, doc.y, { width: 450 });
+      doc.moveDown(0.5);
+    }
+  }
+
+  if (data.items && data.items.length > 0) {
+    drawSection(doc, 'DETALLES');
+    drawItemsTable(doc, data.items);
+  }
+
+  drawTotal(doc, data.total, 'TOTAL PRESUPUESTO');
+}
+
+function drawProposal(doc, data) {
+  drawSection(doc, 'DIRIGIDA A');
+  doc.fontSize(11).font('Helvetica').fillColor(COLORS.text);
+  doc.text(data.clientName || '-', 50);
+  doc.moveDown(1);
+
+  if (data.summary) {
+    drawSection(doc, 'RESUMEN');
+    doc.fontSize(10).font('Helvetica').fillColor(COLORS.text);
+    doc.text(data.summary, 50, doc.y, { width: 400 });
+    doc.moveDown(0.8);
+  }
+
+  if (data.solution) {
+    drawSection(doc, 'PROPUESTA');
+    doc.fontSize(10).font('Helvetica').fillColor(COLORS.text);
+    doc.text(data.solution, 50, doc.y, { width: 400 });
+    doc.moveDown(0.8);
+  }
+
+  drawTotal(doc, data.investment, 'INVERSIÓN REQUERIDA');
+}
+
+function drawDeliveryNote(doc, data) {
+  drawSection(doc, 'DESTINATARIO');
+  doc.fontSize(11).font('Helvetica').fillColor(COLORS.text);
+  doc.text(data.recipientName || '-', 50);
+  doc.moveDown(1);
+
+  if (data.items && data.items.length > 0) {
+    drawSection(doc, 'PRODUCTOS');
+    drawItemsTable(doc, data.items, true);
+  }
+
+  if (data.observations) {
+    drawSection(doc, 'OBSERVACIONES');
+    doc.fontSize(10).font('Helvetica').fillColor(COLORS.text);
+    doc.text(data.observations, 50, doc.y, { width: 400 });
+  }
+}
+
+function wordInvoice(data) {
+  const sections = [];
+  sections.push(createSectionTitle('DATOS DEL CLIENTE'));
+  sections.push(new Paragraph({ text: data.clientName || '-', size: 22, spacing: { after: 50 } }));
+  if (data.clientDNI) sections.push(new Paragraph({ text: `DNI/CUIT: ${data.clientDNI}`, size: 20, spacing: { after: 50 } }));
+  if (data.clientPhone) sections.push(new Paragraph({ text: `Teléfono: ${data.clientPhone}`, size: 20, spacing: { after: 200 } }));
+  sections.push(createSectionTitle('DETALLE'));
+  sections.push(createItemsTable(data.items, true));
+  sections.push(createTotalSection(data.total, 'TOTAL A PAGAR'));
+  return sections;
+}
+
+function wordReceipt(data) {
+  const sections = [];
+  sections.push(createSectionTitle('RECIBIMOS DE'));
+  sections.push(new Paragraph({ text: data.paidBy || '-', size: 22, spacing: { after: 200 } }));
+  sections.push(createSectionTitle('CONCEPTO'));
+  sections.push(new Paragraph({ text: data.concept || '-', size: 22, spacing: { after: 200 } }));
+  sections.push(createTotalSection(data.amount, 'MONTO RECIBIDO'));
+  return sections;
+}
+
+function wordQuote(data) {
+  const sections = [];
+  sections.push(createSectionTitle('SOLICITANTE'));
+  sections.push(new Paragraph({ text: data.requesterName || '-', size: 22, spacing: { after: 200 } }));
+  
+  if (data.images?.flight || data.flightDescription) {
+    sections.push(createSectionTitle('DATOS DEL VUELO'));
+    if (data.images?.flight) {
+      const p = createImageParagraph(data.images.flight.data, 450, 300);
+      if (p) sections.push(p);
+    }
+    if (data.flightDescription) sections.push(new Paragraph({ text: data.flightDescription, size: 20, spacing: { after: 200 } }));
+  }
+
+  if (data.images?.hotel || data.hotelDescription) {
+    sections.push(createSectionTitle('DATOS DEL HOSPEDAJE'));
+    if (data.images?.hotel) {
+      const p = createImageParagraph(data.images.hotel.data, 450, 300);
+      if (p) sections.push(p);
+    }
+    if (data.hotelDescription) sections.push(new Paragraph({ text: data.hotelDescription, size: 20, spacing: { after: 200 } }));
+  }
+
+  if (data.images?.transfer || data.transferDescription) {
+    sections.push(createSectionTitle('INFO DE LOS TRASLADOS'));
+    if (data.images?.transfer) {
+      const p = createImageParagraph(data.images.transfer.data, 450, 300);
+      if (p) sections.push(p);
+    }
+    if (data.transferDescription) sections.push(new Paragraph({ text: data.transferDescription, size: 20, spacing: { after: 200 } }));
+  }
+  
+  sections.push(createSectionTitle('SERVICIOS'));
+  sections.push(createItemsTable(data.items));
+  sections.push(createTotalSection(data.total, 'TOTAL COTIZADO'));
+  return sections;
+}
+
+function wordBudget(data) {
+  const sections = [];
+  sections.push(createSectionTitle('CLIENTE'));
+  sections.push(new Paragraph({ text: data.clientName || '-', size: 22, spacing: { after: 200 } }));
+  if (data.description) {
+    sections.push(createSectionTitle('PROYECTO'));
+    sections.push(new Paragraph({ text: data.description, size: 20, spacing: { after: 200 } }));
+  }
+  if (data.images?.flight || data.flightDescription) {
+    sections.push(createSectionTitle('DATOS DEL VUELO'));
+    if (data.images?.flight) {
+      const p = createImageParagraph(data.images.flight.data, 450, 300);
+      if (p) sections.push(p);
+    }
+    if (data.flightDescription) sections.push(new Paragraph({ text: data.flightDescription, size: 20, spacing: { after: 200 } }));
+  }
+  sections.push(createSectionTitle('DETALLES'));
+  sections.push(createItemsTable(data.items));
+  sections.push(createTotalSection(data.total, 'TOTAL PRESUPUESTO'));
+  return sections;
+}
+
+function wordProposal(data) {
+  const sections = [];
+  sections.push(createSectionTitle('DIRIGIDA A'));
+  sections.push(new Paragraph({ text: data.clientName || '-', size: 22, spacing: { after: 200 } }));
+  if (data.summary) {
+    sections.push(createSectionTitle('RESUMEN'));
+    sections.push(new Paragraph({ text: data.summary, size: 20, spacing: { after: 200 } }));
+  }
+  if (data.solution) {
+    sections.push(createSectionTitle('PROPUESTA'));
+    sections.push(new Paragraph({ text: data.solution, size: 20, spacing: { after: 200 } }));
+  }
+  // Allow images/descriptions in proposals
+  if (data.images?.flight || data.flightDescription) {
+    sections.push(createSectionTitle('DATOS DEL VUELO'));
+    if (data.images?.flight) {
+      const p = createImageParagraph(data.images.flight.data, 450, 300);
+      if (p) sections.push(p);
+    }
+    if (data.flightDescription) sections.push(new Paragraph({ text: data.flightDescription, size: 20, spacing: { after: 200 } }));
+  }
+  if (data.images?.hotel || data.hotelDescription) {
+    sections.push(createSectionTitle('DATOS DEL HOSPEDAJE'));
+    if (data.images?.hotel) {
+      const p = createImageParagraph(data.images.hotel.data, 450, 300);
+      if (p) sections.push(p);
+    }
+    if (data.hotelDescription) sections.push(new Paragraph({ text: data.hotelDescription, size: 20, spacing: { after: 200 } }));
+  }
+  if (data.images?.transfer || data.transferDescription) {
+    sections.push(createSectionTitle('INFO DE LOS TRASLADOS'));
+    if (data.images?.transfer) {
+      const p = createImageParagraph(data.images.transfer.data, 450, 300);
+      if (p) sections.push(p);
+    }
+    if (data.transferDescription) sections.push(new Paragraph({ text: data.transferDescription, size: 20, spacing: { after: 200 } }));
+  }
+  sections.push(createTotalSection(data.investment, 'INVERSIÓN REQUERIDA'));
+  return sections;
+}
+
+function wordDeliveryNote(data) {
+  const sections = [];
+  sections.push(createSectionTitle('DESTINATARIO'));
+  sections.push(new Paragraph({ text: data.recipientName || '-', size: 22, spacing: { after: 200 } }));
+  sections.push(createSectionTitle('PRODUCTOS'));
+  sections.push(createItemsTable(data.items, true));
+  if (data.observations) {
+    sections.push(createSectionTitle('OBSERVACIONES'));
+    sections.push(new Paragraph({ text: data.observations, size: 20, spacing: { after: 200 } }));
+  }
+  return sections;
+}
+
+function createSectionTitle(text) {
+  return new Paragraph({
+    text: text,
+    bold: true,
+    size: 24,
+    color: COLORS.primary.substring(1),
+    border: { bottom: { color: COLORS.secondary.substring(1), space: 1, style: BorderStyle.SINGLE, size: 12 } },
+    spacing: { before: 100, after: 100 }
+  });
+}
+
+function createImageParagraph(dataUrl, width = 450, height = 300) {
+  const buffer = base64DataToBuffer(dataUrl);
+  if (!buffer) return null;
+  return new Paragraph({ children: [new ImageRun({ data: buffer, transformation: { width, height } })], spacing: { after: 200 } });
+}
+
+function createItemsTable(items, showQty = false) {
+  if (!items || items.length === 0) {
+    return new Paragraph({ text: 'Sin items', spacing: { after: 200 } });
+  }
+
+  const headerCells = [
+    new TableCell({
+      shading: { fill: COLORS.primary.substring(1), type: ShadingType.CLEAR },
+      margins: { top: 50, bottom: 50, left: 50, right: 50 },
+      children: [new Paragraph({ text: 'DESCRIPCIÓN', bold: true, color: COLORS.white.substring(1), size: 18 })]
+    })
+  ];
+
+  if (showQty) {
+    headerCells.push(new TableCell({
+      shading: { fill: COLORS.primary.substring(1), type: ShadingType.CLEAR },
+      margins: { top: 50, bottom: 50, left: 50, right: 50 },
+      children: [new Paragraph({ text: 'CANT.', bold: true, color: COLORS.white.substring(1), size: 18, alignment: AlignmentType.CENTER })]
+    }));
+  }
+
+  headerCells.push(new TableCell({
+    shading: { fill: COLORS.primary.substring(1), type: ShadingType.CLEAR },
+    margins: { top: 50, bottom: 50, left: 50, right: 50 },
+    children: [new Paragraph({ text: 'PRECIO', bold: true, color: COLORS.white.substring(1), size: 18, alignment: AlignmentType.RIGHT })]
+  }));
+
+  if (!showQty) {
+    headerCells.push(new TableCell({
+      shading: { fill: COLORS.primary.substring(1), type: ShadingType.CLEAR },
+      margins: { top: 50, bottom: 50, left: 50, right: 50 },
+      children: [new Paragraph({ text: 'SUBTOTAL', bold: true, color: COLORS.white.substring(1), size: 18, alignment: AlignmentType.RIGHT })]
+    }));
+  }
+
+  const rows = [new TableRow({ children: headerCells })];
+
+  items.forEach((item, idx) => {
+    const cells = [
+      new TableCell({
+        shading: { fill: idx % 2 === 0 ? COLORS.lightGray.substring(1) : COLORS.white.substring(1), type: ShadingType.CLEAR },
+        margins: { top: 50, bottom: 50, left: 50, right: 50 },
+        children: [new Paragraph({ text: item.description, size: 20 })]
+      })
+    ];
+
+    if (showQty) {
+      cells.push(new TableCell({
+        shading: { fill: idx % 2 === 0 ? COLORS.lightGray.substring(1) : COLORS.white.substring(1), type: ShadingType.CLEAR },
+        margins: { top: 50, bottom: 50, left: 50, right: 50 },
+        children: [new Paragraph({ text: item.quantity.toString(), size: 20, alignment: AlignmentType.CENTER })]
+      }));
+    }
+
+    cells.push(new TableCell({
+      shading: { fill: idx % 2 === 0 ? COLORS.lightGray.substring(1) : COLORS.white.substring(1), type: ShadingType.CLEAR },
+      margins: { top: 50, bottom: 50, left: 50, right: 50 },
+      children: [new Paragraph({ text: `$ ${formatCurrency(item.price)}`, size: 18, alignment: AlignmentType.RIGHT })]
+    }));
+
+    if (!showQty) {
+      cells.push(new TableCell({
+        shading: { fill: idx % 2 === 0 ? COLORS.lightGray.substring(1) : COLORS.white.substring(1), type: ShadingType.CLEAR },
+        margins: { top: 50, bottom: 50, left: 50, right: 50 },
+        children: [new Paragraph({ text: `$ ${formatCurrency(item.quantity * item.price)}`, size: 18, alignment: AlignmentType.RIGHT })]
+      }));
+    }
+
+    rows.push(new TableRow({ children: cells }));
+  });
+
+  return new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows, spacing: { after: 200 } });
+}
+
+function createTotalSection(total, label) {
+  return new Table({
+    width: { size: 50, type: WidthType.PERCENTAGE },
+    rows: [
+      new TableRow({
+        children: [
+          new TableCell({
+            shading: { fill: COLORS.secondary.substring(1), type: ShadingType.CLEAR },
+            margins: { top: 100, bottom: 100, left: 100, right: 100 },
+            children: [
+              new Paragraph({
+                text: label,
+                bold: true,
+                color: COLORS.white.substring(1),
+                size: 20,
+                spacing: { after: 50 }
+              }),
+              new Paragraph({
+                text: `$${parseFloat(total || 0).toFixed(2)}`,
+                bold: true,
+                color: COLORS.white.substring(1),
+                size: 32
+              })
+            ]
+          })
+        ]
+      })
+    ],
+    alignment: AlignmentType.RIGHT,
+    spacing: { after: 200 }
+  });
+}
+
 function getDocumentTitle(type) {
   const titles = {
     invoice: 'FACTURA',
@@ -753,406 +839,6 @@ function getDocumentTitle(type) {
     'delivery-note': 'REMITO'
   };
   return titles[type] || 'DOCUMENTO';
-}
-
-// Generadores PDF específicos
-function generateInvoicePDF(doc, data) {
-  doc.fontSize(11).font('Helvetica').fillColor(BRAND_CONFIG.colors.text);
-  
-  doc.moveDown(0.5);
-  doc.text(`Factura Nº: ${data.number || '-'}`, { width: 250 });
-  doc.text(`Fecha: ${data.date || new Date().toLocaleDateString()}`);
-  
-  doc.moveDown(1);
-  doc.text('Cliente:', { font: 'Helvetica-Bold' });
-  doc.text(data.clientName || '-');
-  doc.text(`DNI/CUIT: ${data.clientDNI || '-'}`);
-  doc.text(`Teléfono: ${data.clientPhone || '-'}`);
-  
-  doc.moveDown(1);
-  doc.text('Detalles:', { font: 'Helvetica-Bold' });
-  
-  if (data.items && data.items.length > 0) {
-    data.items.forEach(item => {
-      doc.text(`• ${item.description} - Cantidad: ${item.quantity} - Precio: $${item.price}`);
-    });
-  }
-  
-  doc.moveDown(1);
-  doc.fontSize(12).font('Helvetica-Bold').fillColor(BRAND_CONFIG.colors.secondary);
-  doc.text(`Total: $${data.total || '0.00'}`);
-}
-
-function generateReceiptPDF(doc, data) {
-  doc.fontSize(11).font('Helvetica').fillColor(BRAND_CONFIG.colors.text);
-  
-  doc.moveDown(0.5);
-  doc.text(`Recibo Nº: ${data.number || '-'}`);
-  doc.text(`Fecha: ${data.date || new Date().toLocaleDateString()}`);
-  
-  doc.moveDown(1);
-  doc.text('Recibimos de:', { font: 'Helvetica-Bold' });
-  doc.text(data.paidBy || '-');
-  
-  doc.moveDown(1);
-  doc.text('Concepto:', { font: 'Helvetica-Bold' });
-  doc.text(data.concept || '-');
-  
-  doc.moveDown(1);
-  doc.fontSize(12).font('Helvetica-Bold').fillColor(BRAND_CONFIG.colors.secondary);
-  doc.text(`Monto: $${data.amount || '0.00'}`);
-}
-
-function generateQuotePDF(doc, data) {
-  doc.fontSize(11).font('Helvetica').fillColor(BRAND_CONFIG.colors.text);
-  
-  doc.moveDown(0.5);
-  doc.text(`Cotización Nº: ${data.number || '-'}`);
-  doc.text(`Fecha: ${data.date || new Date().toLocaleDateString()}`);
-  doc.text(`Vigencia: ${data.validity || '-'}`);
-  
-  doc.moveDown(1);
-  doc.text('Solicitante:', { font: 'Helvetica-Bold' });
-  doc.text(data.requesterName || '-');
-  
-  doc.moveDown(1);
-  doc.text('Servicios/Productos:', { font: 'Helvetica-Bold' });
-  
-  if (data.items && data.items.length > 0) {
-    data.items.forEach(item => {
-      doc.text(`• ${item.description} - $${item.price}`);
-    });
-  }
-  
-  doc.moveDown(1);
-  doc.fontSize(12).font('Helvetica-Bold').fillColor(BRAND_CONFIG.colors.secondary);
-  doc.text(`Total Cotizado: $${data.total || '0.00'}`);
-}
-
-function generateBudgetPDF(doc, data) {
-  doc.fontSize(11).font('Helvetica').fillColor(BRAND_CONFIG.colors.text);
-  
-  doc.moveDown(0.5);
-  doc.text(`Presupuesto Nº: ${data.number || '-'}`);
-  doc.text(`Fecha: ${data.date || new Date().toLocaleDateString()}`);
-  
-  doc.moveDown(1);
-  doc.text('Cliente:', { font: 'Helvetica-Bold' });
-  doc.text(data.clientName || '-');
-  
-  doc.moveDown(1);
-  doc.text('Descripción del Proyecto:', { font: 'Helvetica-Bold' });
-  doc.text(data.description || '-');
-  
-  doc.moveDown(1);
-  doc.text('Detalles:', { font: 'Helvetica-Bold' });
-  
-  if (data.items && data.items.length > 0) {
-    data.items.forEach(item => {
-      doc.text(`• ${item.description} - $${item.price}`);
-    });
-  }
-  
-  doc.moveDown(1);
-  doc.fontSize(12).font('Helvetica-Bold').fillColor(BRAND_CONFIG.colors.secondary);
-  doc.text(`Presupuesto Total: $${data.total || '0.00'}`);
-}
-
-function generateProposalPDF(doc, data) {
-  doc.fontSize(11).font('Helvetica').fillColor(BRAND_CONFIG.colors.text);
-  
-  doc.moveDown(0.5);
-  doc.text(`Propuesta Nº: ${data.number || '-'}`);
-  doc.text(`Fecha: ${data.date || new Date().toLocaleDateString()}`);
-  
-  doc.moveDown(1);
-  doc.text('Para:', { font: 'Helvetica-Bold' });
-  doc.text(data.clientName || '-');
-  
-  doc.moveDown(1);
-  doc.text('Resumen Ejecutivo:', { font: 'Helvetica-Bold' });
-  doc.text(data.summary || '-');
-  
-  doc.moveDown(1);
-  doc.text('Solución Propuesta:', { font: 'Helvetica-Bold' });
-  doc.text(data.solution || '-');
-  
-  doc.moveDown(1);
-  doc.fontSize(12).font('Helvetica-Bold').fillColor(BRAND_CONFIG.colors.secondary);
-  doc.text(`Inversión: $${data.investment || '0.00'}`);
-}
-
-function generateDeliveryNotePDF(doc, data) {
-  doc.fontSize(11).font('Helvetica').fillColor(BRAND_CONFIG.colors.text);
-  
-  doc.moveDown(0.5);
-  doc.text(`Remito Nº: ${data.number || '-'}`);
-  doc.text(`Fecha: ${data.date || new Date().toLocaleDateString()}`);
-  
-  doc.moveDown(1);
-  doc.text('Destinatario:', { font: 'Helvetica-Bold' });
-  doc.text(data.recipientName || '-');
-  
-  doc.moveDown(1);
-  doc.text('Productos/Servicios:', { font: 'Helvetica-Bold' });
-  
-  if (data.items && data.items.length > 0) {
-    data.items.forEach(item => {
-      doc.text(`• ${item.description} - Cantidad: ${item.quantity}`);
-    });
-  }
-  
-  doc.moveDown(1);
-  doc.text(`Observaciones: ${data.observations || '-'}`);
-}
-
-// Generadores Word específicos
-function generateInvoiceWord(data) {
-  return [
-    new Paragraph({
-      text: `Factura Nº: ${data.number || '-'}`,
-      spacing: { after: 100 }
-    }),
-    new Paragraph({
-      text: `Fecha: ${data.date || new Date().toLocaleDateString()}`,
-      spacing: { after: 200 }
-    }),
-    new Paragraph({
-      text: 'Cliente:',
-      bold: true,
-      spacing: { after: 100 }
-    }),
-    new Paragraph({
-      text: data.clientName || '-',
-      spacing: { after: 50 }
-    }),
-    new Paragraph({
-      text: `DNI/CUIT: ${data.clientDNI || '-'}`,
-      spacing: { after: 50 }
-    }),
-    new Paragraph({
-      text: `Teléfono: ${data.clientPhone || '-'}`,
-      spacing: { after: 200 }
-    }),
-    new Paragraph({
-      text: 'Detalles:',
-      bold: true,
-      spacing: { after: 100 }
-    }),
-    ...(data.items?.map(item => new Paragraph({
-      text: `• ${item.description} - Cantidad: ${item.quantity} - Precio: $${item.price}`,
-      spacing: { after: 50 }
-    })) || []),
-    new Paragraph({
-      text: `Total: $${data.total || '0.00'}`,
-      bold: true,
-      color: BRAND_CONFIG.colors.secondary.replace('#', ''),
-      spacing: { before: 200 }
-    })
-  ];
-}
-
-function generateReceiptWord(data) {
-  return [
-    new Paragraph({
-      text: `Recibo Nº: ${data.number || '-'}`,
-      spacing: { after: 100 }
-    }),
-    new Paragraph({
-      text: `Fecha: ${data.date || new Date().toLocaleDateString()}`,
-      spacing: { after: 200 }
-    }),
-    new Paragraph({
-      text: 'Recibimos de:',
-      bold: true,
-      spacing: { after: 100 }
-    }),
-    new Paragraph({
-      text: data.paidBy || '-',
-      spacing: { after: 200 }
-    }),
-    new Paragraph({
-      text: 'Concepto:',
-      bold: true,
-      spacing: { after: 100 }
-    }),
-    new Paragraph({
-      text: data.concept || '-',
-      spacing: { after: 200 }
-    }),
-    new Paragraph({
-      text: `Monto: $${data.amount || '0.00'}`,
-      bold: true,
-      color: BRAND_CONFIG.colors.secondary.replace('#', '')
-    })
-  ];
-}
-
-function generateQuoteWord(data) {
-  return [
-    new Paragraph({
-      text: `Cotización Nº: ${data.number || '-'}`,
-      spacing: { after: 100 }
-    }),
-    new Paragraph({
-      text: `Fecha: ${data.date || new Date().toLocaleDateString()}`,
-      spacing: { after: 50 }
-    }),
-    new Paragraph({
-      text: `Vigencia: ${data.validity || '-'}`,
-      spacing: { after: 200 }
-    }),
-    new Paragraph({
-      text: 'Solicitante:',
-      bold: true,
-      spacing: { after: 100 }
-    }),
-    new Paragraph({
-      text: data.requesterName || '-',
-      spacing: { after: 200 }
-    }),
-    new Paragraph({
-      text: 'Servicios/Productos:',
-      bold: true,
-      spacing: { after: 100 }
-    }),
-    ...(data.items?.map(item => new Paragraph({
-      text: `• ${item.description} - $${item.price}`,
-      spacing: { after: 50 }
-    })) || []),
-    new Paragraph({
-      text: `Total Cotizado: $${data.total || '0.00'}`,
-      bold: true,
-      color: BRAND_CONFIG.colors.secondary.replace('#', ''),
-      spacing: { before: 200 }
-    })
-  ];
-}
-
-function generateBudgetWord(data) {
-  return [
-    new Paragraph({
-      text: `Presupuesto Nº: ${data.number || '-'}`,
-      spacing: { after: 100 }
-    }),
-    new Paragraph({
-      text: `Fecha: ${data.date || new Date().toLocaleDateString()}`,
-      spacing: { after: 200 }
-    }),
-    new Paragraph({
-      text: 'Cliente:',
-      bold: true,
-      spacing: { after: 100 }
-    }),
-    new Paragraph({
-      text: data.clientName || '-',
-      spacing: { after: 200 }
-    }),
-    new Paragraph({
-      text: 'Descripción del Proyecto:',
-      bold: true,
-      spacing: { after: 100 }
-    }),
-    new Paragraph({
-      text: data.description || '-',
-      spacing: { after: 200 }
-    }),
-    new Paragraph({
-      text: 'Detalles:',
-      bold: true,
-      spacing: { after: 100 }
-    }),
-    ...(data.items?.map(item => new Paragraph({
-      text: `• ${item.description} - $${item.price}`,
-      spacing: { after: 50 }
-    })) || []),
-    new Paragraph({
-      text: `Presupuesto Total: $${data.total || '0.00'}`,
-      bold: true,
-      color: BRAND_CONFIG.colors.secondary.replace('#', ''),
-      spacing: { before: 200 }
-    })
-  ];
-}
-
-function generateProposalWord(data) {
-  return [
-    new Paragraph({
-      text: `Propuesta Nº: ${data.number || '-'}`,
-      spacing: { after: 100 }
-    }),
-    new Paragraph({
-      text: `Fecha: ${data.date || new Date().toLocaleDateString()}`,
-      spacing: { after: 200 }
-    }),
-    new Paragraph({
-      text: 'Para:',
-      bold: true,
-      spacing: { after: 100 }
-    }),
-    new Paragraph({
-      text: data.clientName || '-',
-      spacing: { after: 200 }
-    }),
-    new Paragraph({
-      text: 'Resumen Ejecutivo:',
-      bold: true,
-      spacing: { after: 100 }
-    }),
-    new Paragraph({
-      text: data.summary || '-',
-      spacing: { after: 200 }
-    }),
-    new Paragraph({
-      text: 'Solución Propuesta:',
-      bold: true,
-      spacing: { after: 100 }
-    }),
-    new Paragraph({
-      text: data.solution || '-',
-      spacing: { after: 200 }
-    }),
-    new Paragraph({
-      text: `Inversión: $${data.investment || '0.00'}`,
-      bold: true,
-      color: BRAND_CONFIG.colors.secondary.replace('#', '')
-    })
-  ];
-}
-
-function generateDeliveryNoteWord(data) {
-  return [
-    new Paragraph({
-      text: `Remito Nº: ${data.number || '-'}`,
-      spacing: { after: 100 }
-    }),
-    new Paragraph({
-      text: `Fecha: ${data.date || new Date().toLocaleDateString()}`,
-      spacing: { after: 200 }
-    }),
-    new Paragraph({
-      text: 'Destinatario:',
-      bold: true,
-      spacing: { after: 100 }
-    }),
-    new Paragraph({
-      text: data.recipientName || '-',
-      spacing: { after: 200 }
-    }),
-    new Paragraph({
-      text: 'Productos/Servicios:',
-      bold: true,
-      spacing: { after: 100 }
-    }),
-    ...(data.items?.map(item => new Paragraph({
-      text: `• ${item.description} - Cantidad: ${item.quantity}`,
-      spacing: { after: 50 }
-    })) || []),
-    new Paragraph({
-      text: `Observaciones: ${data.observations || '-'}`,
-      spacing: { before: 200 }
-    })
-  ];
 }
 
 module.exports = {

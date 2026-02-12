@@ -131,12 +131,38 @@ function renderTab(tabName) {
             <div class="items-section">
                 <h3>Items / Detalles</h3>
                 <div class="item-row">
-                    <input type="text" id="itemDesc" placeholder="Descripción" required>
+                    <input type="text" id="itemDesc" placeholder="Descripción">
                     <input type="number" id="itemQuantity" placeholder="Cantidad" step="0.01" min="0">
-                    <input type="number" id="itemPrice" placeholder="Precio" step="0.01" min="0" required>
+                    <input type="number" id="itemPrice" placeholder="Precio" step="0.01" min="0">
                     <button type="button" class="add-item-btn" onclick="addItem()">+ Agregar</button>
                 </div>
                 <div id="itemsList"></div>
+            </div>
+        `;
+    }
+
+    // Sección de imágenes (solo para ciertos tipos de documentos)
+    if (['quote', 'budget', 'proposal'].includes(tabName)) {
+        html += `
+            <div class="images-section">
+                <h3>Imágenes / Información Adicional</h3>
+                <div class="image-upload-group">
+                    <div class="image-upload">
+                        <label>Datos del Vuelo</label>
+                        <input type="file" id="flightImage" accept="image/*" onchange="handleImageUpload(event, 'flight')">
+                        <textarea id="flightDescription" placeholder="Descripción de datos del vuelo" rows="3"></textarea>
+                    </div>
+                    <div class="image-upload">
+                        <label>Datos del Hospedaje</label>
+                        <input type="file" id="hotelImage" accept="image/*" onchange="handleImageUpload(event, 'hotel')">
+                        <textarea id="hotelDescription" placeholder="Descripción de datos del hospedaje" rows="3"></textarea>
+                    </div>
+                    <div class="image-upload">
+                        <label>Info de los Traslados</label>
+                        <input type="file" id="transferImage" accept="image/*" onchange="handleImageUpload(event, 'transfer')">
+                        <textarea id="transferDescription" placeholder="Descripción de los traslados" rows="3"></textarea>
+                    </div>
+                </div>
             </div>
         `;
     }
@@ -227,6 +253,22 @@ function addItem() {
     desc.focus();
 }
 
+// Manejar carga de imágenes
+function handleImageUpload(event, type) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        if (!appState.images) appState.images = {};
+        appState.images[type] = {
+            data: e.target.result,
+            name: file.name
+        };
+    };
+    reader.readAsDataURL(file);
+}
+
 // Renderizar lista de items
 function renderItems() {
     const itemsList = document.getElementById('itemsList');
@@ -237,9 +279,10 @@ function renderItems() {
         const subtotal = item.quantity * item.price;
         html += `
             <div class="item-row">
-                <input type="text" value="${item.description}" readonly>
+                <input type="text" value="${escapeHtml(item.description)}" readonly>
                 <input type="number" value="${item.quantity}" readonly>
-                <input type="number" value="${item.price}" readonly>
+                <input type="text" value="${formatCurrency(item.price)}" readonly>
+                <input type="text" value="${formatCurrency(subtotal)}" readonly>
                 <button type="button" class="remove-item" onclick="removeItem(${item.id})">Eliminar</button>
             </div>
         `;
@@ -274,8 +317,26 @@ function updateTotal() {
         }
     }
 
-    document.getElementById('totalAmount').textContent = total.toFixed(2);
+    document.getElementById('totalAmount').textContent = formatCurrency(total);
     appState.formData.total = total;
+}
+
+// Formatea números con miles '.' y decimales ',' con dos decimales
+function formatCurrency(value) {
+    const n = Number(value) || 0;
+    const parts = n.toFixed(2).split('.');
+    let intPart = parts[0];
+    const decPart = parts[1];
+    intPart = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    return `${intPart},${decPart}`;
+}
+
+// Escape simple HTML in text fields
+function escapeHtml(text) {
+    if (!text) return '';
+    return String(text).replace(/[&<>"']/g, function (s) {
+        return ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'})[s];
+    });
 }
 
 // Setup de cálculo de total
@@ -322,7 +383,13 @@ function collectFormData() {
     // Agregar items
     data.items = appState.items;
     data.total = appState.formData.total || 0;
-
+    // Agregar imágenes y descripciones
+    if (appState.images) {
+        data.images = appState.images;
+    }
+    data.flightDescription = document.getElementById('flightDescription')?.value || '';
+    data.hotelDescription = document.getElementById('hotelDescription')?.value || '';
+    data.transferDescription = document.getElementById('transferDescription')?.value || '';
     return data;
 }
 
