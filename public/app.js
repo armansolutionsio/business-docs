@@ -85,9 +85,9 @@ const documentConfig = {
             { name: 'quoteNumber', label: 'Número de Cotización', type: 'text', required: true },
             { name: 'quoteDate', label: 'Fecha', type: 'date', required: true },
             // Condiciones
-            { name: 'validity', label: 'Validez de la Oferta (días)', type: 'number', required: true, placeholder: '15' },
-            { name: 'paymentTerms', label: 'Forma de Pago', type: 'textarea', required: true },
-            { name: 'deliveryTerm', label: 'Plazo de Entrega', type: 'text', required: true }
+            { name: 'validity', label: 'Validez de la Oferta (días)', type: 'number', required: true, placeholder: '3', defaultValue: 3 },
+            { name: 'paymentTerms', label: 'Forma de Pago (selecciona las que aceptas)', type: 'multiselect', required: true, options: ['Efectivo', 'Transferencia Bancaria', 'Cheque', 'Tarjeta de Crédito', 'Tarjeta de Débito', 'Billetera Virtual', 'Criptomonedas'] },
+            { name: 'deliveryTerm', label: 'Plazo de Entrega', type: 'text', required: true, placeholder: 'a coordinar', defaultValue: 'a coordinar' }
         ],
         hasItems: true
     }
@@ -96,6 +96,7 @@ const documentConfig = {
 // Inicialización
 document.addEventListener('DOMContentLoaded', () => {
     loadCompanyData();
+    loadDefaultLogo();
     setupTabButtons();
     renderTab('invoice');
     setDefaultDate();
@@ -155,7 +156,22 @@ function renderTab(tabName) {
                 html += `
                     <div class="form-group full-width">
                         <label>${field.label}${field.required ? '<span class="required">*</span>' : ''}</label>
-                        <textarea name="${field.name}" ${field.required ? 'required' : ''} placeholder="${field.placeholder || ''}" rows="3"></textarea>
+                        <textarea name="${field.name}" ${field.required ? 'required' : ''} placeholder="${field.placeholder || ''}" rows="3">${field.defaultValue || ''}</textarea>
+                    </div>
+                `;
+            } else if (field.type === 'multiselect') {
+                html += `
+                    <div class="form-group full-width">
+                        <label>${field.label}${field.required ? '<span class="required">*</span>' : ''}</label>
+                        <div class="multiselect-grid">
+                            ${field.options.map(opt => `
+                                <label class="multiselect-option">
+                                    <input type="checkbox" name="${field.name}" value="${opt}">
+                                    <span>${opt}</span>
+                                </label>
+                            `).join('')}
+                        </div>
+                        <input type="hidden" id="${field.name}-hidden" name="${field.name}" ${field.required ? 'required' : ''}>
                     </div>
                 `;
             } else if (field.type === 'select') {
@@ -189,7 +205,7 @@ function renderTab(tabName) {
                 html += `
                     <div class="form-group">
                         <label>${field.label}${field.required ? '<span class="required">*</span>' : ''}</label>
-                        <input type="${field.type}" name="${field.name}" ${field.required ? 'required' : ''} placeholder="${field.placeholder || ''}">
+                        <input type="${field.type}" name="${field.name}" ${field.required ? 'required' : ''} placeholder="${field.placeholder || ''}" value="${field.defaultValue || ''}">
                     </div>
                 `;
             }
@@ -197,6 +213,25 @@ function renderTab(tabName) {
         
         html += `    </div>
                 </div>`;
+
+        
+        // Agregar sección de logo después de Datos del Emisor
+        if (sectionTitle === 'Datos del Emisor') {
+            html += `
+                <div class="form-section">
+                    <h3 class="section-title">Logo de la Empresa</h3>
+                    <div class="form-grid">
+                        <div class="form-group full-width">
+                            <label>Cargar Logo <span class="required">*</span></label>
+                            <input type="file" id="logoUpload" accept="image/*" onchange="handleLogoUpload(event)">
+                            <div id="logoPreview" style="margin-top: 10px; max-height: 100px;">
+                                ${appState.images && appState.images.logo ? '<img src="' + appState.images.logo.data + '" style="max-width: 100%; max-height: 100px; border-radius: 4px; border: 1px solid #ddd; padding: 5px;">' : ''}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
     });
 
     // Sección de items
@@ -205,7 +240,20 @@ function renderTab(tabName) {
             <div class="form-section">
                 <h3 class="section-title">Items / Detalles</h3>
                 <div class="items-input-group">
-                    <input type="text" id="itemDesc" placeholder="Descripción del producto/servicio">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                        <select id="itemCategory" style="padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;">
+                            <option value="">-- Seleccionar concepto --</option>
+                            <option value="Aéreos">✈️ Aéreos</option>
+                            <option value="Hoteles">🏨 Hoteles</option>
+                            <option value="Packs Turísticos">🎒 Packs Turísticos</option>
+                            <option value="VIP/Premium">⭐ VIP/Premium</option>
+                            <option value="Traslados">🚐 Traslados</option>
+                            <option value="Tours">🗺️ Tours</option>
+                            <option value="Seguros">🛡️ Seguros</option>
+                            <option value="Otros Servicios">📋 Otros Servicios</option>
+                        </select>
+                        <input type="text" id="itemDesc" placeholder="O escribir descripción personalizada...">
+                    </div>
                     <input type="number" id="itemQuantity" placeholder="Cantidad" step="0.01" min="0">
                     <input type="number" id="itemPrice" placeholder="Precio unitario" step="0.01" min="0">
                     <button type="button" class="btn-add-item" onclick="addItem()">+ Agregar Item</button>
@@ -266,6 +314,9 @@ function renderTab(tabName) {
     // Pre-llenar campos de la empresa
     preFillCompanyData();
 
+    // Setup de multiselect para Forma de Pago
+    setupMultiselect();
+
     // Setup de eventos si tiene items
     if (config.hasItems) {
         setupItemsListeners();
@@ -312,24 +363,29 @@ function setupItemsListeners() {
 
 // Agregar item
 function addItem() {
+    const category = document.getElementById('itemCategory');
     const desc = document.getElementById('itemDesc');
     const quantity = document.getElementById('itemQuantity');
     const price = document.getElementById('itemPrice');
 
-    if (!desc.value || !price.value) {
+    // Usar categoría seleccionada o descripción personalizada
+    let description = desc.value || category.value;
+    
+    if (!description || !price.value) {
         showMessage('Por favor completa descripción y precio', 'error');
         return;
     }
 
     const item = {
         id: Date.now(),
-        description: desc.value,
+        description: description,
         quantity: parseFloat(quantity.value) || 1,
         price: parseFloat(price.value)
     };
 
     appState.items.push(item);
     renderItems();
+    category.value = '';
     desc.value = '';
     quantity.value = '';
     price.value = '';
@@ -338,6 +394,26 @@ function addItem() {
 }
 
 // Manejar carga de imágenes
+// Cargar logo
+function handleLogoUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        if (!appState.images) appState.images = {};
+        appState.images.logo = {
+            data: e.target.result,
+            name: file.name
+        };
+        // Mostrar preview
+        const preview = document.getElementById('logoPreview');
+        preview.innerHTML = `<img src="${e.target.result}" style="max-width: 100%; max-height: 100px; border-radius: 4px; border: 1px solid #ddd; padding: 5px;">`;
+    };
+    reader.readAsDataURL(file);
+}
+
+// Cargar imagen
 function handleImageUpload(event, type) {
     const file = event.target.files[0];
     if (!file) return;
@@ -362,6 +438,23 @@ function selectPaymentMethod(button, fieldName) {
     
     const hiddenInput = container.nextElementSibling;
     hiddenInput.value = button.getAttribute('data-method');
+}
+
+// Setup multiselect para Forma de Pago
+function setupMultiselect() {
+    const checkboxes = document.querySelectorAll('input[name="paymentTerms"]');
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', () => {
+            const selected = Array.from(checkboxes)
+                .filter(cb => cb.checked)
+                .map(cb => cb.value)
+                .join(', ');
+            const hiddenInput = document.getElementById('paymentTerms-hidden');
+            if (hiddenInput) {
+                hiddenInput.value = selected;
+            }
+        });
+    });
 }
 
 // Renderizar lista de items
@@ -478,10 +571,7 @@ function collectFormData() {
     // Agregar items
     data.items = appState.items;
     data.total = appState.formData.total || 0;
-    // Agregar imágenes y descripciones
-    if (appState.images) {
-        data.images = appState.images;
-    }
+    // Agregar descripciones
     data.flightDescription = document.getElementById('flightDescription')?.value || '';
     data.hotelDescription = document.getElementById('hotelDescription')?.value || '';
     data.transferDescription = document.getElementById('transferDescription')?.value || '';
@@ -520,18 +610,18 @@ async function downloadDocument(format) {
             if (appState.images.qr) {
                 payload.assets.qr = appState.images.qr.data;
             }
-            // Para imágenes de viaje
-            if (appState.images.flight) {
-                payload.data.images = payload.data.images || {};
-                payload.data.images.flight = appState.images.flight.data;
-            }
-            if (appState.images.hotel) {
-                payload.data.images = payload.data.images || {};
-                payload.data.images.hotel = appState.images.hotel.data;
-            }
-            if (appState.images.transfer) {
-                payload.data.images = payload.data.images || {};
-                payload.data.images.transfer = appState.images.transfer.data;
+            // Para imágenes de viaje - pasar solo la data URL
+            if (appState.images.flight || appState.images.hotel || appState.images.transfer) {
+                payload.data.images = {};
+                if (appState.images.flight) {
+                    payload.data.images.flight = appState.images.flight.data;
+                }
+                if (appState.images.hotel) {
+                    payload.data.images.hotel = appState.images.hotel.data;
+                }
+                if (appState.images.transfer) {
+                    payload.data.images.transfer = appState.images.transfer.data;
+                }
             }
         }
 
@@ -615,6 +705,34 @@ function loadCompanyData() {
     if (saved) {
         Object.assign(companyData, JSON.parse(saved));
     }
+}
+
+// Cargar logo por defecto de Arman Travel
+function loadDefaultLogo() {
+    fetch('/logo-arman-travel.png')
+        .then(response => {
+            if (response.ok) return response.blob();
+            throw new Error('Logo not found');
+        })
+        .then(blob => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                if (!appState.images) appState.images = {};
+                appState.images.logo = {
+                    data: e.target.result,
+                    name: 'logo-arman-travel.png'
+                };
+                // Actualizar preview si existe
+                const preview = document.getElementById('logoPreview');
+                if (preview) {
+                    preview.innerHTML = `<img src="${e.target.result}" style="max-width: 100%; max-height: 100px; border-radius: 4px; border: 1px solid #ddd; padding: 5px;">`;
+                }
+            };
+            reader.readAsDataURL(blob);
+        })
+        .catch(err => {
+            console.log('Logo por defecto no disponible:', err.message);
+        });
 }
 
 // Cerrar modal si se hace clic fuera
