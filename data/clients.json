@@ -1,0 +1,22 @@
+[
+  {
+    "id": "1",
+    "clientName": "Cliente Ejemplo 1",
+    "clientCUIT": "20-12345678-9",
+    "clientIVACondition": "Responsable Inscripto",
+    "clientAddress": "Av. Ejemplo 123, CABA",
+    "clientEmail": "cliente1@example.com",
+    "clientPhone": "+54 11 1234-5678",
+    "createdAt": "2025-02-12T00:00:00Z"
+  },
+  {
+    "id": "2",
+    "clientName": "Cliente Ejemplo 2",
+    "clientCUIT": "30-98765432-1",
+    "clientIVACondition": "Monotributista",
+    "clientAddress": "Calle Test 456, CABA",
+    "clientEmail": "cliente2@example.com",
+    "clientPhone": "+54 11 9876-5432",
+    "createdAt": "2025-02-12T00:00:00Z"
+  }
+]

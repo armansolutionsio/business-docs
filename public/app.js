@@ -5,76 +5,97 @@ const appState = {
     formData: {}
 };
 
+// Configuración de la Empresa
+const companyData = {
+    companyName: 'ARMAN SOLUTIONS S.R.L.',
+    companyCUIT: '30-71918984-5',
+    companyIVACondition: 'Responsable Inscripto',
+    companyAddress: 'Uriburu J. Evaristo Pte. 592 Piso:2 Dpto:D - Ciudad de Buenos Aires',
+    companyPOS: 1,
+    companyStartDate: '2025-12-01',
+    companyGrossIncome: '30719189845',
+    companyEmail: 'info@armansolutions.com',
+    companyPhone: '+54 11 XXXX-XXXX'
+};
+
 // Configuración de documentos
 const documentConfig = {
     invoice: {
         title: 'FACTURA',
         fields: [
-            { name: 'number', label: 'Número de Factura', type: 'text', required: true },
-            { name: 'date', label: 'Fecha', type: 'date', required: true },
-            { name: 'clientName', label: 'Nombre del Cliente', type: 'text', required: true },
-            { name: 'clientDNI', label: 'DNI/CUIT del Cliente', type: 'text' },
-            { name: 'clientPhone', label: 'Teléfono del Cliente', type: 'tel' }
+            // Datos del Emisor
+            { name: 'companyName', label: 'Razón Social del Emisor', type: 'text', required: true },
+            { name: 'companyCUIT', label: 'CUIT del Emisor', type: 'text', required: true, placeholder: 'XX-XXXXXXXX-X' },
+            { name: 'companyIVACondition', label: 'Condición frente al IVA', type: 'select', required: true, options: ['Responsable Inscripto', 'Monotributista', 'Exento', 'No Responsable'] },
+            { name: 'companyAddress', label: 'Domicilio Fiscal', type: 'textarea', required: true },
+            { name: 'companyPOS', label: 'Punto de Venta', type: 'number', required: true },
+            { name: 'companyStartDate', label: 'Fecha de Inicio de Actividades', type: 'date', required: true },
+            { name: 'companyGrossIncome', label: 'Ingresos Brutos (opcional)', type: 'text' },
+            // Datos del Comprobante
+            { name: 'invoiceNumber', label: 'Número de Comprobante', type: 'number', required: true },
+            { name: 'invoiceLetter', label: 'Letra (A, B, C)', type: 'select', required: true, options: ['A', 'B', 'C', 'E', 'M', 'X'] },
+            { name: 'invoiceDate', label: 'Fecha de Emisión', type: 'date', required: true },
+            // Datos del Cliente
+            { name: 'clientName', label: 'Nombre/Razón Social del Cliente', type: 'text', required: true },
+            { name: 'clientCUIT', label: 'CUIT/DNI del Cliente', type: 'text', required: true },
+            { name: 'clientIVACondition', label: 'Condición IVA del Cliente', type: 'select', required: true, options: ['Responsable Inscripto', 'Monotributista', 'Exento', 'No Responsable', 'Consumidor Final'] },
+            { name: 'clientAddress', label: 'Domicilio del Cliente', type: 'textarea', required: true },
+            // Datos Fiscales
+            { name: 'cae', label: 'CAE (Código de Autorización Electrónico)', type: 'text', required: true },
+            { name: 'caeExpiration', label: 'Fecha de Vencimiento del CAE', type: 'date', required: true },
+            { name: 'qrCode', label: 'Código QR AFIP (opcional)', type: 'textarea' }
         ],
         hasItems: true
     },
     receipt: {
         title: 'RECIBO',
         fields: [
-            { name: 'number', label: 'Número de Recibo', type: 'text', required: true },
-            { name: 'date', label: 'Fecha', type: 'date', required: true },
-            { name: 'paidBy', label: 'Recibimos de', type: 'text', required: true },
-            { name: 'concept', label: 'Concepto de Pago', type: 'text', required: true },
-            { name: 'amount', label: 'Monto', type: 'number', required: true }
+            // Datos del Emisor
+            { name: 'companyName', label: 'Nombre o Razón Social', type: 'text', required: true },
+            { name: 'companyCUIT', label: 'CUIT', type: 'text', required: true, placeholder: 'XX-XXXXXXXX-X' },
+            { name: 'companyAddress', label: 'Domicilio', type: 'textarea', required: true },
+            // Datos del Pagador
+            { name: 'payerName', label: 'Nombre/Razón Social del Pagador', type: 'text', required: true },
+            { name: 'payerCUIT', label: 'CUIT/DNI del Pagador', type: 'text', required: true },
+            // Detalle del Pago
+            { name: 'receiptNumber', label: 'Número de Recibo', type: 'number', required: true },
+            { name: 'receiptDate', label: 'Fecha', type: 'date', required: true },
+            { name: 'concept', label: 'Concepto (ej: Cancelación Factura Nº)', type: 'textarea', required: true },
+            { name: 'amount', label: 'Importe en Números', type: 'number', required: true },
+            { name: 'amountInLetters', label: 'Importe en Letras', type: 'text', required: true },
+            { name: 'paymentMethod', label: 'Medio de Pago', type: 'select', required: true, options: ['Efectivo', 'Transferencia Bancaria', 'Cheque', 'Tarjeta de Crédito', 'Tarjeta de Débito', 'Billetera Virtual', 'Otro'] }
         ],
         hasItems: false
-    },
-    'delivery-note': {
-        title: 'REMITO',
-        fields: [
-            { name: 'number', label: 'Número de Remito', type: 'text', required: true },
-            { name: 'date', label: 'Fecha', type: 'date', required: true },
-            { name: 'recipientName', label: 'Destinatario', type: 'text', required: true },
-            { name: 'observations', label: 'Observaciones', type: 'textarea' }
-        ],
-        hasItems: true
     },
     quote: {
-        title: 'COTIZACIÓN',
+        title: 'COTIZACIÓN / PRESUPUESTO',
         fields: [
-            { name: 'number', label: 'Número de Cotización', type: 'text', required: true },
-            { name: 'date', label: 'Fecha', type: 'date', required: true },
-            { name: 'requesterName', label: 'Solicitante', type: 'text', required: true },
-            { name: 'validity', label: 'Vigencia de la Cotización', type: 'text' }
+            // Datos del Emisor
+            { name: 'companyName', label: 'Nombre o Razón Social', type: 'text', required: true },
+            { name: 'companyCUIT', label: 'CUIT', type: 'text', required: true, placeholder: 'XX-XXXXXXXX-X' },
+            { name: 'companyAddress', label: 'Domicilio', type: 'textarea', required: true },
+            { name: 'companyEmail', label: 'Email', type: 'email', required: true },
+            { name: 'companyPhone', label: 'Teléfono', type: 'tel', required: true },
+            // Datos del Cliente
+            { name: 'clientName', label: 'Nombre/Empresa del Cliente', type: 'text', required: true },
+            { name: 'clientCUIT', label: 'CUIT/DNI (opcional)', type: 'text' },
+            { name: 'clientEmail', label: 'Email del Cliente', type: 'email' },
+            { name: 'clientPhone', label: 'Teléfono del Cliente', type: 'tel' },
+            // Comprobante
+            { name: 'quoteNumber', label: 'Número de Cotización', type: 'text', required: true },
+            { name: 'quoteDate', label: 'Fecha', type: 'date', required: true },
+            // Condiciones
+            { name: 'validity', label: 'Validez de la Oferta (días)', type: 'number', required: true, placeholder: '15' },
+            { name: 'paymentTerms', label: 'Forma de Pago', type: 'textarea', required: true },
+            { name: 'deliveryTerm', label: 'Plazo de Entrega', type: 'text', required: true }
         ],
         hasItems: true
-    },
-    budget: {
-        title: 'PRESUPUESTO',
-        fields: [
-            { name: 'number', label: 'Número de Presupuesto', type: 'text', required: true },
-            { name: 'date', label: 'Fecha', type: 'date', required: true },
-            { name: 'clientName', label: 'Cliente', type: 'text', required: true },
-            { name: 'description', label: 'Descripción del Proyecto', type: 'textarea' }
-        ],
-        hasItems: true
-    },
-    proposal: {
-        title: 'PROPUESTA',
-        fields: [
-            { name: 'number', label: 'Número de Propuesta', type: 'text', required: true },
-            { name: 'date', label: 'Fecha', type: 'date', required: true },
-            { name: 'clientName', label: 'Para', type: 'text', required: true },
-            { name: 'summary', label: 'Resumen Ejecutivo', type: 'textarea' },
-            { name: 'solution', label: 'Solución Propuesta', type: 'textarea' },
-            { name: 'investment', label: 'Inversión', type: 'number' }
-        ],
-        hasItems: false
     }
 };
 
 // Inicialización
 document.addEventListener('DOMContentLoaded', () => {
+    loadCompanyData();
     setupTabButtons();
     renderTab('invoice');
     setDefaultDate();
@@ -104,37 +125,73 @@ function renderTab(tabName) {
     html += '<div class="message" id="message"></div>';
     html += '<div class="loading" id="loading"><div class="spinner"></div><p>Generando documento...</p></div>';
 
-    // Campos del formulario
-    html += '<div class="form-row">';
+    // Agrupar campos por secciones
+    const sections = {
+        'Datos del Emisor': [],
+        'Datos del Cliente': [],
+        'Datos del Comprobante': [],
+        'Condiciones': [],
+        'Información Adicional': []
+    };
+
     config.fields.forEach(field => {
-        if (field.type === 'textarea') {
-            html += `
-                <div class="form-group form-row full">
-                    <label>${field.label}${field.required ? '*' : ''}</label>
-                    <textarea name="${field.name}" ${field.required ? 'required' : ''}></textarea>
-                </div>
-            `;
-        } else {
-            html += `
-                <div class="form-group">
-                    <label>${field.label}${field.required ? '*' : ''}</label>
-                    <input type="${field.type}" name="${field.name}" ${field.required ? 'required' : ''}>
-                </div>
-            `;
-        }
+        if (field.name.startsWith('company')) sections['Datos del Emisor'].push(field);
+        else if (field.name.startsWith('client') || field.name.startsWith('payer')) sections['Datos del Cliente'].push(field);
+        else if (field.name.startsWith('invoice') || field.name.startsWith('receipt') || field.name.startsWith('quote')) sections['Datos del Comprobante'].push(field);
+        else if (field.name === 'validity' || field.name === 'paymentTerms' || field.name === 'deliveryTerm') sections['Condiciones'].push(field);
+        else sections['Información Adicional'].push(field);
     });
-    html += '</div>';
+
+    // Renderizar secciones
+    Object.entries(sections).forEach(([sectionTitle, fields]) => {
+        if (fields.length === 0) return;
+        
+        html += `<div class="form-section">
+                    <h3 class="section-title">${sectionTitle}</h3>
+                    <div class="form-grid">`;
+        
+        fields.forEach(field => {
+            if (field.type === 'textarea') {
+                html += `
+                    <div class="form-group full-width">
+                        <label>${field.label}${field.required ? '<span class="required">*</span>' : ''}</label>
+                        <textarea name="${field.name}" ${field.required ? 'required' : ''} placeholder="${field.placeholder || ''}" rows="3"></textarea>
+                    </div>
+                `;
+            } else if (field.type === 'select') {
+                html += `
+                    <div class="form-group">
+                        <label>${field.label}${field.required ? '<span class="required">*</span>' : ''}</label>
+                        <select name="${field.name}" ${field.required ? 'required' : ''}>
+                            <option value="">Seleccionar...</option>
+                            ${field.options.map(opt => `<option value="${opt}">${opt}</option>`).join('')}
+                        </select>
+                    </div>
+                `;
+            } else {
+                html += `
+                    <div class="form-group">
+                        <label>${field.label}${field.required ? '<span class="required">*</span>' : ''}</label>
+                        <input type="${field.type}" name="${field.name}" ${field.required ? 'required' : ''} placeholder="${field.placeholder || ''}">
+                    </div>
+                `;
+            }
+        });
+        
+        html += `    </div>
+                </div>`;
+    });
 
     // Sección de items
     if (config.hasItems) {
         html += `
-            <div class="items-section">
-                <h3>Items / Detalles</h3>
-                <div class="item-row">
-                    <input type="text" id="itemDesc" placeholder="Descripción">
+            <div class="form-section">
+                <h3 class="section-title">Items / Detalles</h3>
+                <div class="items-input-group">
+                    <input type="text" id="itemDesc" placeholder="Descripción del producto/servicio">
                     <input type="number" id="itemQuantity" placeholder="Cantidad" step="0.01" min="0">
-                    <input type="number" id="itemPrice" placeholder="Precio" step="0.01" min="0">
-                    <button type="button" class="add-item-btn" onclick="addItem()">+ Agregar</button>
+                    <input type="number" id="itemPrice" placeholder="Precio unitario" step="0.01" min="0">
+                    <button type="button" class="btn-add-item" onclick="addItem()">+ Agregar Item</button>
                 </div>
                 <div id="itemsList"></div>
             </div>
@@ -192,6 +249,9 @@ function renderTab(tabName) {
     html += '</form>';
     contentDiv.innerHTML = html;
 
+    // Pre-llenar campos de la empresa
+    preFillCompanyData();
+
     // Setup de eventos si tiene items
     if (config.hasItems) {
         setupItemsListeners();
@@ -199,6 +259,16 @@ function renderTab(tabName) {
 
     // Setup de cálculo de total
     setupTotalCalculation();
+}
+
+// Pre-llenar datos de la empresa
+function preFillCompanyData() {
+    Object.entries(companyData).forEach(([key, value]) => {
+        const field = document.querySelector(`input[name="${key}"], select[name="${key}"], textarea[name="${key}"]`);
+        if (field) {
+            field.value = value;
+        }
+    });
 }
 
 // Configurar listeners para items
@@ -441,6 +511,63 @@ async function downloadDocument(format) {
     }
 }
 
+// Modal de Configuración de Empresa
+function openCompanyModal() {
+    const modal = document.getElementById('companyModal');
+    
+    // Pre-llenar modal con datos actuales
+    Object.entries(companyData).forEach(([key, value]) => {
+        const input = document.getElementById(`modal-${key}`);
+        if (input) {
+            input.value = value;
+        }
+    });
+    
+    modal.style.display = 'block';
+}
+
+function closeCompanyModal() {
+    const modal = document.getElementById('companyModal');
+    modal.style.display = 'none';
+}
+
+function saveCompanyData() {
+    const fields = ['companyName', 'companyCUIT', 'companyAddress', 'companyIVACondition', 'companyPOS', 'companyEmail', 'companyPhone', 'companyStartDate', 'companyGrossIncome'];
+    
+    fields.forEach(field => {
+        const input = document.getElementById(`modal-${field}`);
+        if (input) {
+            companyData[field] = input.value;
+        }
+    });
+    
+    // Guardar en localStorage para persistencia
+    localStorage.setItem('companyData', JSON.stringify(companyData));
+    
+    // Re-renderizar formulario actual
+    const currentTab = appState.currentTab;
+    renderTab(currentTab);
+    
+    closeCompanyModal();
+    showMessage('Datos de empresa guardados correctamente', 'success');
+}
+
+// Cargar datos de empresa desde localStorage
+function loadCompanyData() {
+    const saved = localStorage.getItem('companyData');
+    if (saved) {
+        Object.assign(companyData, JSON.parse(saved));
+    }
+}
+
+// Cerrar modal si se hace clic fuera
+window.onclick = function(event) {
+    const modal = document.getElementById('companyModal');
+    if (modal && event.target === modal) {
+        modal.style.display = 'none';
+    }
+}
+
 // Mostrar/ocultar loading
 function showLoading(active) {
     const loading = document.getElementById('loading');
@@ -448,5 +575,153 @@ function showLoading(active) {
         loading.classList.add('active');
     } else {
         loading.classList.remove('active');
+    }
+}
+
+// ===== GESTIÓN DE CLIENTES =====
+function openClientsModal() {
+    const modal = document.getElementById('clientsModal');
+    modal.style.display = 'block';
+    loadClientsList();
+}
+
+function closeClientsModal() {
+    const modal = document.getElementById('clientsModal');
+    modal.style.display = 'none';
+}
+
+async function loadClientsList() {
+    try {
+        const response = await fetch('/api/clients');
+        const clients = await response.json();
+        
+        const clientsList = document.getElementById('clients-list');
+        if (clients.length === 0) {
+            clientsList.innerHTML = '<p style="text-align: center; color: #999;">No hay clientes guardados</p>';
+            return;
+        }
+        
+        let html = '';
+        clients.forEach(client => {
+            html += `
+                <div class="client-card" style="border: 1px solid #e0e0e0; border-radius: 8px; padding: 12px; margin-bottom: 10px; background: #f9f9f9;">
+                    <div style="display: flex; justify-content: space-between; align-items: start;">
+                        <div style="flex: 1;">
+                            <strong style="color: #7B2CBF;">${escapeHtml(client.clientName)}</strong>
+                            <p style="margin: 4px 0; font-size: 12px; color: #666;">
+                                CUIT: ${escapeHtml(client.clientCUIT)} | 
+                                ${client.clientEmail ? 'Email: ' + escapeHtml(client.clientEmail) : ''}
+                            </p>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn-small" onclick="useClient('${client.id}')" style="padding: 6px 12px; font-size: 12px; background: #7B2CBF; color: white; border: none; border-radius: 4px; cursor: pointer;">Usar</button>
+                            <button class="btn-small" onclick="deleteClientFromList('${client.id}')" style="padding: 6px 12px; font-size: 12px; background: #f44336; color: white; border: none; border-radius: 4px; cursor: pointer;">Eliminar</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        clientsList.innerHTML = html;
+    } catch (error) {
+        console.error('Error loading clients:', error);
+        document.getElementById('clients-list').innerHTML = '<p style="color: #f44336;">Error cargando clientes</p>';
+    }
+}
+
+async function addNewClient() {
+    const name = document.getElementById('new-client-name').value.trim();
+    const cuit = document.getElementById('new-client-cuit').value.trim();
+    const iva = document.getElementById('new-client-iva').value;
+    const address = document.getElementById('new-client-address').value.trim();
+    const email = document.getElementById('new-client-email').value.trim();
+    const phone = document.getElementById('new-client-phone').value.trim();
+    
+    if (!name || !cuit) {
+        showMessage('Por favor completa nombre y CUIT', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/clients', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                clientName: name,
+                clientCUIT: cuit,
+                clientIVACondition: iva,
+                clientAddress: address,
+                clientEmail: email,
+                clientPhone: phone
+            })
+        });
+        
+        if (!response.ok) throw new Error('Error creando cliente');
+        
+        // Limpiar form
+        document.getElementById('new-client-name').value = '';
+        document.getElementById('new-client-cuit').value = '';
+        document.getElementById('new-client-iva').value = '';
+        document.getElementById('new-client-address').value = '';
+        document.getElementById('new-client-email').value = '';
+        document.getElementById('new-client-phone').value = '';
+        
+        showMessage('Cliente agregado correctamente', 'success');
+        loadClientsList();
+    } catch (error) {
+        console.error('Error:', error);
+        showMessage('Error al agregar cliente', 'error');
+    }
+}
+
+async function useClient(clientId) {
+    try {
+        const response = await fetch(`/api/clients/${clientId}`);
+        const client = await response.json();
+        
+        // Llenar el formulario con datos del cliente
+        const fields = ['clientName', 'clientCUIT', 'clientIVACondition', 'clientAddress', 'clientEmail', 'clientPhone'];
+        fields.forEach(field => {
+            const input = document.querySelector(`input[name="${field}"], select[name="${field}"], textarea[name="${field}"]`);
+            if (input && client[field]) {
+                input.value = client[field];
+            }
+        });
+        
+        closeClientsModal();
+        showMessage('Datos del cliente cargados', 'success');
+    } catch (error) {
+        console.error('Error:', error);
+        showMessage('Error cargando cliente', 'error');
+    }
+}
+
+async function deleteClientFromList(clientId) {
+    if (!confirm('¿Estás seguro de eliminar este cliente?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/clients/${clientId}`, { method: 'DELETE' });
+        if (!response.ok) throw new Error('Error eliminando cliente');
+        
+        showMessage('Cliente eliminado', 'success');
+        loadClientsList();
+    } catch (error) {
+        console.error('Error:', error);
+        showMessage('Error al eliminar cliente', 'error');
+    }
+}
+
+// Cerrar modal si se hace clic fuera
+window.onclick = function(event) {
+    const companyModal = document.getElementById('companyModal');
+    const clientsModal = document.getElementById('clientsModal');
+    
+    if (companyModal && event.target === companyModal) {
+        companyModal.style.display = 'none';
+    }
+    if (clientsModal && event.target === clientsModal) {
+        clientsModal.style.display = 'none';
     }
 }
