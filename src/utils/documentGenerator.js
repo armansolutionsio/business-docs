@@ -7,11 +7,12 @@ const Docxtemplater = require('docxtemplater');
 const ImageModule = require('docxtemplater-image-module-free');
 
 const COLORS = {
-  primary: '#4B6B9B',
-  secondary: '#1FA3B0',
+  primary: '#7B2CBF',
+  secondary: '#6A1B9A',
+  accent: '#FFFFFF',
   text: '#2C3E50',
-  lightGray: '#ECF0F1',
-  border: '#BDC3C7',
+  lightGray: '#F3E5F5',
+  border: '#CE93D8',
   white: '#FFFFFF'
 };
 
@@ -232,57 +233,94 @@ async function generateWord(documentType, data) {
 }
 
 function drawPDFHeader(doc) {
-  // Intentionally do not draw header logo or header text here. The user's
-  // .docx template will include any header/footer branding. Keep the
-  // PDF cursor in a safe top area to avoid overlapping content.
-  doc.y = doc.page.margins.top + 10;
+  const headerY = 40;
+  const logoWidth = 50;
+  const logoHeight = 50;
+
+  // Draw purple background
+  doc.rect(40, headerY, 515, 80).fill(COLORS.primary);
+  
+  // Add logo if it exists
+  if (logoExists) {
+    try {
+      doc.image(logoPath, 50, headerY + 15, { width: logoWidth, height: logoHeight });
+    } catch (e) {
+      console.warn('Logo image error:', e.message);
+      // Logo not found, continue without it
+    }
+  }
+
+  // Brand name next to logo
+  doc.fontSize(18).font('Helvetica-Bold').fillColor(COLORS.white);
+  doc.text(BRAND_NAME, 110, headerY + 18, { width: 400 });
+  
+  doc.fontSize(9).font('Helvetica').fillColor(COLORS.white);
+  doc.opacity(0.85);
+  doc.text(COMPANY_NAME, 110, headerY + 45, { width: 400 });
+  doc.opacity(1); // Reset opacity
+
+  doc.y = headerY + 95;
 }
 
 function drawDocumentTitle(doc, type) {
   const title = getDocumentTitle(type);
   const y = doc.y;
 
-  doc.rect(40, y, 515, 45).fill(COLORS.primary);
+  // Gradient-like effect with colored background
+  doc.rect(40, y, 515, 50).fill(COLORS.secondary);
+  
+  doc.fontSize(32).font('Helvetica-Bold').fillColor(COLORS.white);
+  doc.text(title, 50, y + 10, { width: 495 });
 
-  doc.fontSize(28).font('Helvetica-Bold').fillColor(COLORS.white);
-  doc.text(title, 50, y + 8, { width: 495 });
-
-  doc.y = y + 55;
+  doc.y = y + 65;
 }
 
 function drawDocumentInfo(doc, type, data) {
   const y = doc.y;
-  const boxHeight = 35;
+  const cellHeight = 45;
+  const cellWidth = 170;
+  const startX = 40;
 
-  doc.rect(40, y, 515, boxHeight).fill(COLORS.lightGray);
-
+  // Three info boxes in a row
+  // Box 1: Número
+  doc.rect(startX, y, cellWidth, cellHeight).fill(COLORS.lightGray);
+  doc.rect(startX, y, cellWidth, cellHeight).stroke();
   doc.fontSize(8).font('Helvetica-Bold').fillColor(COLORS.secondary);
-  doc.text(`Nº`, 50, y + 7);
-  doc.fontSize(10).font('Helvetica').fillColor(COLORS.text);
-  doc.text(data.number || '-', 50, y + 18);
+  doc.text('NÚMERO', startX + 10, y + 8, { width: cellWidth - 20 });
+  doc.fontSize(12).font('Helvetica-Bold').fillColor(COLORS.text);
+  doc.text(data.number || '-', startX + 10, y + 23, { width: cellWidth - 20 });
 
+  // Box 2: Fecha
+  doc.rect(startX + cellWidth + 5, y, cellWidth, cellHeight).fill(COLORS.lightGray);
+  doc.rect(startX + cellWidth + 5, y, cellWidth, cellHeight).stroke();
   doc.fontSize(8).font('Helvetica-Bold').fillColor(COLORS.secondary);
-  doc.text('FECHA', 200, y + 7);
-  doc.fontSize(10).font('Helvetica').fillColor(COLORS.text);
-  doc.text(data.date || new Date().toLocaleDateString('es-AR'), 200, y + 18);
+  doc.text('FECHA', startX + cellWidth + 15, y + 8, { width: cellWidth - 20 });
+  doc.fontSize(12).font('Helvetica-Bold').fillColor(COLORS.text);
+  doc.text(data.date || new Date().toLocaleDateString('es-AR'), startX + cellWidth + 15, y + 23, { width: cellWidth - 20 });
 
+  // Box 3: Estado/Vigencia
+  const label = type === 'quote' ? 'VIGENCIA' : 'ESTADO';
+  const value = type === 'quote' ? (data.validity || '30 días') : 'Emitido';
+  doc.rect(startX + (cellWidth + 5) * 2, y, cellWidth, cellHeight).fill(COLORS.lightGray);
+  doc.rect(startX + (cellWidth + 5) * 2, y, cellWidth, cellHeight).stroke();
   doc.fontSize(8).font('Helvetica-Bold').fillColor(COLORS.secondary);
-  doc.text(type === 'quote' ? 'VIGENCIA' : 'ESTADO', 380, y + 7);
-  doc.fontSize(10).font('Helvetica').fillColor(COLORS.text);
-  doc.text(type === 'quote' ? (data.validity || '30 días') : 'Emitido', 380, y + 18);
+  doc.text(label, startX + (cellWidth + 5) * 2 + 10, y + 8, { width: cellWidth - 20 });
+  doc.fontSize(12).font('Helvetica-Bold').fillColor(COLORS.text);
+  doc.text(value, startX + (cellWidth + 5) * 2 + 10, y + 23, { width: cellWidth - 20 });
 
-  doc.y = y + boxHeight + 20;
+  doc.y = y + cellHeight + 25;
 }
 
 function drawSection(doc, title) {
-  doc.moveDown(0.3);
+  doc.moveDown(0.5);
   const y = doc.y;
   
-  doc.moveTo(40, y).lineTo(555, y).strokeColor(COLORS.secondary).lineWidth(2).stroke();
-  doc.fontSize(10).font('Helvetica-Bold').fillColor(COLORS.primary);
-  doc.text(title, 50, y - 10);
+  // Section title with background color
+  doc.rect(40, y, 515, 25).fill(COLORS.primary);
+  doc.fontSize(11).font('Helvetica-Bold').fillColor(COLORS.white);
+  doc.text(title, 50, y + 5, { width: 495 });
 
-  doc.y = y + 15;
+  doc.y = y + 35;
 }
 
 function formatCurrency(amount) {
@@ -410,163 +448,213 @@ function base64DataToBuffer(dataUrl) {
 }
 
 function drawTotal(doc, amount, label) {
-  doc.moveDown(1);
+  doc.moveDown(1.5);
   const y = doc.y;
+  const totalBoxX = 360;
+  const totalBoxWidth = 195;
+  const totalBoxHeight = 65;
 
-  doc.rect(355, y, 200, 50).fill(COLORS.secondary);
-  doc.fontSize(9).font('Helvetica-Bold').fillColor(COLORS.white);
-  doc.text(label, 365, y + 8, { width: 180 });
-  doc.fontSize(20).font('Helvetica-Bold').fillColor(COLORS.white);
-  doc.text(`$${parseFloat(amount || 0).toFixed(2)}`, 365, y + 22, { width: 180, align: 'right' });
+  // Draw shadow effect
+  doc.rect(totalBoxX + 2, y + 2, totalBoxWidth, totalBoxHeight).fill('#E8E8E8');
 
-  doc.y = y + 60;
+  // Main box with secondary color
+  doc.rect(totalBoxX, y, totalBoxWidth, totalBoxHeight).fill(COLORS.secondary);
+  
+  // Label
+  doc.fontSize(10).font('Helvetica-Bold').fillColor(COLORS.white);
+  doc.text(label, totalBoxX + 15, y + 10, { width: totalBoxWidth - 30 });
+  
+  // Amount
+  const amount_str = `$${parseFloat(amount || 0).toFixed(2)}`;
+  doc.fontSize(24).font('Helvetica-Bold').fillColor(COLORS.white);
+  doc.text(amount_str, totalBoxX + 15, y + 28, { width: totalBoxWidth - 30, align: 'right' });
+
+  doc.y = y + totalBoxHeight + 20;
 }
 
 function drawInvoice(doc, data) {
-  drawSection(doc, 'DATOS DEL CLIENTE');
+  // DATOS DEL EMISOR
+  drawSection(doc, 'DATOS DEL EMISOR');
+  const emitterX = 50;
+  const emitterBoxWidth = 240;
   
-  doc.fontSize(10).font('Helvetica').fillColor(COLORS.text);
-  doc.text(data.clientName || '-', 50);
-  if (data.clientDNI) doc.text(`DNI/CUIT: ${data.clientDNI}`, 50);
-  if (data.clientPhone) doc.text(`Teléfono: ${data.clientPhone}`, 50);
+  doc.rect(emitterX, doc.y - 5, emitterBoxWidth, 80).fill('rgba(123, 44, 191, 0.05)');
+  doc.rect(emitterX, doc.y - 5, emitterBoxWidth, 80).stroke();
+  
+  doc.fontSize(10).font('Helvetica-Bold').fillColor(COLORS.primary);
+  doc.text(data.companyName, emitterX + 10, doc.y, { width: emitterBoxWidth - 20 });
+  
+  doc.fontSize(9).font('Helvetica').fillColor(COLORS.text);
+  doc.text(`CUIT: ${data.companyCUIT}`, emitterX + 10, doc.y, { width: emitterBoxWidth - 20 });
+  doc.text(`${data.companyAddress}`, emitterX + 10, doc.y, { width: emitterBoxWidth - 20 });
+  doc.text(`IVA: ${data.companyIVACondition}`, emitterX + 10, doc.y, { width: emitterBoxWidth - 20 });
+  
+  // DATOS DEL CLIENTE
+  const clientX = emitterX + emitterBoxWidth + 20;
+  const clientBoxWidth = 240;
+  
+  doc.rect(clientX, doc.y - 80 + 5, clientBoxWidth, 80).fill('rgba(123, 44, 191, 0.05)');
+  doc.rect(clientX, doc.y - 80 + 5, clientBoxWidth, 80).stroke();
+  
+  doc.fontSize(10).font('Helvetica-Bold').fillColor(COLORS.primary);
+  doc.text(data.clientName, clientX + 10, doc.y - 80 + 10, { width: clientBoxWidth - 20 });
+  
+  doc.fontSize(9).font('Helvetica').fillColor(COLORS.text);
+  doc.text(`CUIT/DNI: ${data.clientCUIT}`, clientX + 10, doc.y - 80 + 10, { width: clientBoxWidth - 20 });
+  doc.text(`${data.clientAddress}`, clientX + 10, doc.y - 80 + 10, { width: clientBoxWidth - 20 });
+  doc.text(`IVA: ${data.clientIVACondition}`, clientX + 10, doc.y - 80 + 10, { width: clientBoxWidth - 20 });
+  
+  doc.y = doc.y + 25;
+
+  // INFORMACIÓN DEL COMPROBANTE
+  drawSection(doc, 'FACTURA');
+  
+  doc.fontSize(11).font('Helvetica-Bold').fillColor(COLORS.secondary);
+  doc.text(`Letra: ${data.invoiceLetter} | Nº: ${data.invoiceNumber}`, 50);
+  
+  doc.fontSize(9).font('Helvetica').fillColor(COLORS.text);
+  doc.text(`Punto de Venta: ${data.companyPOS}`, 50);
+  doc.text(`Fecha de Emisión: ${data.invoiceDate}`, 50);
+  doc.text(`CAE: ${data.cae}`, 50);
+  if (data.caeExpiration) {
+    doc.text(`Vencimiento CAE: ${data.caeExpiration}`, 50);
+  }
+  
   doc.moveDown(0.5);
 
+  // DETALLE DE ITEMS
   if (data.items && data.items.length > 0) {
     drawSection(doc, 'DETALLE');
     drawItemsTable(doc, data.items, true);
+  } else {
+    doc.moveDown(1);
   }
 
-  drawTotal(doc, data.total, 'TOTAL A PAGAR');
+  drawTotal(doc, data.total, 'TOTAL FACTURA');
 }
 
 function drawReceipt(doc, data) {
-  drawSection(doc, 'RECIBIMOS DE');
-  doc.fontSize(11).font('Helvetica').fillColor(COLORS.text);
-  doc.text(data.paidBy || '-', 50);
-  doc.moveDown(1);
+  // DATOS DEL EMISOR
+  drawSection(doc, 'DATOS DEL EMISOR');
+  const emitterX = 50;
+  const emitterBoxWidth = 240;
+  
+  doc.rect(emitterX, doc.y - 5, emitterBoxWidth, 70).fill('rgba(123, 44, 191, 0.05)');
+  doc.rect(emitterX, doc.y - 5, emitterBoxWidth, 70).stroke();
+  
+  doc.fontSize(10).font('Helvetica-Bold').fillColor(COLORS.primary);
+  doc.text(data.companyName, emitterX + 10, doc.y, { width: emitterBoxWidth - 20 });
+  
+  doc.fontSize(9).font('Helvetica').fillColor(COLORS.text);
+  doc.text(`CUIT: ${data.companyCUIT}`, emitterX + 10, doc.y, { width: emitterBoxWidth - 20 });
+  doc.text(`${data.companyAddress}`, emitterX + 10, doc.y, { width: emitterBoxWidth - 20 });
+  
+  // DATOS DEL PAGADOR
+  const payerX = emitterX + emitterBoxWidth + 20;
+  const payerBoxWidth = 240;
+  
+  doc.rect(payerX, doc.y - 70 + 5, payerBoxWidth, 70).fill('rgba(123, 44, 191, 0.05)');
+  doc.rect(payerX, doc.y - 70 + 5, payerBoxWidth, 70).stroke();
+  
+  doc.fontSize(10).font('Helvetica-Bold').fillColor(COLORS.primary);
+  doc.text('RECIBIMOS DE', payerX + 10, doc.y - 70 + 10, { width: payerBoxWidth - 20 });
+  
+  doc.fontSize(9).font('Helvetica').fillColor(COLORS.text);
+  doc.text(data.payerName, payerX + 10, doc.y - 70 + 10, { width: payerBoxWidth - 20 });
+  doc.text(`CUIT/DNI: ${data.payerCUIT}`, payerX + 10, doc.y - 70 + 10, { width: payerBoxWidth - 20 });
+  
+  doc.y = doc.y + 20;
 
+  // NÚMERO DE RECIBO
+  drawSection(doc, 'NÚMERO DE RECIBO');
+  doc.fontSize(16).font('Helvetica-Bold').fillColor(COLORS.secondary);
+  doc.text(data.receiptNumber.toString(), 50);
+  doc.fontSize(9).font('Helvetica').fillColor(COLORS.text);
+  doc.text(`Fecha: ${data.receiptDate}`, 50);
+  
+  doc.moveDown(0.5);
+
+  // CONCEPTO
   drawSection(doc, 'CONCEPTO');
-  doc.fontSize(11).font('Helvetica').fillColor(COLORS.text);
-  doc.text(data.concept || '-', 50);
+  doc.fontSize(10).font('Helvetica').fillColor(COLORS.text);
+  doc.text(data.concept, 50, doc.y, { width: 450 });
   doc.moveDown(1);
 
-  drawTotal(doc, data.amount, 'MONTO RECIBIDO');
+  // IMPORTE
+  drawSection(doc, 'IMPORTE');
+  doc.fontSize(10).font('Helvetica').fillColor(COLORS.text);
+  doc.text(`En números: $ ${formatCurrency(data.amount)}`, 50);
+  doc.text(`En letras: ${data.amountInLetters}`, 50);
+  doc.text(`Medio de pago: ${data.paymentMethod}`, 50);
+  doc.moveDown(1);
+
+  drawTotal(doc, data.amount, 'TOTAL RECIBIDO');
 }
 
 function drawQuote(doc, data) {
-  drawSection(doc, 'SOLICITANTE');
-  doc.fontSize(11).font('Helvetica').fillColor(COLORS.text);
-  doc.text(data.requesterName || '-', 50);
-  doc.moveDown(1);
+  // DATOS DEL EMISOR
+  drawSection(doc, 'DATOS DEL EMISOR');
+  const emitterX = 50;
+  const emitterBoxWidth = 240;
+  
+  doc.rect(emitterX, doc.y - 5, emitterBoxWidth, 90).fill('rgba(123, 44, 191, 0.05)');
+  doc.rect(emitterX, doc.y - 5, emitterBoxWidth, 90).stroke();
+  
+  doc.fontSize(10).font('Helvetica-Bold').fillColor(COLORS.primary);
+  doc.text(data.companyName, emitterX + 10, doc.y, { width: emitterBoxWidth - 20 });
+  
+  doc.fontSize(9).font('Helvetica').fillColor(COLORS.text);
+  doc.text(`CUIT: ${data.companyCUIT}`, emitterX + 10, doc.y, { width: emitterBoxWidth - 20 });
+  doc.text(`${data.companyAddress}`, emitterX + 10, doc.y, { width: emitterBoxWidth - 20 });
+  if (data.companyEmail) doc.text(`Email: ${data.companyEmail}`, emitterX + 10, doc.y, { width: emitterBoxWidth - 20 });
+  if (data.companyPhone) doc.text(`Tel: ${data.companyPhone}`, emitterX + 10, doc.y, { width: emitterBoxWidth - 20 });
+  
+  // DATOS DEL CLIENTE
+  const clientX = emitterX + emitterBoxWidth + 20;
+  const clientBoxWidth = 240;
+  
+  doc.rect(clientX, doc.y - 90 + 5, clientBoxWidth, 90).fill('rgba(123, 44, 191, 0.05)');
+  doc.rect(clientX, doc.y - 90 + 5, clientBoxWidth, 90).stroke();
+  
+  doc.fontSize(10).font('Helvetica-Bold').fillColor(COLORS.primary);
+  doc.text(data.clientName, clientX + 10, doc.y - 90 + 10, { width: clientBoxWidth - 20 });
+  
+  doc.fontSize(9).font('Helvetica').fillColor(COLORS.text);
+  if (data.clientCUIT) doc.text(`CUIT/DNI: ${data.clientCUIT}`, clientX + 10, doc.y - 90 + 10, { width: clientBoxWidth - 20 });
+  if (data.clientEmail) doc.text(`Email: ${data.clientEmail}`, clientX + 10, doc.y - 90 + 10, { width: clientBoxWidth - 20 });
+  if (data.clientPhone) doc.text(`Tel: ${data.clientPhone}`, clientX + 10, doc.y - 90 + 10, { width: clientBoxWidth - 20 });
+  
+  doc.y = doc.y + 30;
 
-  if (data.images?.flight || data.flightDescription) {
-    if (data.images?.flight) drawImage(doc, data.images.flight.data, 'DATOS DEL VUELO');
-    if (data.flightDescription) {
-      drawSection(doc, 'INFORMACIÓN DEL VUELO');
-      doc.fontSize(9).font('Helvetica').fillColor(COLORS.text);
-      doc.text(data.flightDescription, 50, doc.y, { width: 450 });
-      doc.moveDown(0.5);
-    }
-  }
+  // NÚMERO Y FECHA
+  drawSection(doc, 'COTIZACIÓN');
+  doc.fontSize(14).font('Helvetica-Bold').fillColor(COLORS.secondary);
+  doc.text(`Nº: ${data.quoteNumber}`, 50);
+  doc.fontSize(9).font('Helvetica').fillColor(COLORS.text);
+  doc.text(`Fecha: ${data.quoteDate}`, 50);
+  
+  doc.moveDown(0.5);
 
-  if (data.images?.hotel || data.hotelDescription) {
-    if (data.images?.hotel) drawImage(doc, data.images.hotel.data, 'DATOS DEL HOSPEDAJE');
-    if (data.hotelDescription) {
-      drawSection(doc, 'INFORMACIÓN DEL HOSPEDAJE');
-      doc.fontSize(9).font('Helvetica').fillColor(COLORS.text);
-      doc.text(data.hotelDescription, 50, doc.y, { width: 450 });
-      doc.moveDown(0.5);
-    }
-  }
-
-  if (data.images?.transfer || data.transferDescription) {
-    if (data.images?.transfer) drawImage(doc, data.images.transfer.data, 'INFO DE LOS TRASLADOS');
-    if (data.transferDescription) {
-      drawSection(doc, 'INFORMACIÓN DE TRASLADOS');
-      doc.fontSize(9).font('Helvetica').fillColor(COLORS.text);
-      doc.text(data.transferDescription, 50, doc.y, { width: 450 });
-      doc.moveDown(0.5);
-    }
-  }
-
+  // ITEMS/SERVICIOS
   if (data.items && data.items.length > 0) {
     drawSection(doc, 'SERVICIOS');
     drawItemsTable(doc, data.items);
+  } else {
+    doc.moveDown(1);
   }
+
+  // CONDICIONES
+  drawSection(doc, 'CONDICIONES');
+  doc.fontSize(9).font('Helvetica-Bold').fillColor(COLORS.text);
+  doc.text(`✓ Validez de la oferta: ${data.validity || '30'} días`, 50);
+  doc.text(`✓ Plazo de entrega: ${data.deliveryTerm}`, 50);
+  
+  doc.fontSize(9).font('Helvetica').fillColor(COLORS.text);
+  doc.text(`Forma de pago: ${data.paymentTerms}`, 50, doc.y, { width: 450 });
+  
+  doc.moveDown(1);
 
   drawTotal(doc, data.total, 'TOTAL COTIZADO');
-}
-
-function drawBudget(doc, data) {
-  drawSection(doc, 'CLIENTE');
-  doc.fontSize(11).font('Helvetica').fillColor(COLORS.text);
-  doc.text(data.clientName || '-', 50);
-  doc.moveDown(1);
-
-  if (data.description) {
-    drawSection(doc, 'PROYECTO');
-    doc.fontSize(10).font('Helvetica').fillColor(COLORS.text);
-    doc.text(data.description, 50, doc.y, { width: 400 });
-    doc.moveDown(0.8);
-  }
-
-  if (data.images?.flight || data.flightDescription) {
-    if (data.images?.flight) drawImage(doc, data.images.flight.data, 'DATOS DEL VUELO');
-    if (data.flightDescription) {
-      drawSection(doc, 'INFORMACIÓN DEL VUELO');
-      doc.fontSize(9).font('Helvetica').fillColor(COLORS.text);
-      doc.text(data.flightDescription, 50, doc.y, { width: 450 });
-      doc.moveDown(0.5);
-    }
-  }
-
-  if (data.items && data.items.length > 0) {
-    drawSection(doc, 'DETALLES');
-    drawItemsTable(doc, data.items);
-  }
-
-  drawTotal(doc, data.total, 'TOTAL PRESUPUESTO');
-}
-
-function drawProposal(doc, data) {
-  drawSection(doc, 'DIRIGIDA A');
-  doc.fontSize(11).font('Helvetica').fillColor(COLORS.text);
-  doc.text(data.clientName || '-', 50);
-  doc.moveDown(1);
-
-  if (data.summary) {
-    drawSection(doc, 'RESUMEN');
-    doc.fontSize(10).font('Helvetica').fillColor(COLORS.text);
-    doc.text(data.summary, 50, doc.y, { width: 400 });
-    doc.moveDown(0.8);
-  }
-
-  if (data.solution) {
-    drawSection(doc, 'PROPUESTA');
-    doc.fontSize(10).font('Helvetica').fillColor(COLORS.text);
-    doc.text(data.solution, 50, doc.y, { width: 400 });
-    doc.moveDown(0.8);
-  }
-
-  drawTotal(doc, data.investment, 'INVERSIÓN REQUERIDA');
-}
-
-function drawDeliveryNote(doc, data) {
-  drawSection(doc, 'DESTINATARIO');
-  doc.fontSize(11).font('Helvetica').fillColor(COLORS.text);
-  doc.text(data.recipientName || '-', 50);
-  doc.moveDown(1);
-
-  if (data.items && data.items.length > 0) {
-    drawSection(doc, 'PRODUCTOS');
-    drawItemsTable(doc, data.items, true);
-  }
-
-  if (data.observations) {
-    drawSection(doc, 'OBSERVACIONES');
-    doc.fontSize(10).font('Helvetica').fillColor(COLORS.text);
-    doc.text(data.observations, 50, doc.y, { width: 400 });
-  }
 }
 
 function wordInvoice(data) {

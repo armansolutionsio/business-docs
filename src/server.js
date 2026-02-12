@@ -13,7 +13,10 @@ app.use(express.static(path.join(__dirname, '../public')));
 
 // Routes
 const documentRoutes = require('./routes/documents');
+const clientRoutes = require('./routes/clients');
+
 app.use('/api/documents', documentRoutes);
+app.use('/api/clients', clientRoutes);
 
 // Manejo de errores
 app.use((err, req, res, next) => {
