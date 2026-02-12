@@ -159,15 +159,32 @@ function renderTab(tabName) {
                     </div>
                 `;
             } else if (field.type === 'select') {
-                html += `
-                    <div class="form-group">
-                        <label>${field.label}${field.required ? '<span class="required">*</span>' : ''}</label>
-                        <select name="${field.name}" ${field.required ? 'required' : ''}>
-                            <option value="">Seleccionar...</option>
-                            ${field.options.map(opt => `<option value="${opt}">${opt}</option>`).join('')}
-                        </select>
-                    </div>
-                `;
+                // Mostrar como botones si es paymentMethod
+                if (field.name === 'paymentMethod') {
+                    html += `
+                        <div class="form-group full-width">
+                            <label>${field.label}${field.required ? '<span class="required">*</span>' : ''}</label>
+                            <div class="payment-methods-grid">
+                                ${field.options.map(opt => `
+                                    <button type="button" class="payment-method-btn" data-method="${opt}" onclick="selectPaymentMethod(this, '${field.name}')">
+                                        ${opt}
+                                    </button>
+                                `).join('')}
+                            </div>
+                            <input type="hidden" name="${field.name}" ${field.required ? 'required' : ''}>
+                        </div>
+                    `;
+                } else {
+                    html += `
+                        <div class="form-group">
+                            <label>${field.label}${field.required ? '<span class="required">*</span>' : ''}</label>
+                            <select name="${field.name}" ${field.required ? 'required' : ''}>
+                                <option value="">Seleccionar...</option>
+                                ${field.options.map(opt => `<option value="${opt}">${opt}</option>`).join('')}
+                            </select>
+                        </div>
+                    `;
+                }
             } else {
                 html += `
                     <div class="form-group">
@@ -237,11 +254,8 @@ function renderTab(tabName) {
     // Botones de acción
     html += `
         <div class="button-group">
-            <button type="button" class="btn btn-primary" onclick="downloadDocument('pdf')">
+            <button type="button" class="btn btn-primary" onclick="downloadDocument('pdf')" style="grid-column: 1 / -1;">
                 📄 Descargar PDF
-            </button>
-            <button type="button" class="btn btn-primary" onclick="downloadDocument('word')">
-                📋 Descargar Word
             </button>
         </div>
     `;
@@ -337,6 +351,17 @@ function handleImageUpload(event, type) {
         };
     };
     reader.readAsDataURL(file);
+}
+
+// Seleccionar método de pago
+function selectPaymentMethod(button, fieldName) {
+    const container = button.parentElement;
+    const buttons = container.querySelectorAll('.payment-method-btn');
+    buttons.forEach(btn => btn.classList.remove('active'));
+    button.classList.add('active');
+    
+    const hiddenInput = container.nextElementSibling;
+    hiddenInput.value = button.getAttribute('data-method');
 }
 
 // Renderizar lista de items
@@ -475,20 +500,52 @@ async function downloadDocument(format) {
         showLoading(true);
 
         const data = collectFormData();
+        const payload = {
+            type: appState.currentTab,
+            data: data,
+            assets: {}
+        };
+
+        // Procesar imágenes si existen
+        if (appState.images) {
+            // Para logo
+            if (appState.images.logo) {
+                payload.assets.logo = appState.images.logo.data;
+            }
+            // Para firma
+            if (appState.images.signature) {
+                payload.assets.signature = appState.images.signature.data;
+            }
+            // Para código QR
+            if (appState.images.qr) {
+                payload.assets.qr = appState.images.qr.data;
+            }
+            // Para imágenes de viaje
+            if (appState.images.flight) {
+                payload.data.images = payload.data.images || {};
+                payload.data.images.flight = appState.images.flight.data;
+            }
+            if (appState.images.hotel) {
+                payload.data.images = payload.data.images || {};
+                payload.data.images.hotel = appState.images.hotel.data;
+            }
+            if (appState.images.transfer) {
+                payload.data.images = payload.data.images || {};
+                payload.data.images.transfer = appState.images.transfer.data;
+            }
+        }
 
         const response = await fetch(`/api/documents/generate-${format}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-                documentType: appState.currentTab,
-                data: data
-            })
+            body: JSON.stringify(payload)
         });
 
         if (!response.ok) {
-            throw new Error(`Error: ${response.statusText}`);
+            const errorText = await response.text();
+            throw new Error(`Error: ${response.statusText} - ${errorText}`);
         }
 
         // Crear blob y descargar

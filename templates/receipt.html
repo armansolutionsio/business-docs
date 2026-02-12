@@ -1,0 +1,120 @@
+<!-- HEADER -->
+<div class="header">
+    <div class="header-left">
+        {{#if logo}}
+        <img src="{{logo.dataUrl}}" alt="Logo" class="header-logo">
+        {{else}}
+        <svg width="80" height="60" viewBox="0 0 80 60" class="header-logo">
+            <rect width="80" height="60" fill="#7B2CBF" rx="4"/>
+            <text x="40" y="38" font-size="24" font-weight="bold" fill="white" text-anchor="middle" font-family="Arial">AT</text>
+            <text x="40" y="52" font-size="8" fill="rgba(255,255,255,0.7)" text-anchor="middle" font-family="Arial">Travel</text>
+        </svg>
+        {{/if}}
+        <div class="header-company">
+            <h1>{{companyName}}</h1>
+            <p>CUIT: {{companyCUIT}}</p>
+            <p>{{companyAddress}}</p>
+        </div>
+    </div>
+</div>
+
+<!-- INFO BOXES - COMPACT -->
+<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 15px; font-size: 9pt;">
+    <div style="background: #f5f5f5; padding: 8px; border-radius: 4px; text-align: center;">
+        <div style="font-weight: 700; color: #7B2CBF;">{{receiptNumber}}</div>
+        <div style="font-size: 8pt; color: #999;">Nº Recibo</div>
+    </div>
+    <div style="background: #f5f5f5; padding: 8px; border-radius: 4px; text-align: center;">
+        <div style="font-weight: 700; color: #7B2CBF;">{{receiptDate}}</div>
+        <div style="font-size: 8pt; color: #999;">Fecha</div>
+    </div>
+    <div style="background: #f5f5f5; padding: 8px; border-radius: 4px; text-align: center;">
+        <div style="font-weight: 700; color: #7B2CBF;">{{paymentMethod}}</div>
+        <div style="font-size: 8pt; color: #999;">Medio de Pago</div>
+    </div>
+</div>
+
+<!-- EMISOR & PAGADOR -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; page-break-inside: avoid;">
+    <div class="section">
+        <div class="section-title">Datos del Emisor</div>
+        <div class="section-content">
+            <div class="info-field">
+                <div class="info-label">Razón Social</div>
+                <div class="info-value">{{companyName}}</div>
+            </div>
+            <div class="info-field" style="margin-top: 8px;">
+                <div class="info-label">CUIT</div>
+                <div class="info-value">{{companyCUIT}}</div>
+            </div>
+            <div class="info-field" style="margin-top: 8px;">
+                <div class="info-label">Domicilio</div>
+                <div class="info-value">{{companyAddress}}</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">Recibimos de</div>
+        <div class="section-content">
+            <div class="info-field">
+                <div class="info-label">Nombre/Razón Social</div>
+                <div class="info-value">{{payerName}}</div>
+            </div>
+            <div class="info-field" style="margin-top: 8px;">
+                <div class="info-label">CUIT/DNI</div>
+                <div class="info-value">{{payerCUIT}}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CONCEPTO -->
+<div class="section">
+    <div class="section-title">Concepto</div>
+    <div class="section-content">
+        <div class="info-value">{{concept}}</div>
+    </div>
+</div>
+
+<!-- IMPORTE -->
+<div class="section">
+    <div class="section-title">Importe</div>
+    <div class="section-content">
+        <div class="info-row">
+            <div class="info-field">
+                <div class="info-label">En Números</div>
+                <div class="info-value currency">$ {{formatCurrency amount}}</div>
+            </div>
+            <div class="info-field">
+                <div class="info-label">En Letras</div>
+                <div class="info-value">{{amountInLetters}}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- TOTALS -->
+<div class="totals-section" style="margin-bottom: 40px;">
+    <div class="totals-box">
+        <div class="totals-row total">
+            <span>TOTAL RECIBIDO:</span>
+            <span class="currency">{{formatCurrency amount}}</span>
+        </div>
+    </div>
+</div>
+
+<!-- FIRMA -->
+<div class="signature-box">
+    {{#if signature}}
+    <div class="signature-item">
+        <img src="{{signature.dataUrl}}" alt="Firma" class="signature-image">
+        <div class="signature-line">Firma Autorizado</div>
+    </div>
+    {{/if}}
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+    <p>Este documento es comprobante válido de pago.</p>
+</div>
