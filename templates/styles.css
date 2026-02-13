@@ -78,54 +78,6 @@ body {
     margin: 2px 0;
 }
 
-.header-document {
-    text-align: right;
-    border-left: 1px solid #ddd;
-    padding-left: 15px;
-}
-
-.document-type {
-    font-size: 24pt;
-    font-weight: 700;
-    color: #6A1B9A;
-    margin-bottom: 5px;
-}
-
-.document-number {
-    font-size: 11pt;
-    color: #666;
-}
-
-/* ===== INFO BOXES ===== */
-.info-boxes {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
-    margin-bottom: 20px;
-    page-break-inside: avoid;
-}
-
-.info-box {
-    background: #7B2CBF;
-    color: white;
-    padding: 10px;
-    border-radius: 4px;
-    text-align: center;
-}
-
-.info-box-label {
-    font-size: 8pt;
-    font-weight: 600;
-    text-transform: uppercase;
-    opacity: 0.9;
-    margin-bottom: 3px;
-}
-
-.info-box-value {
-    font-size: 12pt;
-    font-weight: 700;
-}
-
 /* ===== SECTIONS ===== */
 .section {
     background: #f5f5f5;
@@ -280,21 +232,9 @@ tbody tr:hover {
 
 /* ===== RESPONSIVE ===== */
 @media (max-width: 768px) {
-    .info-boxes {
-        grid-template-columns: 1fr;
-    }
-
     .header {
         flex-direction: column;
         gap: 15px;
-    }
-
-    .header-document {
-        border-left: none;
-        border-top: 1px solid #ddd;
-        padding-left: 0;
-        padding-top: 15px;
-        width: 100%;
     }
 
     table {

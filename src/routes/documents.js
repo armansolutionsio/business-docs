@@ -14,11 +14,18 @@ router.post('/generate-pdf', async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields: type, data' });
     }
 
+    // Move travel images from data to assets for proper processing
+    let processAssets = { ...assets };
+    if (data.images && typeof data.images === 'object') {
+      processAssets.images = data.images;
+      // Keep images in data as well for template use (will be processed)
+    }
+
     const buffer = await DocumentRenderer.render({
       type,
       format: 'pdf',
       data,
-      assets,
+      assets: processAssets,
       landscape: landscape || false,
     });
 

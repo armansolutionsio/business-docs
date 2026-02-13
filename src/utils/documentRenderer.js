@@ -100,6 +100,15 @@ Handlebars.registerHelper('if_gt', function(a, b, options) {
   }
 });
 
+Handlebars.registerHelper('imageWidth', function(size) {
+  const sizes = {
+    'small': '300px',
+    'medium': '500px',
+    'large': '700px'
+  };
+  return sizes[size] || sizes['medium'];
+});
+
 /**
  * DocumentRenderer - Central orchestration for document generation
  * Validates data → Processes assets → Renders template → Generates PDF/Word
@@ -196,6 +205,35 @@ class DocumentRenderer {
             width: processed_photo.width,
             height: processed_photo.height,
           };
+        }
+      }
+
+      // Process travel images (flight, hotel, transfer)
+      if (assets.images && typeof assets.images === 'object') {
+        processed.images = {};
+        
+        if (assets.images.flight) {
+          const flightBuffer = toBuffer(assets.images.flight);
+          if (flightBuffer) {
+            const processed_flight = await AssetProcessor.processPhoto(flightBuffer);
+            processed.images.flight = AssetProcessor.bufferToDataUrl(processed_flight.buffer, processed_flight.format);
+          }
+        }
+        
+        if (assets.images.hotel) {
+          const hotelBuffer = toBuffer(assets.images.hotel);
+          if (hotelBuffer) {
+            const processed_hotel = await AssetProcessor.processPhoto(hotelBuffer);
+            processed.images.hotel = AssetProcessor.bufferToDataUrl(processed_hotel.buffer, processed_hotel.format);
+          }
+        }
+        
+        if (assets.images.transfer) {
+          const transferBuffer = toBuffer(assets.images.transfer);
+          if (transferBuffer) {
+            const processed_transfer = await AssetProcessor.processPhoto(transferBuffer);
+            processed.images.transfer = AssetProcessor.bufferToDataUrl(processed_transfer.buffer, processed_transfer.format);
+          }
         }
       }
     } catch (error) {
