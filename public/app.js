@@ -266,23 +266,47 @@ function renderTab(tabName) {
     // Sección de imágenes (solo para ciertos tipos de documentos)
     if (['quote', 'budget', 'proposal'].includes(tabName)) {
         html += `
-            <div class="images-section">
-                <h3>Imágenes / Información Adicional</h3>
-                <div class="image-upload-group">
-                    <div class="image-upload">
-                        <label>Datos del Vuelo</label>
-                        <input type="file" id="flightImage" accept="image/*" onchange="handleImageUpload(event, 'flight')">
-                        <textarea id="flightDescription" placeholder="Descripción de datos del vuelo" rows="3"></textarea>
+            <div class="form-section">
+                <h3 class="section-title">Información Adicional del Viaje</h3>
+                <div class="image-upload-grid">
+                    <div class="image-upload-card">
+                        <div class="image-upload-header">
+                            <label style="margin: 0; font-size: 14px;">Datos del Vuelo</label>
+                            <select id="flightSize" class="image-size-select" onchange="handleImageSizeChange('flight', this.value)">
+                                <option value="medium">Tamaño: Mediano</option>
+                                <option value="small">Tamaño: Pequeño</option>
+                                <option value="large">Tamaño: Grande</option>
+                            </select>
+                        </div>
+                        <input type="file" id="flightImage" accept="image/*" onchange="handleImageUpload(event, 'flight')" style="margin-bottom: 10px;">
+                        <div id="flightPreview" class="image-preview-container"></div>
+                        <textarea id="flightDescription" placeholder="Descripción adicional (opcional)" rows="2" style="margin-top: 10px;"></textarea>
                     </div>
-                    <div class="image-upload">
-                        <label>Datos del Hospedaje</label>
-                        <input type="file" id="hotelImage" accept="image/*" onchange="handleImageUpload(event, 'hotel')">
-                        <textarea id="hotelDescription" placeholder="Descripción de datos del hospedaje" rows="3"></textarea>
+                    <div class="image-upload-card">
+                        <div class="image-upload-header">
+                            <label style="margin: 0; font-size: 14px;">Datos del Hospedaje</label>
+                            <select id="hotelSize" class="image-size-select" onchange="handleImageSizeChange('hotel', this.value)">
+                                <option value="medium">Tamaño: Mediano</option>
+                                <option value="small">Tamaño: Pequeño</option>
+                                <option value="large">Tamaño: Grande</option>
+                            </select>
+                        </div>
+                        <input type="file" id="hotelImage" accept="image/*" onchange="handleImageUpload(event, 'hotel')" style="margin-bottom: 10px;">
+                        <div id="hotelPreview" class="image-preview-container"></div>
+                        <textarea id="hotelDescription" placeholder="Descripción adicional (opcional)" rows="2" style="margin-top: 10px;"></textarea>
                     </div>
-                    <div class="image-upload">
-                        <label>Info de los Traslados</label>
-                        <input type="file" id="transferImage" accept="image/*" onchange="handleImageUpload(event, 'transfer')">
-                        <textarea id="transferDescription" placeholder="Descripción de los traslados" rows="3"></textarea>
+                    <div class="image-upload-card">
+                        <div class="image-upload-header">
+                            <label style="margin: 0; font-size: 14px;">Información de Traslados</label>
+                            <select id="transferSize" class="image-size-select" onchange="handleImageSizeChange('transfer', this.value)">
+                                <option value="medium">Tamaño: Mediano</option>
+                                <option value="small">Tamaño: Pequeño</option>
+                                <option value="large">Tamaño: Grande</option>
+                            </select>
+                        </div>
+                        <input type="file" id="transferImage" accept="image/*" onchange="handleImageUpload(event, 'transfer')" style="margin-bottom: 10px;">
+                        <div id="transferPreview" class="image-preview-container"></div>
+                        <textarea id="transferDescription" placeholder="Descripción adicional (opcional)" rows="2" style="margin-top: 10px;"></textarea>
                     </div>
                 </div>
             </div>
@@ -324,6 +348,9 @@ function renderTab(tabName) {
 
     // Setup de cálculo de total
     setupTotalCalculation();
+
+    // Set default dates for date inputs
+    setDefaultDate();
 }
 
 // Pre-llenar datos de la empresa
@@ -413,7 +440,7 @@ function handleLogoUpload(event) {
     reader.readAsDataURL(file);
 }
 
-// Cargar imagen
+// Cargar imagen con vista previa
 function handleImageUpload(event, type) {
     const file = event.target.files[0];
     if (!file) return;
@@ -421,12 +448,63 @@ function handleImageUpload(event, type) {
     const reader = new FileReader();
     reader.onload = (e) => {
         if (!appState.images) appState.images = {};
+
+        // Obtener el tamaño seleccionado
+        const sizeSelect = document.getElementById(`${type}Size`);
+        const size = sizeSelect ? sizeSelect.value : 'medium';
+
         appState.images[type] = {
             data: e.target.result,
-            name: file.name
+            name: file.name,
+            size: size
         };
+
+        // Mostrar vista previa
+        const previewContainer = document.getElementById(`${type}Preview`);
+        if (previewContainer) {
+            previewContainer.innerHTML = `
+                <div class="image-preview">
+                    <img src="${e.target.result}" alt="Vista previa ${type}">
+                    <button type="button" class="remove-preview-btn" onclick="removeImage('${type}')">
+                        ✕ Eliminar
+                    </button>
+                </div>
+            `;
+        }
     };
     reader.readAsDataURL(file);
+}
+
+// Cambiar tamaño de imagen
+function handleImageSizeChange(type, size) {
+    if (appState.images && appState.images[type]) {
+        appState.images[type].size = size;
+    }
+}
+
+// Eliminar imagen
+function removeImage(type) {
+    if (appState.images && appState.images[type]) {
+        delete appState.images[type];
+    }
+
+    // Limpiar vista previa
+    const previewContainer = document.getElementById(`${type}Preview`);
+    if (previewContainer) {
+        previewContainer.innerHTML = '';
+    }
+
+    // Limpiar input de archivo
+    const fileInput = document.getElementById(`${type}Image`);
+    if (fileInput) {
+        fileInput.value = '';
+    }
+
+    // Limpiar descripción
+    const descInput = document.getElementById(`${type}Description`);
+    if (descInput) {
+        descInput.value = '';
+    }
 }
 
 // Seleccionar método de pago
@@ -610,17 +688,20 @@ async function downloadDocument(format) {
             if (appState.images.qr) {
                 payload.assets.qr = appState.images.qr.data;
             }
-            // Para imágenes de viaje - pasar solo la data URL
+            // Para imágenes de viaje - pasar data URL y tamaño
             if (appState.images.flight || appState.images.hotel || appState.images.transfer) {
                 payload.data.images = {};
                 if (appState.images.flight) {
                     payload.data.images.flight = appState.images.flight.data;
+                    payload.data.flightSize = appState.images.flight.size || 'medium';
                 }
                 if (appState.images.hotel) {
                     payload.data.images.hotel = appState.images.hotel.data;
+                    payload.data.hotelSize = appState.images.hotel.size || 'medium';
                 }
                 if (appState.images.transfer) {
                     payload.data.images.transfer = appState.images.transfer.data;
+                    payload.data.transferSize = appState.images.transfer.size || 'medium';
                 }
             }
         }
@@ -643,7 +724,23 @@ async function downloadDocument(format) {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `${appState.currentTab}_${Date.now()}.${format === 'pdf' ? 'pdf' : 'docx'}`;
+
+        // Generar nombre de archivo: TipoDocumento_Cliente_Numero
+        const docTypes = {
+            'invoice': 'Factura',
+            'receipt': 'Recibo',
+            'quote': 'Cotizacion'
+        };
+        const docType = docTypes[appState.currentTab] || 'Documento';
+
+        // Obtener nombre del cliente y número de documento
+        const clientName = (data.clientName || data.payerName || 'Cliente').replace(/[^a-zA-Z0-9]/g, '_');
+        let docNumber = data.invoiceNumber || data.receiptNumber || data.quoteNumber || Date.now();
+
+        // Sanitizar el número de documento
+        docNumber = String(docNumber).replace(/[^a-zA-Z0-9]/g, '_');
+
+        a.download = `${docType}_${clientName}_${docNumber}.${format === 'pdf' ? 'pdf' : 'docx'}`;
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);
