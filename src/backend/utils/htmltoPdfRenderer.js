@@ -10,11 +10,18 @@ class HTMLtoPDFRenderer {
    */
   static async initialize() {
     if (!browser) {
-      browser = await playwright.chromium.launch({
+      const launchOptions = {
         headless: true,
-        executablePath: '/usr/bin/chromium-browser',
         args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
-      });
+      };
+
+      // Solo usar executablePath si está configurado (para Docker/Linux)
+      // Si no está configurado, Playwright usará su bundled chromium (portable)
+      if (process.env.CHROMIUM_PATH) {
+        launchOptions.executablePath = process.env.CHROMIUM_PATH;
+      }
+
+      browser = await playwright.chromium.launch(launchOptions);
     }
     return browser;
   }

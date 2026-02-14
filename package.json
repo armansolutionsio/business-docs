@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "node src/server.js",
+    "start": "node src/backend/server.js",
+    "dev": "node src/backend/server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -21,17 +21,10 @@
   "description": "",
   "dependencies": {
     "cors": "^2.8.6",
-    "docx": "^9.5.1",
-    "pizzip": "^3.1.6",
-    "docxtemplater": "^3.29.0",
-    "docxtemplater-image-module-free": "^1.0.6",
     "dotenv": "^17.2.4",
     "express": "^5.2.1",
-    "multer": "^2.0.2",
-    "pdfkit": "^0.17.2",
-    "sharp": "^0.33.0",
-    "playwright": "^1.40.0",
     "handlebars": "^4.7.7",
-    "puppeteer": "^24.37.2"
+    "playwright": "^1.40.0",
+    "sharp": "^0.33.0"
   }
 }
