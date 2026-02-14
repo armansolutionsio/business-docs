@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const DATA_DIR = path.join(__dirname, '../../data');
+const DATA_DIR = path.join(__dirname, '../../../data');
 const CLIENTS_FILE = path.join(DATA_DIR, 'clients.json');
 
 // Ensure data directory exists

@@ -4,8 +4,6 @@ const Handlebars = require('handlebars');
 const DataValidator = require('./dataValidator');
 const AssetProcessor = require('./assetProcessor');
 const HTMLtoPDFRenderer = require('./htmltoPdfRenderer');
-const PizZip = require('pizzip');
-const Docxtemplater = require('docxtemplater');
 
 // Register Handlebars helpers
 Handlebars.registerHelper('formatCurrency', function(value) {
@@ -115,7 +113,7 @@ Handlebars.registerHelper('imageWidth', function(size) {
  */
 class DocumentRenderer {
   constructor() {
-    this.templatesDir = path.join(__dirname, '..', '..', 'templates');
+    this.templatesDir = path.join(__dirname, '..', '..', '..', 'templates');
     this.templates = {};
   }
 
@@ -125,14 +123,16 @@ class DocumentRenderer {
    * @returns {Function} Compiled Handlebars template function
    */
   loadTemplate(templateName) {
-    if (!this.templates[templateName]) {
-      const templatePath = path.join(this.templatesDir, `${templateName}.html`);
-      if (!fs.existsSync(templatePath)) {
-        throw new Error(`Template not found: ${templatePath}`);
-      }
-      const templateContent = fs.readFileSync(templatePath, 'utf-8');
-      this.templates[templateName] = Handlebars.compile(templateContent);
+    const templatePath = path.join(this.templatesDir, `${templateName}.html`);
+    if (!fs.existsSync(templatePath)) {
+      throw new Error(`Template not found: ${templatePath}`);
     }
+
+    // SIEMPRE recargar template en desarrollo (no cachear)
+    const templateContent = fs.readFileSync(templatePath, 'utf-8');
+    this.templates[templateName] = Handlebars.compile(templateContent);
+    console.log(`[DocumentRenderer] Template loaded: ${templateName} (${templatePath})`);
+
     return this.templates[templateName];
   }
 
@@ -211,28 +211,44 @@ class DocumentRenderer {
       // Process travel images (flight, hotel, transfer)
       if (assets.images && typeof assets.images === 'object') {
         processed.images = {};
-        
+        console.log('[AssetProcessor] Processing travel images:', Object.keys(assets.images));
+
         if (assets.images.flight) {
-          const flightBuffer = toBuffer(assets.images.flight);
-          if (flightBuffer) {
-            const processed_flight = await AssetProcessor.processPhoto(flightBuffer);
-            processed.images.flight = AssetProcessor.bufferToDataUrl(processed_flight.buffer, processed_flight.format);
+          try {
+            const flightBuffer = toBuffer(assets.images.flight);
+            if (flightBuffer) {
+              const processed_flight = await AssetProcessor.processPhoto(flightBuffer);
+              processed.images.flight = AssetProcessor.bufferToDataUrl(processed_flight.buffer, processed_flight.format);
+              console.log('[AssetProcessor] Flight image processed successfully');
+            }
+          } catch (err) {
+            console.error('[AssetProcessor] Error processing flight image:', err.message);
           }
         }
-        
+
         if (assets.images.hotel) {
-          const hotelBuffer = toBuffer(assets.images.hotel);
-          if (hotelBuffer) {
-            const processed_hotel = await AssetProcessor.processPhoto(hotelBuffer);
-            processed.images.hotel = AssetProcessor.bufferToDataUrl(processed_hotel.buffer, processed_hotel.format);
+          try {
+            const hotelBuffer = toBuffer(assets.images.hotel);
+            if (hotelBuffer) {
+              const processed_hotel = await AssetProcessor.processPhoto(hotelBuffer);
+              processed.images.hotel = AssetProcessor.bufferToDataUrl(processed_hotel.buffer, processed_hotel.format);
+              console.log('[AssetProcessor] Hotel image processed successfully');
+            }
+          } catch (err) {
+            console.error('[AssetProcessor] Error processing hotel image:', err.message);
           }
         }
-        
+
         if (assets.images.transfer) {
-          const transferBuffer = toBuffer(assets.images.transfer);
-          if (transferBuffer) {
-            const processed_transfer = await AssetProcessor.processPhoto(transferBuffer);
-            processed.images.transfer = AssetProcessor.bufferToDataUrl(processed_transfer.buffer, processed_transfer.format);
+          try {
+            const transferBuffer = toBuffer(assets.images.transfer);
+            if (transferBuffer) {
+              const processed_transfer = await AssetProcessor.processPhoto(transferBuffer);
+              processed.images.transfer = AssetProcessor.bufferToDataUrl(processed_transfer.buffer, processed_transfer.format);
+              console.log('[AssetProcessor] Transfer image processed successfully');
+            }
+          } catch (err) {
+            console.error('[AssetProcessor] Error processing transfer image:', err.message);
           }
         }
       }
