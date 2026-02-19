@@ -2,7 +2,237 @@
 const appState = {
     currentTab: 'quote',
     items: [],
-    formData: {}
+    formData: {},
+    categoryDetails: {},
+    images: null
+};
+
+// ===== BASE DE DATOS DE AEROPUERTOS (IATA) =====
+const AIRPORTS_DB = [
+    // Argentina
+    { code: "EZE", name: "Ministro Pistarini (Ezeiza)", city: "Buenos Aires", country: "Argentina" },
+    { code: "AEP", name: "Aeroparque Jorge Newbery", city: "Buenos Aires", country: "Argentina" },
+    { code: "COR", name: "Ingeniero Ambrosio Taravella", city: "Córdoba", country: "Argentina" },
+    { code: "MDZ", name: "El Plumerillo", city: "Mendoza", country: "Argentina" },
+    { code: "BRC", name: "Teniente Luis Candelaria", city: "Bariloche", country: "Argentina" },
+    { code: "IGR", name: "Cataratas del Iguazú", city: "Puerto Iguazú", country: "Argentina" },
+    { code: "SLA", name: "Martín Miguel de Güemes", city: "Salta", country: "Argentina" },
+    { code: "TUC", name: "Teniente Benjamín Matienzo", city: "Tucumán", country: "Argentina" },
+    { code: "NQN", name: "Presidente Perón", city: "Neuquén", country: "Argentina" },
+    { code: "USH", name: "Malvinas Argentinas", city: "Ushuaia", country: "Argentina" },
+    { code: "ROS", name: "Islas Malvinas", city: "Rosario", country: "Argentina" },
+    { code: "FTE", name: "Comandante Armando Tola", city: "El Calafate", country: "Argentina" },
+    { code: "REL", name: "Almirante Marcos A. Zar", city: "Trelew", country: "Argentina" },
+    { code: "CRD", name: "General Enrique Mosconi", city: "Comodoro Rivadavia", country: "Argentina" },
+    { code: "PSS", name: "Libertador Gral. San Martín", city: "Posadas", country: "Argentina" },
+    { code: "RGA", name: "Río Grande", city: "Río Grande", country: "Argentina" },
+    { code: "JUJ", name: "Gobernador Horacio Guzmán", city: "San Salvador de Jujuy", country: "Argentina" },
+    { code: "CNQ", name: "Doctor Fernando Piragine Niveyro", city: "Corrientes", country: "Argentina" },
+    { code: "RES", name: "Resistencia", city: "Resistencia", country: "Argentina" },
+    { code: "SFN", name: "Sauce Viejo", city: "Santa Fe", country: "Argentina" },
+    { code: "MDQ", name: "Astor Piazzolla", city: "Mar del Plata", country: "Argentina" },
+    { code: "BHI", name: "Comandante Espora", city: "Bahía Blanca", country: "Argentina" },
+    { code: "CTC", name: "Coronel Felipe Varela", city: "Catamarca", country: "Argentina" },
+    { code: "IRJ", name: "Capitán V. Almandos Almonacid", city: "La Rioja", country: "Argentina" },
+    { code: "UAQ", name: "Domingo Faustino Sarmiento", city: "San Juan", country: "Argentina" },
+    { code: "LUQ", name: "Brigadier Mayor C. R. Ojeda", city: "San Luis", country: "Argentina" },
+    { code: "SDE", name: "Vicecomodoro Á. de la Paz Aragonés", city: "Santiago del Estero", country: "Argentina" },
+    { code: "FMA", name: "El Pucú", city: "Formosa", country: "Argentina" },
+    { code: "PMY", name: "El Tehuelche", city: "Puerto Madryn", country: "Argentina" },
+    { code: "VDM", name: "Gobernador Edgardo Castello", city: "Viedma", country: "Argentina" },
+    { code: "RSA", name: "Santa Rosa", city: "Santa Rosa", country: "Argentina" },
+    { code: "RGL", name: "Piloto Civil Norberto Fernández", city: "Río Gallegos", country: "Argentina" },
+    { code: "EPA", name: "El Palomar", city: "El Palomar", country: "Argentina" },
+    // Sudamérica
+    { code: "GRU", name: "Guarulhos", city: "São Paulo", country: "Brasil" },
+    { code: "GIG", name: "Galeão", city: "Río de Janeiro", country: "Brasil" },
+    { code: "BSB", name: "Presidente Juscelino Kubitschek", city: "Brasilia", country: "Brasil" },
+    { code: "SSA", name: "Deputado Luís Eduardo Magalhães", city: "Salvador de Bahía", country: "Brasil" },
+    { code: "FLN", name: "Hercílio Luz", city: "Florianópolis", country: "Brasil" },
+    { code: "POA", name: "Salgado Filho", city: "Porto Alegre", country: "Brasil" },
+    { code: "SCL", name: "Arturo Merino Benítez", city: "Santiago", country: "Chile" },
+    { code: "BOG", name: "El Dorado", city: "Bogotá", country: "Colombia" },
+    { code: "MDE", name: "José María Córdova", city: "Medellín", country: "Colombia" },
+    { code: "CTG", name: "Rafael Núñez", city: "Cartagena", country: "Colombia" },
+    { code: "LIM", name: "Jorge Chávez", city: "Lima", country: "Perú" },
+    { code: "CUZ", name: "Alejandro Velasco Astete", city: "Cusco", country: "Perú" },
+    { code: "MVD", name: "Carrasco", city: "Montevideo", country: "Uruguay" },
+    { code: "ASU", name: "Silvio Pettirossi", city: "Asunción", country: "Paraguay" },
+    { code: "VVI", name: "Viru Viru", city: "Santa Cruz", country: "Bolivia" },
+    { code: "LPB", name: "El Alto", city: "La Paz", country: "Bolivia" },
+    { code: "UIO", name: "Mariscal Sucre", city: "Quito", country: "Ecuador" },
+    { code: "GYE", name: "José Joaquín de Olmedo", city: "Guayaquil", country: "Ecuador" },
+    { code: "CCS", name: "Simón Bolívar", city: "Caracas", country: "Venezuela" },
+    // Centroamérica y Caribe
+    { code: "PTY", name: "Tocumen", city: "Ciudad de Panamá", country: "Panamá" },
+    { code: "SJO", name: "Juan Santamaría", city: "San José", country: "Costa Rica" },
+    { code: "CUN", name: "Cancún", city: "Cancún", country: "México" },
+    { code: "MEX", name: "Benito Juárez", city: "Ciudad de México", country: "México" },
+    { code: "HAV", name: "José Martí", city: "La Habana", country: "Cuba" },
+    { code: "PUJ", name: "Punta Cana", city: "Punta Cana", country: "Rep. Dominicana" },
+    { code: "SDQ", name: "Las Américas", city: "Santo Domingo", country: "Rep. Dominicana" },
+    { code: "SXM", name: "Princess Juliana", city: "Sint Maarten", country: "Sint Maarten" },
+    { code: "MBJ", name: "Sangster", city: "Montego Bay", country: "Jamaica" },
+    // Norteamérica
+    { code: "JFK", name: "John F. Kennedy", city: "New York", country: "USA" },
+    { code: "EWR", name: "Newark Liberty", city: "Newark/New York", country: "USA" },
+    { code: "MIA", name: "Miami International", city: "Miami", country: "USA" },
+    { code: "LAX", name: "Los Angeles International", city: "Los Angeles", country: "USA" },
+    { code: "ORD", name: "O'Hare", city: "Chicago", country: "USA" },
+    { code: "ATL", name: "Hartsfield-Jackson", city: "Atlanta", country: "USA" },
+    { code: "DFW", name: "Dallas/Fort Worth", city: "Dallas", country: "USA" },
+    { code: "SFO", name: "San Francisco International", city: "San Francisco", country: "USA" },
+    { code: "IAH", name: "George Bush Intercontinental", city: "Houston", country: "USA" },
+    { code: "YYZ", name: "Toronto Pearson", city: "Toronto", country: "Canadá" },
+    // Europa
+    { code: "MAD", name: "Adolfo Suárez Madrid-Barajas", city: "Madrid", country: "España" },
+    { code: "BCN", name: "El Prat", city: "Barcelona", country: "España" },
+    { code: "FCO", name: "Leonardo da Vinci (Fiumicino)", city: "Roma", country: "Italia" },
+    { code: "MXP", name: "Malpensa", city: "Milán", country: "Italia" },
+    { code: "CDG", name: "Charles de Gaulle", city: "París", country: "Francia" },
+    { code: "LHR", name: "Heathrow", city: "Londres", country: "Reino Unido" },
+    { code: "LGW", name: "Gatwick", city: "Londres", country: "Reino Unido" },
+    { code: "FRA", name: "Frankfurt Airport", city: "Frankfurt", country: "Alemania" },
+    { code: "MUC", name: "Franz Josef Strauss", city: "Múnich", country: "Alemania" },
+    { code: "AMS", name: "Schiphol", city: "Ámsterdam", country: "Países Bajos" },
+    { code: "IST", name: "Istanbul Airport", city: "Estambul", country: "Turquía" },
+    { code: "LIS", name: "Humberto Delgado", city: "Lisboa", country: "Portugal" },
+    { code: "ZRH", name: "Zurich Airport", city: "Zúrich", country: "Suiza" },
+    { code: "VIE", name: "Vienna International", city: "Viena", country: "Austria" },
+    { code: "ATH", name: "Eleftherios Venizelos", city: "Atenas", country: "Grecia" },
+    // Medio Oriente y Asia
+    { code: "DXB", name: "Dubai International", city: "Dubái", country: "Emiratos Árabes" },
+    { code: "DOH", name: "Hamad International", city: "Doha", country: "Qatar" },
+    { code: "TLV", name: "Ben Gurion", city: "Tel Aviv", country: "Israel" },
+    { code: "NRT", name: "Narita", city: "Tokio", country: "Japón" },
+    { code: "HND", name: "Haneda", city: "Tokio", country: "Japón" },
+    { code: "ICN", name: "Incheon", city: "Seúl", country: "Corea del Sur" },
+    { code: "BKK", name: "Suvarnabhumi", city: "Bangkok", country: "Tailandia" },
+    { code: "SIN", name: "Changi", city: "Singapur", country: "Singapur" },
+    // Oceanía y África
+    { code: "SYD", name: "Kingsford Smith", city: "Sídney", country: "Australia" },
+    { code: "AKL", name: "Auckland Airport", city: "Auckland", country: "Nueva Zelanda" },
+    { code: "JNB", name: "OR Tambo", city: "Johannesburgo", country: "Sudáfrica" },
+    { code: "CAI", name: "Cairo International", city: "El Cairo", country: "Egipto" },
+];
+
+// ===== CONFIGURACIÓN DE SECCIONES POR CATEGORÍA =====
+const CATEGORY_DETAIL_CONFIG = {
+    'Aéreos': {
+        slug: 'aereos',
+        title: 'Información del Vuelo',
+        icon: '✈️',
+        subsections: [
+            {
+                title: 'Vuelo de Ida',
+                fields: [
+                    { name: 'airline', label: 'Aerolínea', type: 'text', placeholder: 'Ej: Aerolíneas Argentinas' },
+                    { name: 'flightNumberOut', label: 'Nro. de Vuelo', type: 'text', placeholder: 'Ej: AR1234' },
+                    { name: 'departureAirport', label: 'Aeropuerto de Salida', type: 'airport', placeholder: 'Buscar por código o ciudad...' },
+                    { name: 'arrivalAirport', label: 'Aeropuerto de Llegada', type: 'airport', placeholder: 'Buscar por código o ciudad...' },
+                    { name: 'departureDate', label: 'Fecha de Salida', type: 'date' },
+                    { name: 'departureTime', label: 'Hora de Salida', type: 'time' },
+                    { name: 'arrivalDate', label: 'Fecha de Llegada', type: 'date' },
+                    { name: 'arrivalTime', label: 'Hora de Llegada', type: 'time' },
+                ]
+            },
+            {
+                title: 'Vuelo de Regreso',
+                fields: [
+                    { name: 'flightNumberReturn', label: 'Nro. de Vuelo', type: 'text', placeholder: 'Ej: AR4321' },
+                    { name: 'returnDepartureAirport', label: 'Aeropuerto de Salida', type: 'airport', placeholder: 'Buscar por código o ciudad...' },
+                    { name: 'returnArrivalAirport', label: 'Aeropuerto de Llegada', type: 'airport', placeholder: 'Buscar por código o ciudad...' },
+                    { name: 'returnDepartureDate', label: 'Fecha de Salida', type: 'date' },
+                    { name: 'returnDepartureTime', label: 'Hora de Salida', type: 'time' },
+                    { name: 'returnArrivalDate', label: 'Fecha de Llegada', type: 'date' },
+                    { name: 'returnArrivalTime', label: 'Hora de Llegada', type: 'time' },
+                ]
+            }
+        ]
+    },
+    'Hoteles': {
+        slug: 'hoteles',
+        title: 'Información del Hospedaje',
+        icon: '🏨',
+        fields: [
+            { name: 'hotelName', label: 'Nombre del Hotel', type: 'text', placeholder: 'Ej: Hotel Hilton Buenos Aires' },
+            { name: 'hotelLocation', label: 'Ubicación / Ciudad', type: 'text', placeholder: 'Ej: Puerto Madero, Buenos Aires' },
+            { name: 'checkInDate', label: 'Fecha de Check-in', type: 'date' },
+            { name: 'checkOutDate', label: 'Fecha de Check-out', type: 'date' },
+            { name: 'numberOfNights', label: 'Cantidad de Noches', type: 'number', readonly: true, computed: 'nights' },
+            { name: 'roomType', label: 'Tipo de Habitación', type: 'select', options: ['Standard', 'Superior', 'Suite', 'Deluxe', 'Junior Suite', 'Family Room'] },
+            { name: 'mealPlan', label: 'Régimen', type: 'select', options: ['Solo alojamiento', 'Desayuno incluido', 'Media pensión', 'Pensión completa', 'All Inclusive'] },
+        ]
+    },
+    'Packs Turísticos': {
+        slug: 'packs',
+        title: 'Detalle del Pack Turístico',
+        icon: '🎒',
+        fields: [
+            { name: 'packName', label: 'Nombre del Pack', type: 'text', placeholder: 'Ej: Europa Clásica' },
+            { name: 'destinations', label: 'Destinos Incluidos', type: 'textarea', placeholder: 'Ej: Madrid, Barcelona, París, Roma...' },
+            { name: 'duration', label: 'Duración', type: 'text', placeholder: 'Ej: 7 noches / 8 días' },
+            { name: 'included', label: '¿Qué Incluye?', type: 'textarea', placeholder: 'Detallar servicios incluidos en el pack...' },
+        ]
+    },
+    'VIP/Premium': {
+        slug: 'vip',
+        title: 'Servicios VIP / Premium',
+        icon: '⭐',
+        fields: [
+            { name: 'serviceDescription', label: 'Descripción del Servicio', type: 'textarea', placeholder: 'Detallar el servicio VIP/Premium...' },
+            { name: 'vipLocation', label: 'Ubicación / Lugar', type: 'text', placeholder: 'Ej: Lounge VIP Ezeiza' },
+            { name: 'vipDate', label: 'Fecha', type: 'date' },
+            { name: 'vipTime', label: 'Hora', type: 'time' },
+            { name: 'specialNotes', label: 'Notas Especiales', type: 'textarea', placeholder: 'Requerimientos o detalles adicionales...' },
+        ]
+    },
+    'Traslados': {
+        slug: 'traslados',
+        title: 'Información de Traslados',
+        icon: '🚐',
+        fields: [
+            { name: 'pickupPoint', label: 'Punto de Recogida', type: 'airport', placeholder: 'Buscar aeropuerto o escribir dirección...' },
+            { name: 'dropoffPoint', label: 'Punto de Destino', type: 'text', placeholder: 'Ej: Hotel Hilton Puerto Madero' },
+            { name: 'vehicleType', label: 'Tipo de Vehículo', type: 'select', options: ['Sedan', 'Van', 'Minibus', 'Bus', 'SUV', 'Limusina'] },
+            { name: 'transferDate', label: 'Fecha', type: 'date' },
+            { name: 'transferTime', label: 'Hora', type: 'time' },
+            { name: 'passengerCount', label: 'Cantidad de Pasajeros', type: 'number', placeholder: '1' },
+        ]
+    },
+    'Tours': {
+        slug: 'tours',
+        title: 'Detalle del Tour',
+        icon: '🗺️',
+        fields: [
+            { name: 'tourName', label: 'Nombre del Tour', type: 'text', placeholder: 'Ej: City Tour Buenos Aires' },
+            { name: 'tourLocation', label: 'Ubicación / Destino', type: 'text', placeholder: 'Ej: Buenos Aires, Argentina' },
+            { name: 'tourDate', label: 'Fecha', type: 'date' },
+            { name: 'tourDuration', label: 'Duración', type: 'text', placeholder: 'Ej: 4 horas, medio día, día completo' },
+            { name: 'guideIncluded', label: 'Incluye Guía', type: 'select', options: ['Sí', 'No'] },
+            { name: 'tourIncludes', label: '¿Qué Incluye?', type: 'textarea', placeholder: 'Detallar actividades y servicios incluidos...' },
+        ]
+    },
+    'Seguros': {
+        slug: 'seguros',
+        title: 'Detalle del Seguro de Viaje',
+        icon: '🛡️',
+        fields: [
+            { name: 'insuranceCompany', label: 'Compañía Aseguradora', type: 'text', placeholder: 'Ej: Assist Card, Universal Assistance' },
+            { name: 'coverageType', label: 'Tipo de Cobertura', type: 'select', options: ['Básico', 'Standard', 'Premium', 'Cobertura Total'] },
+            { name: 'insuranceStartDate', label: 'Fecha de Inicio', type: 'date' },
+            { name: 'insuranceEndDate', label: 'Fecha de Fin', type: 'date' },
+            { name: 'coverageDetails', label: 'Detalle de Cobertura', type: 'textarea', placeholder: 'Detallar coberturas incluidas...' },
+        ]
+    },
+    'Otros Servicios': {
+        slug: 'otros',
+        title: 'Información Adicional',
+        icon: '📋',
+        fields: [
+            { name: 'otherNotes', label: 'Notas / Detalles', type: 'textarea', placeholder: 'Describir el servicio adicional...' },
+        ]
+    }
 };
 
 // Configuración de la Empresa
@@ -266,54 +496,9 @@ function renderTab(tabName) {
         `;
     }
 
-    // Sección de imágenes (solo para ciertos tipos de documentos)
+    // Contenedor dinámico para secciones de detalle por categoría
     if (['quote', 'budget', 'proposal'].includes(tabName)) {
-        html += `
-            <div class="form-section">
-                <h3 class="section-title">Información Adicional del Viaje</h3>
-                <div class="image-upload-grid">
-                    <div class="image-upload-card">
-                        <div class="image-upload-header">
-                            <label style="margin: 0; font-size: 14px;">Datos del Vuelo</label>
-                            <select id="flightSize" class="image-size-select" onchange="handleImageSizeChange('flight', this.value)">
-                                <option value="medium">Tamaño: Mediano</option>
-                                <option value="small">Tamaño: Pequeño</option>
-                                <option value="large">Tamaño: Grande</option>
-                            </select>
-                        </div>
-                        <input type="file" id="flightImage" accept="image/*" onchange="handleImageUpload(event, 'flight')" style="margin-bottom: 10px;">
-                        <div id="flightPreview" class="image-preview-container"></div>
-                        <textarea id="flightDescription" placeholder="Descripción adicional (opcional)" rows="2" style="margin-top: 10px;"></textarea>
-                    </div>
-                    <div class="image-upload-card">
-                        <div class="image-upload-header">
-                            <label style="margin: 0; font-size: 14px;">Datos del Hospedaje</label>
-                            <select id="hotelSize" class="image-size-select" onchange="handleImageSizeChange('hotel', this.value)">
-                                <option value="medium">Tamaño: Mediano</option>
-                                <option value="small">Tamaño: Pequeño</option>
-                                <option value="large">Tamaño: Grande</option>
-                            </select>
-                        </div>
-                        <input type="file" id="hotelImage" accept="image/*" onchange="handleImageUpload(event, 'hotel')" style="margin-bottom: 10px;">
-                        <div id="hotelPreview" class="image-preview-container"></div>
-                        <textarea id="hotelDescription" placeholder="Descripción adicional (opcional)" rows="2" style="margin-top: 10px;"></textarea>
-                    </div>
-                    <div class="image-upload-card">
-                        <div class="image-upload-header">
-                            <label style="margin: 0; font-size: 14px;">Información de Traslados</label>
-                            <select id="transferSize" class="image-size-select" onchange="handleImageSizeChange('transfer', this.value)">
-                                <option value="medium">Tamaño: Mediano</option>
-                                <option value="small">Tamaño: Pequeño</option>
-                                <option value="large">Tamaño: Grande</option>
-                            </select>
-                        </div>
-                        <input type="file" id="transferImage" accept="image/*" onchange="handleImageUpload(event, 'transfer')" style="margin-bottom: 10px;">
-                        <div id="transferPreview" class="image-preview-container"></div>
-                        <textarea id="transferDescription" placeholder="Descripción adicional (opcional)" rows="2" style="margin-top: 10px;"></textarea>
-                    </div>
-                </div>
-            </div>
-        `;
+        html += `<div id="categoryDetailSections"></div>`;
     }
 
     // Sección de total
@@ -354,6 +539,9 @@ function renderTab(tabName) {
 
     // Set default dates for date inputs
     setDefaultDate();
+
+    // Renderizar secciones de detalle según items existentes
+    updateCategoryDetailSections();
 }
 
 // Pre-llenar datos de la empresa
@@ -400,7 +588,7 @@ function addItem() {
 
     // Usar categoría seleccionada o descripción personalizada
     let description = desc.value || category.value;
-    
+
     if (!description || !price.value) {
         showMessage('Por favor completa descripción y precio', 'error');
         return;
@@ -409,6 +597,7 @@ function addItem() {
     const item = {
         id: Date.now(),
         description: description,
+        category: category.value || null,
         quantity: parseFloat(quantity.value) || 1,
         price: parseFloat(price.value)
     };
@@ -420,6 +609,7 @@ function addItem() {
     quantity.value = '';
     price.value = '';
     updateTotal();
+    updateCategoryDetailSections();
     desc.focus();
 }
 
@@ -565,6 +755,7 @@ function removeItem(id) {
     appState.items = appState.items.filter(item => item.id !== id);
     renderItems();
     updateTotal();
+    updateCategoryDetailSections();
 }
 
 // Actualizar total
@@ -634,6 +825,337 @@ function showMessage(text, type) {
     }, 5000);
 }
 
+// ===== SECCIONES DINÁMICAS POR CATEGORÍA =====
+
+// Obtener categorías activas basado en items agregados
+function getActiveCategories() {
+    const categories = new Set();
+    appState.items.forEach(item => {
+        if (item.category && CATEGORY_DETAIL_CONFIG[item.category]) {
+            categories.add(item.category);
+        }
+    });
+    return categories;
+}
+
+// Orden de las categorías (mismo orden que el select)
+const CATEGORY_ORDER = ['Aéreos', 'Hoteles', 'Packs Turísticos', 'VIP/Premium', 'Traslados', 'Tours', 'Seguros', 'Otros Servicios'];
+
+// Actualizar secciones visibles según categorías activas
+function updateCategoryDetailSections() {
+    const container = document.getElementById('categoryDetailSections');
+    if (!container) return;
+
+    const activeCategories = getActiveCategories();
+
+    // Mostrar/ocultar secciones
+    CATEGORY_ORDER.forEach(categoryName => {
+        const config = CATEGORY_DETAIL_CONFIG[categoryName];
+        if (!config) return;
+        const slug = config.slug;
+        const existing = document.getElementById(`detail-${slug}`);
+
+        if (activeCategories.has(categoryName)) {
+            if (!existing) {
+                // Guardar estado actual de otras secciones antes de agregar
+                saveAllCategoryDetails();
+                const sectionHtml = renderCategorySection(categoryName);
+                const wrapper = document.createElement('div');
+                wrapper.innerHTML = sectionHtml;
+                const sectionEl = wrapper.firstElementChild;
+                sectionEl.classList.add('category-section-entering');
+                // Insertar en orden correcto
+                let inserted = false;
+                const currentSections = container.querySelectorAll('.category-detail-section');
+                for (const sec of currentSections) {
+                    const secCategory = sec.dataset.category;
+                    if (CATEGORY_ORDER.indexOf(secCategory) > CATEGORY_ORDER.indexOf(categoryName)) {
+                        container.insertBefore(sectionEl, sec);
+                        inserted = true;
+                        break;
+                    }
+                }
+                if (!inserted) container.appendChild(sectionEl);
+                // Setup de autocomplete y listeners
+                setupCategorySectionListeners(slug, config);
+                // Animación
+                requestAnimationFrame(() => {
+                    sectionEl.classList.remove('category-section-entering');
+                });
+            }
+        } else {
+            if (existing) {
+                // Guardar datos antes de remover
+                saveCategoryDetailToState(slug, config);
+                existing.classList.add('category-section-exiting');
+                setTimeout(() => {
+                    if (existing.parentNode) existing.parentNode.removeChild(existing);
+                }, 300);
+            }
+        }
+    });
+}
+
+// Renderizar HTML de una sección de detalle
+function renderCategorySection(categoryName) {
+    const config = CATEGORY_DETAIL_CONFIG[categoryName];
+    const slug = config.slug;
+    const savedData = appState.categoryDetails[slug] || {};
+
+    let html = `<div class="form-section category-detail-section" id="detail-${slug}" data-category="${categoryName}">`;
+    html += `<h3 class="section-title"><span class="category-icon">${config.icon}</span> ${config.title}</h3>`;
+
+    // Si tiene subsecciones (como Aéreos con ida/vuelta)
+    if (config.subsections) {
+        config.subsections.forEach(sub => {
+            html += `<div class="flight-subsection">`;
+            html += `<div class="flight-subsection-title">${sub.title}</div>`;
+            html += `<div class="form-grid">`;
+            sub.fields.forEach(field => {
+                html += renderDetailField(field, slug, savedData);
+            });
+            html += `</div></div>`;
+        });
+    }
+
+    // Campos normales
+    if (config.fields) {
+        html += `<div class="form-grid">`;
+        config.fields.forEach(field => {
+            html += renderDetailField(field, slug, savedData);
+        });
+        html += `</div>`;
+    }
+
+    // Imagen upload + descripción (siempre presente)
+    const hasImage = appState.images && appState.images[slug];
+    html += `
+        <div class="image-upload-card" style="margin-top: 16px;">
+            <div class="image-upload-header">
+                <label style="margin: 0; font-size: 14px;">Imagen / Captura</label>
+                <select id="${slug}Size" class="image-size-select" onchange="handleImageSizeChange('${slug}', this.value)">
+                    <option value="medium">Tamaño: Mediano</option>
+                    <option value="small">Tamaño: Pequeño</option>
+                    <option value="large">Tamaño: Grande</option>
+                </select>
+            </div>
+            <input type="file" id="${slug}Image" accept="image/*" onchange="handleImageUpload(event, '${slug}')" style="margin-bottom: 10px;">
+            <div id="${slug}Preview" class="image-preview-container">${hasImage ? `<div class="image-preview"><img src="${appState.images[slug].data}" alt="Vista previa"><button type="button" class="remove-preview-btn" onclick="removeImage('${slug}')">✕ Eliminar</button></div>` : ''}</div>
+            <textarea id="detail-${slug}-description" placeholder="Descripción adicional (opcional)" rows="2" style="margin-top: 10px;">${savedData.description || ''}</textarea>
+        </div>
+    `;
+
+    html += `</div>`;
+    return html;
+}
+
+// Renderizar un campo individual
+function renderDetailField(field, slug, savedData) {
+    const fieldId = `detail-${slug}-${field.name}`;
+    const value = savedData[field.name] || '';
+    const readonlyAttr = field.readonly ? 'readonly' : '';
+    const readonlyClass = field.readonly ? 'auto-calculated' : '';
+    let html = '';
+
+    if (field.type === 'textarea') {
+        html = `
+            <div class="form-group full-width">
+                <label>${field.label}</label>
+                <textarea id="${fieldId}" placeholder="${field.placeholder || ''}" rows="3">${value}</textarea>
+            </div>`;
+    } else if (field.type === 'select') {
+        html = `
+            <div class="form-group">
+                <label>${field.label}</label>
+                <select id="${fieldId}">
+                    <option value="">Seleccionar...</option>
+                    ${field.options.map(opt => `<option value="${opt}" ${value === opt ? 'selected' : ''}>${opt}</option>`).join('')}
+                </select>
+            </div>`;
+    } else if (field.type === 'airport') {
+        html = `
+            <div class="form-group">
+                <label>${field.label}</label>
+                <div class="airport-autocomplete-wrapper">
+                    <input type="text" id="${fieldId}" class="airport-input" placeholder="${field.placeholder || 'Buscar aeropuerto...'}" value="${escapeHtml(value)}" autocomplete="off">
+                    <div class="airport-autocomplete-dropdown" id="${fieldId}-dropdown"></div>
+                </div>
+            </div>`;
+    } else {
+        html = `
+            <div class="form-group">
+                <label>${field.label}</label>
+                <input type="${field.type}" id="${fieldId}" placeholder="${field.placeholder || ''}" value="${escapeHtml(value)}" ${readonlyAttr} class="${readonlyClass}">
+            </div>`;
+    }
+    return html;
+}
+
+// Configurar listeners para una sección recién creada
+function setupCategorySectionListeners(slug, config) {
+    // Autocomplete para campos de aeropuerto
+    const allFields = [];
+    if (config.subsections) {
+        config.subsections.forEach(sub => allFields.push(...sub.fields));
+    }
+    if (config.fields) {
+        allFields.push(...config.fields);
+    }
+
+    allFields.forEach(field => {
+        if (field.type === 'airport') {
+            const input = document.getElementById(`detail-${slug}-${field.name}`);
+            if (input) setupAirportAutocomplete(input);
+        }
+    });
+
+    // Auto-cálculo de noches para hoteles
+    if (slug === 'hoteles') {
+        const checkIn = document.getElementById('detail-hoteles-checkInDate');
+        const checkOut = document.getElementById('detail-hoteles-checkOutDate');
+        const nights = document.getElementById('detail-hoteles-numberOfNights');
+        if (checkIn && checkOut && nights) {
+            const calcNights = () => {
+                if (checkIn.value && checkOut.value) {
+                    const d1 = new Date(checkIn.value);
+                    const d2 = new Date(checkOut.value);
+                    const diff = Math.round((d2 - d1) / (1000 * 60 * 60 * 24));
+                    nights.value = diff > 0 ? diff : '';
+                } else {
+                    nights.value = '';
+                }
+            };
+            checkIn.addEventListener('change', calcNights);
+            checkOut.addEventListener('change', calcNights);
+            calcNights();
+        }
+    }
+
+    // Restaurar tamaño de imagen si había uno guardado
+    if (appState.images && appState.images[slug]) {
+        const sizeSelect = document.getElementById(`${slug}Size`);
+        if (sizeSelect && appState.images[slug].size) {
+            sizeSelect.value = appState.images[slug].size;
+        }
+    }
+}
+
+// Autocomplete de aeropuertos
+function setupAirportAutocomplete(input) {
+    const dropdownId = input.id + '-dropdown';
+    const dropdown = document.getElementById(dropdownId);
+    if (!dropdown) return;
+
+    let debounceTimer = null;
+    let highlightedIndex = -1;
+
+    input.addEventListener('input', () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            const query = input.value.trim().toLowerCase();
+            if (query.length < 2) {
+                dropdown.classList.remove('visible');
+                return;
+            }
+            const results = AIRPORTS_DB.filter(a =>
+                a.code.toLowerCase().includes(query) ||
+                a.city.toLowerCase().includes(query) ||
+                a.name.toLowerCase().includes(query) ||
+                a.country.toLowerCase().includes(query)
+            ).slice(0, 8);
+
+            if (results.length === 0) {
+                dropdown.classList.remove('visible');
+                return;
+            }
+
+            highlightedIndex = -1;
+            dropdown.innerHTML = results.map((a, i) => `
+                <div class="airport-option" data-index="${i}" data-value="${a.code} - ${a.city} (${a.name})">
+                    <span class="airport-code">${a.code}</span>
+                    <span class="airport-city">${a.city}</span>
+                    <span class="airport-country">· ${a.country}</span>
+                    <span class="airport-name">${a.name}</span>
+                </div>
+            `).join('');
+
+            dropdown.querySelectorAll('.airport-option').forEach(opt => {
+                opt.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    input.value = opt.dataset.value;
+                    dropdown.classList.remove('visible');
+                    input.dispatchEvent(new Event('change'));
+                });
+            });
+
+            dropdown.classList.add('visible');
+        }, 150);
+    });
+
+    input.addEventListener('keydown', (e) => {
+        const options = dropdown.querySelectorAll('.airport-option');
+        if (!dropdown.classList.contains('visible') || options.length === 0) return;
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            highlightedIndex = Math.min(highlightedIndex + 1, options.length - 1);
+            options.forEach((o, i) => o.classList.toggle('highlighted', i === highlightedIndex));
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            highlightedIndex = Math.max(highlightedIndex - 1, 0);
+            options.forEach((o, i) => o.classList.toggle('highlighted', i === highlightedIndex));
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (highlightedIndex >= 0 && options[highlightedIndex]) {
+                input.value = options[highlightedIndex].dataset.value;
+                dropdown.classList.remove('visible');
+                input.dispatchEvent(new Event('change'));
+            }
+        } else if (e.key === 'Escape') {
+            dropdown.classList.remove('visible');
+        }
+    });
+
+    input.addEventListener('blur', () => {
+        setTimeout(() => dropdown.classList.remove('visible'), 200);
+    });
+}
+
+// Guardar datos de una sección en el estado
+function saveCategoryDetailToState(slug, config) {
+    if (!appState.categoryDetails[slug]) appState.categoryDetails[slug] = {};
+    const data = appState.categoryDetails[slug];
+
+    const allFields = [];
+    if (config.subsections) {
+        config.subsections.forEach(sub => allFields.push(...sub.fields));
+    }
+    if (config.fields) {
+        allFields.push(...config.fields);
+    }
+
+    allFields.forEach(field => {
+        const el = document.getElementById(`detail-${slug}-${field.name}`);
+        if (el) data[field.name] = el.value;
+    });
+
+    // Descripción
+    const descEl = document.getElementById(`detail-${slug}-description`);
+    if (descEl) data.description = descEl.value;
+}
+
+// Guardar todas las secciones activas
+function saveAllCategoryDetails() {
+    const activeCategories = getActiveCategories();
+    activeCategories.forEach(categoryName => {
+        const config = CATEGORY_DETAIL_CONFIG[categoryName];
+        const slug = config.slug;
+        if (document.getElementById(`detail-${slug}`)) {
+            saveCategoryDetailToState(slug, config);
+        }
+    });
+}
+
 // Recolectar datos del formulario
 function collectFormData() {
     const form = document.getElementById('documentForm');
@@ -647,10 +1169,19 @@ function collectFormData() {
     // Agregar items
     data.items = appState.items;
     data.total = appState.formData.total || 0;
-    // Agregar descripciones
-    data.flightDescription = document.getElementById('flightDescription')?.value || '';
-    data.hotelDescription = document.getElementById('hotelDescription')?.value || '';
-    data.transferDescription = document.getElementById('transferDescription')?.value || '';
+
+    // Recopilar datos de secciones de detalle por categoría
+    saveAllCategoryDetails();
+    data.categoryDetails = {};
+    const activeCategories = getActiveCategories();
+    activeCategories.forEach(categoryName => {
+        const config = CATEGORY_DETAIL_CONFIG[categoryName];
+        const slug = config.slug;
+        if (appState.categoryDetails[slug]) {
+            data.categoryDetails[slug] = { ...appState.categoryDetails[slug] };
+        }
+    });
+
     return data;
 }
 
@@ -686,21 +1217,23 @@ async function downloadDocument(format) {
             if (appState.images.qr) {
                 payload.assets.qr = appState.images.qr.data;
             }
-            // Para imágenes de viaje - pasar data URL y tamaño
-            if (appState.images.flight || appState.images.hotel || appState.images.transfer) {
-                payload.data.images = {};
-                if (appState.images.flight) {
-                    payload.data.images.flight = appState.images.flight.data;
-                    payload.data.flightSize = appState.images.flight.size || 'medium';
+            // Para imágenes de categorías dinámicas
+            const activeCategories = getActiveCategories();
+            const categoryImageSlugs = [];
+            activeCategories.forEach(categoryName => {
+                const slug = CATEGORY_DETAIL_CONFIG[categoryName].slug;
+                if (appState.images[slug]) {
+                    categoryImageSlugs.push(slug);
                 }
-                if (appState.images.hotel) {
-                    payload.data.images.hotel = appState.images.hotel.data;
-                    payload.data.hotelSize = appState.images.hotel.size || 'medium';
-                }
-                if (appState.images.transfer) {
-                    payload.data.images.transfer = appState.images.transfer.data;
-                    payload.data.transferSize = appState.images.transfer.size || 'medium';
-                }
+            });
+            if (categoryImageSlugs.length > 0) {
+                payload.data.categoryImages = {};
+                categoryImageSlugs.forEach(slug => {
+                    payload.data.categoryImages[slug] = {
+                        data: appState.images[slug].data,
+                        size: appState.images[slug].size || 'medium'
+                    };
+                });
             }
         }
 

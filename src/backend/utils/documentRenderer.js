@@ -252,6 +252,30 @@ class DocumentRenderer {
           }
         }
       }
+
+      // Process category images (dynamic sections)
+      if (assets.categoryImages && typeof assets.categoryImages === 'object') {
+        processed.categoryImages = {};
+        console.log('[AssetProcessor] Processing category images:', Object.keys(assets.categoryImages));
+
+        for (const [slug, imgObj] of Object.entries(assets.categoryImages)) {
+          try {
+            const imgData = typeof imgObj === 'string' ? imgObj : imgObj.data;
+            const imgSize = typeof imgObj === 'object' ? (imgObj.size || 'medium') : 'medium';
+            const buffer = toBuffer(imgData);
+            if (buffer) {
+              const processedImg = await AssetProcessor.processPhoto(buffer);
+              processed.categoryImages[slug] = {
+                data: AssetProcessor.bufferToDataUrl(processedImg.buffer, processedImg.format),
+                size: imgSize
+              };
+              console.log(`[AssetProcessor] Category image '${slug}' processed successfully`);
+            }
+          } catch (err) {
+            console.error(`[AssetProcessor] Error processing category image '${slug}':`, err.message);
+          }
+        }
+      }
     } catch (error) {
       console.error('Error processing assets:', error);
       // Continue without the problematic asset

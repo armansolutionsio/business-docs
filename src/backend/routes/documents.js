@@ -42,6 +42,13 @@ router.post('/generate-pdf', async (req, res) => {
       console.log(`[PDF] 📷 Procesando ${imageKeys.length} imagen(es):`, imageKeys.join(', '));
     }
 
+    // Move category images from data to assets for proper processing
+    if (data.categoryImages && typeof data.categoryImages === 'object') {
+      processAssets.categoryImages = data.categoryImages;
+      const slugs = Object.keys(data.categoryImages);
+      console.log(`[PDF] 📷 Procesando ${slugs.length} imagen(es) de categoría:`, slugs.join(', '));
+    }
+
     console.log('[PDF] 🔄 Iniciando renderizado...');
     const buffer = await DocumentRenderer.render({
       type,
