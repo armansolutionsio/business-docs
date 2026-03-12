@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models.models import DocumentRef, IdempotencyRecord
+from app.models.models import DocumentRef, IdempotencyRecord, Lead
 from app.schemas.schemas import DocumentRefCreate, DocumentRefOut
 
 router = APIRouter(prefix="/v1/documents/refs", tags=["document-refs"])
@@ -24,18 +24,25 @@ def create_document_ref(
             if doc:
                 return doc
 
+    # Resolve party_id from lead if not supplied directly
+    effective_party_id = body.party_id
+    if effective_party_id is None and body.lead_id:
+        lead = db.get(Lead, body.lead_id)
+        if lead and lead.party_id:
+            effective_party_id = lead.party_id
+
     # Compute correlative doc_number per (party, doc_type) — thread-safe via DB lock
     doc_number = None
-    if body.party_id:
+    if effective_party_id:
         # Lock the party row to prevent race conditions on concurrent requests
         db.execute(
             __import__("sqlalchemy").text("SELECT id FROM party WHERE id = :pid FOR UPDATE"),
-            {"pid": str(body.party_id)},
+            {"pid": str(effective_party_id)},
         )
         count = (
             db.query(DocumentRef)
             .filter(
-                DocumentRef.party_id == body.party_id,
+                DocumentRef.party_id == effective_party_id,
                 DocumentRef.doc_type == body.doc_type,
             )
             .count()
@@ -43,6 +50,9 @@ def create_document_ref(
         doc_number = count + 1
 
     data = body.model_dump()
+    # Store resolved party_id (may differ from body.party_id if resolved via lead)
+    if effective_party_id and data.get("party_id") is None:
+        data["party_id"] = effective_party_id
     data["doc_number"] = doc_number
     doc = DocumentRef(**data)
     db.add(doc)

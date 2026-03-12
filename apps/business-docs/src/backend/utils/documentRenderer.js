@@ -4,6 +4,7 @@ const Handlebars = require('handlebars');
 const DataValidator = require('./dataValidator');
 const AssetProcessor = require('./assetProcessor');
 const HTMLtoPDFRenderer = require('./htmltoPdfRenderer');
+const { branding } = require('@arman/sdk');
 
 // Register Handlebars helpers
 Handlebars.registerHelper('formatCurrency', function(value) {
@@ -362,7 +363,7 @@ class DocumentRenderer {
     const csPath = path.join(this.templatesDir, 'styles.css');
     const baseStyles = fs.readFileSync(csPath, 'utf-8');
 
-    // Wrap rendered HTML with styles
+    // Wrap rendered HTML with styles and CSS variables from branding package
     const fullHtml = `
       <!DOCTYPE html>
       <html lang="es">
@@ -371,6 +372,10 @@ class DocumentRenderer {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>${type}</title>
         <style>
+          :root {
+            --brand-primary: ${branding.colors.primary};
+            --brand-primary-dark: ${branding.colors.primaryDark};
+          }
           ${baseStyles}
         </style>
       </head>

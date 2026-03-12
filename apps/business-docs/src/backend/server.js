@@ -47,6 +47,11 @@ app.use((err, req, res, next) => {
 });
 
 // ── Start ─────────────────────────────────────────────────────────────────────
-app.listen(PORT, () => {
-  log.info('server_started', { port: PORT, env: process.env.NODE_ENV || 'development' });
-});
+// Only bind the port if this file is run directly (not required by tests)
+if (require.main === module) {
+  app.listen(PORT, () => {
+    log.info('server_started', { port: PORT, env: process.env.NODE_ENV || 'development' });
+  });
+}
+
+module.exports = app;

@@ -104,19 +104,48 @@
     </table>
 </div>
 
-<!-- TOTALS -->
+<!-- TOTALS — desglose fiscal completo -->
 <div style="display: flex; justify-content: flex-end; margin: 20px 0; page-break-inside: avoid;">
-    <div style="width: 350px; border: 2px solid #7B2CBF; border-radius: 4px; overflow: hidden;">
-        <div style="display: flex; justify-content: space-between; padding: 10px 15px; border-bottom: 1px solid #ddd; font-size: 10pt; background: white;">
-            <span style="font-weight: 600;">Subtotal:</span>
-            <span style="font-family: 'Courier New', monospace; text-align: right; font-weight: 600;">{{formatCurrency subtotal}}</span>
+    <div style="width: 380px; border: 2px solid #7B2CBF; border-radius: 4px; overflow: hidden;">
+        <div style="display: flex; justify-content: space-between; padding: 9px 15px; border-bottom: 1px solid #e8e8e8; font-size: 10pt; background: white;">
+            <span style="font-weight: 600; color: #444;">Subtotal:</span>
+            <span style="font-family: 'Courier New', monospace; font-weight: 600;">$ {{formatCurrency subtotal}}</span>
         </div>
-        <div style="display: flex; justify-content: space-between; padding: 12px 15px; background: #7B2CBF; color: white; font-weight: 700; font-size: 12pt;">
+        {{#if_gt discount 0}}
+        <div style="display: flex; justify-content: space-between; padding: 9px 15px; border-bottom: 1px solid #e8e8e8; font-size: 10pt; background: #fffbf0;">
+            <span style="font-weight: 600; color: #c0392b;">Descuento:</span>
+            <span style="font-family: 'Courier New', monospace; color: #c0392b;">- $ {{formatCurrency discount}}</span>
+        </div>
+        {{/if_gt}}
+        <div style="display: flex; justify-content: space-between; padding: 9px 15px; border-bottom: 1px solid #e8e8e8; font-size: 10pt; background: #f7f7f7;">
+            <span style="font-weight: 600; color: #444;">Base imponible:</span>
+            <span style="font-family: 'Courier New', monospace; font-weight: 600;">$ {{formatCurrency taxableBase}}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; padding: 9px 15px; border-bottom: 1px solid #e8e8e8; font-size: 10pt; background: white;">
+            <span style="color: #666;">IVA ({{ivaRate}}%):</span>
+            <span style="font-family: 'Courier New', monospace;">$ {{formatCurrency iva}}</span>
+        </div>
+        {{#if_gt otherTaxes 0}}
+        <div style="display: flex; justify-content: space-between; padding: 9px 15px; border-bottom: 1px solid #e8e8e8; font-size: 10pt; background: white;">
+            <span style="color: #666;">Otros impuestos:</span>
+            <span style="font-family: 'Courier New', monospace;">$ {{formatCurrency otherTaxes}}</span>
+        </div>
+        {{/if_gt}}
+        <div style="display: flex; justify-content: space-between; padding: 13px 15px; background: #7B2CBF; color: white; font-weight: 700; font-size: 12pt;">
             <span>TOTAL COTIZADO:</span>
-            <span style="font-family: 'Courier New', monospace; text-align: right;">{{formatCurrency total}}</span>
+            <span style="font-family: 'Courier New', monospace;">$ {{formatCurrency total}}</span>
         </div>
     </div>
 </div>
+
+{{#if coreDocRefId}}
+<!-- IDENTIFICADORES CORE — vinculación CRM -->
+<div style="margin: 8px 0 16px 0; padding: 8px 12px; background: #f0f4ff; border-left: 3px solid #7B2CBF; border-radius: 3px; font-size: 8pt; color: #666; page-break-inside: avoid;">
+    <span style="font-weight: 600; color: #7B2CBF;">Ref. interna:</span>
+    {{coreDocRefId}}
+    {{#if coreLeadId}}&nbsp;|&nbsp;<span style="font-weight: 600; color: #7B2CBF;">Lead:</span> {{coreLeadId}}{{/if}}
+</div>
+{{/if}}
 
 <!-- DETALLE POR CATEGORÍAS -->
 {{#if categoryDetails}}
@@ -463,6 +492,8 @@
 
 <!-- FOOTER -->
 <div style="margin-top: 30px; padding-top: 15px; border-top: 2px solid #ddd; text-align: center; font-size: 8pt; color: #999; page-break-inside: avoid;">
+    <p style="margin: 3px 0; font-weight: 600; color: #7B2CBF;">{{companyName}}</p>
     <p style="margin: 3px 0;">Cotización válida por {{validity}} días a partir de la emisión.</p>
     <p style="margin: 3px 0;">Para aceptar esta oferta, por favor confirmar vía email o teléfono.</p>
+    {{#if quoteNumber}}<p style="margin: 3px 0; font-size: 7pt;">N° doc: {{quoteNumber}}</p>{{/if}}
 </div>

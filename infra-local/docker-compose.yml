@@ -54,6 +54,32 @@ services:
     networks:
       - arman-local
 
+  business-docs:
+    build:
+      context: ../apps/business-docs
+      dockerfile: Dockerfile
+    container_name: arman-business-docs
+    depends_on:
+      - core-api
+    environment:
+      PORT: "3001"
+      NODE_ENV: development
+      CORE_API_URL: http://core-api:8000
+      COMPANY_NAME: ${COMPANY_NAME:-Arman Travel}
+      COMPANY_CUIT: ${COMPANY_CUIT:-}
+      COMPANY_ADDRESS: ${COMPANY_ADDRESS:-}
+      COMPANY_EMAIL: ${COMPANY_EMAIL:-}
+      COMPANY_PHONE: ${COMPANY_PHONE:-}
+      COMPANY_IVA_CONDITION: ${COMPANY_IVA_CONDITION:-Responsable Inscripto}
+    ports:
+      - "3001:3001"
+    volumes:
+      - ../apps/business-docs/src:/app/src         # hot-reload
+      - ../apps/business-docs/templates:/app/templates
+      - ../packages/shared:/app/node_modules/@arman/sdk
+    networks:
+      - arman-local
+
 volumes:
   postgres_data:
 

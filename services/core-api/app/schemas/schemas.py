@@ -188,19 +188,23 @@ class PaymentOut(BaseModel):
 class DocumentRefCreate(BaseModel):
     sale_id: Optional[uuid.UUID] = None
     party_id: Optional[uuid.UUID] = None
+    lead_id: Optional[uuid.UUID] = None
     doc_type: Literal["QUOTE", "INVOICE", "RECEIPT"]
     external_ref: Optional[str] = None
     url: Optional[str] = None
+    totals: Optional[dict] = None
 
 
 class DocumentRefOut(BaseModel):
     id: uuid.UUID
     sale_id: Optional[uuid.UUID]
     party_id: Optional[uuid.UUID]
+    lead_id: Optional[uuid.UUID]
     doc_type: str
     doc_number: Optional[int]   # correlativo por (party, doc_type): cotización 1, 2, 3…
     external_ref: Optional[str]
     url: Optional[str]
+    totals: Optional[dict]
     created_at: datetime
 
     model_config = {"from_attributes": True}

@@ -173,20 +173,24 @@ class DocumentRef(Base):
     """Reference to a document (quote/invoice/receipt) generated externally.
 
     doc_number: correlative per (party, doc_type). Quote 1, 2, 3… per client.
+    totals: JSON snapshot of fiscal components {subtotal, discount, taxable_base, iva, other_taxes, total}.
     """
     __tablename__ = "document_ref"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     sale_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("sale.id"), nullable=True)
     party_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("party.id"), nullable=True)
+    lead_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("lead.id"), nullable=True)
     doc_type: Mapped[str] = mapped_column(String(20), nullable=False)   # QUOTE | INVOICE | RECEIPT
     doc_number: Mapped[int | None] = mapped_column(Integer, nullable=True)  # correlativo por (party, doc_type)
     external_ref: Mapped[str | None] = mapped_column(String(200), nullable=True)
     url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    totals: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     sale: Mapped["Sale | None"] = relationship(back_populates="document_refs")
     party: Mapped["Party | None"] = relationship()
+    lead: Mapped["Lead | None"] = relationship()
 
 
 class ConversationThread(Base):
