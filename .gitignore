@@ -10,3 +10,9 @@ build/
 *.swp
 *.swo
 *~
+
+# Monorepo: ignore .env in all apps
+apps/**/.env
+apps/**/.env.local
+services/**/.env
+services/**/.env.local
