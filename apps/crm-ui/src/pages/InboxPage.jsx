@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext.jsx';
+import { useToast } from '../ToastContext.jsx';
 import { listLeads, createLead, upsertParty, getParty } from '../api.js';
 import StatusBadge from '../components/StatusBadge.jsx';
 
@@ -27,6 +28,7 @@ const EMPTY_LEAD = {
 export default function InboxPage() {
   const { user, can } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const [leads, setLeads] = useState([]);
   const [parties, setParties] = useState({}); // party_id → party
@@ -35,6 +37,7 @@ export default function InboxPage() {
   const [showNew, setShowNew] = useState(false);
   const [creating, setCreating] = useState(false);
   const [newLead, setNewLead] = useState({ ...EMPTY_LEAD, assigned_to: user?.username || '' });
+  const [existingClient, setExistingClient] = useState(null); // party found by doc lookup
 
   const [filters, setFilters] = useState({
     status: '', source: '', destination: '', assigned_to: '',
@@ -67,18 +70,35 @@ export default function InboxPage() {
     setFilters(f => ({ ...f, [e.target.name]: e.target.value }));
   }
 
+  // Lookup existing party when doc field loses focus
+  async function handleDocBlur() {
+    const docStr = newLead.clientDoc.trim();
+    if (!docStr) { setExistingClient(null); return; }
+    try {
+      const docNum = docStr.replace(/[-./\s]/g, '');
+      const docType = docNum.length <= 8 ? 'DNI' : 'CUIT';
+      // upsertParty with only doc data to check if exists (no name/email to avoid overwriting)
+      const resp = await fetch(`/api/core/v1/parties?limit=500`);
+      if (!resp.ok) return;
+      const all = await resp.json();
+      const found = all.find(p => p.doc_number_normalized === docNum || p.doc_number_normalized === docStr);
+      setExistingClient(found || null);
+    } catch { setExistingClient(null); }
+  }
+
   async function handleCreate(e) {
     e.preventDefault();
     setCreating(true);
     setError('');
     try {
       let partyId = null;
+      let partyWasNew = false;
 
-      // Si ingresaron datos del cliente, crear/actualizar party primero
       if (newLead.clientDoc.trim()) {
         const docStr = newLead.clientDoc.trim();
         const docNum = docStr.replace(/[-./\s]/g, '');
         const docType = docNum.length <= 8 ? 'DNI' : 'CUIT';
+        partyWasNew = !existingClient;
         const party = await upsertParty({
           doc_type: docType,
           doc_number: docStr,
@@ -97,10 +117,22 @@ export default function InboxPage() {
         notes: newLead.notes || null,
         status: 'NEW',
       });
+
       setShowNew(false);
       setNewLead({ ...EMPTY_LEAD, assigned_to: user?.username || '' });
+      setExistingClient(null);
+
+      if (partyId && !partyWasNew) {
+        toast(`Lead creado y asociado al cliente existente${existingClient?.full_name ? ' ' + existingClient.full_name : ''}.`, 'info');
+      } else if (partyId) {
+        toast('Lead y cliente creados con éxito.', 'success');
+      } else {
+        toast('Lead creado con éxito.', 'success');
+      }
+
       navigate(`/leads/${lead.id}`);
     } catch (err) {
+      toast(err.message || 'Error al crear el lead.', 'error');
       setError(err.message);
     } finally {
       setCreating(false);
@@ -182,6 +214,17 @@ export default function InboxPage() {
             <form onSubmit={handleCreate} className="modal-form">
 
               <h3 className="form-section-title">Cliente (opcional)</h3>
+
+              {existingClient && (
+                <div className="client-exists-banner">
+                  <span style={{ fontSize: 20 }}>ℹ</span>
+                  <div>
+                    <strong>Cliente ya registrado</strong>
+                    <span>{existingClient.full_name || existingClient.doc_number_normalized} — el lead se asociará a este cliente.</span>
+                  </div>
+                </div>
+              )}
+
               <div className="form-row">
                 <div className="form-group">
                   <label>Nombre completo</label>
@@ -195,7 +238,8 @@ export default function InboxPage() {
                   <label>DNI / CUIT</label>
                   <input
                     value={newLead.clientDoc}
-                    onChange={e => setNewLead(l => ({ ...l, clientDoc: e.target.value }))}
+                    onChange={e => { setNewLead(l => ({ ...l, clientDoc: e.target.value })); setExistingClient(null); }}
+                    onBlur={handleDocBlur}
                     placeholder="30123456 o 20-30123456-7"
                   />
                 </div>

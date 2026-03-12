@@ -2,6 +2,7 @@
 
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './AuthContext.jsx';
+import { ToastProvider } from './ToastContext.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import InboxPage from './pages/InboxPage.jsx';
 import KanbanPage from './pages/KanbanPage.jsx';
@@ -16,6 +17,7 @@ function PrivateRoute({ children }) {
 export default function App() {
   return (
     <AuthProvider>
+      <ToastProvider>
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
@@ -35,6 +37,7 @@ export default function App() {
           <Route path="*" element={<Navigate to="/inbox" replace />} />
         </Routes>
       </BrowserRouter>
+      </ToastProvider>
     </AuthProvider>
   );
 }

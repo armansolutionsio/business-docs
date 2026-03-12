@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext.jsx';
+import { useToast } from '../ToastContext.jsx';
 import {
   getLead, updateLead, getParty, listActivityLogs,
 } from '../api.js';
@@ -8,7 +9,6 @@ import StatusBadge from '../components/StatusBadge.jsx';
 import Timeline from '../components/Timeline.jsx';
 import DocRefsPanel from '../components/DocRefsPanel.jsx';
 import TasksPanel from '../components/TasksPanel.jsx';
-import QuoteModal from '../components/QuoteModal.jsx';
 import CloseWonModal from '../components/CloseWonModal.jsx';
 
 const STATUSES = ['NEW', 'QUALIFIED', 'QUOTE_SENT', 'NEGOTIATION', 'WON', 'LOST'];
@@ -26,6 +26,7 @@ export default function LeadDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { can } = useAuth();
+  const { toast } = useToast();
 
   const [lead, setLead] = useState(null);
   const [party, setParty] = useState(null);
@@ -38,8 +39,7 @@ export default function LeadDetailPage() {
   const [editForm, setEditForm] = useState({});
   const [saving, setSaving] = useState(false);
 
-  const [showQuote, setShowQuote] = useState(false);
-  const [showWon, setShowWon] = useState(false);
+const [showWon, setShowWon] = useState(false);
   const [docsRefreshKey, setDocsRefreshKey] = useState(0);
 
   async function loadAll() {
@@ -79,31 +79,20 @@ export default function LeadDetailPage() {
       const updated = await updateLead(id, editForm);
       setLead(updated);
       setEditing(false);
-      // Reload logs to reflect status change
       const logsData = await listActivityLogs({ entity_id: id, entity_type: 'lead' });
       setLogs(logsData);
+      toast('Lead actualizado con éxito.', 'success');
     } catch (e) {
       setError(e.message);
+      toast(e.message || 'Error al guardar.', 'error');
     } finally {
       setSaving(false);
     }
   }
 
-  function handleQuoteSuccess({ docRefId }) {
-    setShowQuote(false);
-    setDocsRefreshKey(k => k + 1);
-    setActiveTab('Documentos');
-    // Also move to QUOTE_SENT if still in earlier stage
-    if (['NEW', 'QUALIFIED'].includes(lead.status)) {
-      updateLead(id, { status: 'QUOTE_SENT' }).then(updated => {
-        setLead(updated);
-        listActivityLogs({ lead_id: id }).then(setLogs);
-      });
-    }
-  }
-
-  function handleWonSuccess({ saleId }) {
+  function handleWonSuccess() {
     setShowWon(false);
+    toast('¡Venta cerrada con éxito! 🎉', 'success', 5000);
     loadAll();
   }
 
@@ -120,7 +109,18 @@ export default function LeadDetailPage() {
         </div>
         <div className="lead-detail-actions">
           {can('generate_quote') && lead.status !== 'WON' && lead.status !== 'LOST' && (
-            <button className="btn btn-secondary" onClick={() => setShowQuote(true)}>
+            <button className="btn btn-secondary" onClick={() => {
+              const p = new URLSearchParams({
+                ...(party?.full_name ? { clientName: party.full_name } : {}),
+                ...(party?.doc_number_normalized ? { clientCUIT: party.doc_number_normalized } : {}),
+                ...(party?.email ? { clientEmail: party.email } : {}),
+                ...(party?.phone ? { clientPhone: party.phone } : {}),
+                ...(lead.destination ? { destination: lead.destination } : {}),
+                leadId: lead.id,
+              });
+              const base = import.meta.env.VITE_BUSINESS_DOCS_URL || 'http://localhost:3001';
+              window.open(`${base}?${p.toString()}`, '_blank');
+            }}>
               Generar cotización
             </button>
           )}
@@ -237,15 +237,6 @@ export default function LeadDetailPage() {
           </div>
         </div>
       </div>
-
-      {showQuote && (
-        <QuoteModal
-          lead={lead}
-          party={party}
-          onClose={() => setShowQuote(false)}
-          onSuccess={handleQuoteSuccess}
-        />
-      )}
 
       {showWon && (
         <CloseWonModal

@@ -325,6 +325,28 @@ const documentConfig = {
     }
 };
 
+// Pre-rellenar formulario con parámetros de URL (ej. desde CRM)
+function prefillFromUrlParams() {
+    const params = new URLSearchParams(window.location.search);
+    const mapping = {
+        clientName: params.get('clientName'),
+        clientCUIT: params.get('clientCUIT'),
+        clientEmail: params.get('clientEmail'),
+        clientPhone: params.get('clientPhone'),
+    };
+    Object.entries(mapping).forEach(([field, value]) => {
+        if (!value) return;
+        const el = document.querySelector(`input[name="${field}"], textarea[name="${field}"]`);
+        if (el) el.value = value;
+    });
+    // Si viene un destino, agregarlo como nota en el primer ítem si el campo existe
+    const destination = params.get('destination');
+    if (destination) {
+        const descEl = document.querySelector('input[name="itemDescription"], textarea[name="itemDescription"]');
+        if (descEl && !descEl.value) descEl.value = destination;
+    }
+}
+
 // Inicialización
 document.addEventListener('DOMContentLoaded', () => {
     loadCompanyData();
@@ -332,6 +354,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupTabButtons();
     renderTab('quote');
     setDefaultDate();
+    prefillFromUrlParams();
 });
 
 // Configurar botones de pestañas
