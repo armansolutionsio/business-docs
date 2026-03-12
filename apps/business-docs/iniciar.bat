@@ -7,7 +7,8 @@ echo     Arman Travel - Sistema de Documentos
 echo ===============================================
 echo.
 
-cd /d "%~dp0"
+REM Navegar a la raiz del monorepo (dos niveles arriba de apps/business-docs)
+cd /d "%~dp0..\.."
 
 echo [*] Verificando dependencias...
 if not exist "node_modules\" (
@@ -20,6 +21,6 @@ echo [+] Iniciando servidor en http://localhost:3001
 echo [+] Presiona Ctrl+C para detener
 echo.
 
-npm start
+npm run start:docs
 
 pause

@@ -120,41 +120,31 @@ const AIRPORTS_DB = [
 const CATEGORY_DETAIL_CONFIG = {
     'Aéreos': {
         slug: 'aereos',
-        title: 'Información del Vuelo',
+        title: 'Información de Vuelos',
         icon: '✈️',
-        subsections: [
-            {
-                title: 'Vuelo de Ida',
-                fields: [
-                    { name: 'airline', label: 'Aerolínea', type: 'text', placeholder: 'Ej: Aerolíneas Argentinas' },
-                    { name: 'flightNumberOut', label: 'Nro. de Vuelo', type: 'text', placeholder: 'Ej: AR1234' },
-                    { name: 'departureAirport', label: 'Aeropuerto de Salida', type: 'airport', placeholder: 'Buscar por código o ciudad...' },
-                    { name: 'arrivalAirport', label: 'Aeropuerto de Llegada', type: 'airport', placeholder: 'Buscar por código o ciudad...' },
-                    { name: 'departureDate', label: 'Fecha de Salida', type: 'date' },
-                    { name: 'departureTime', label: 'Hora de Salida', type: 'time' },
-                    { name: 'arrivalDate', label: 'Fecha de Llegada', type: 'date' },
-                    { name: 'arrivalTime', label: 'Hora de Llegada', type: 'time' },
-                ]
-            },
-            {
-                title: 'Vuelo de Regreso',
-                fields: [
-                    { name: 'flightNumberReturn', label: 'Nro. de Vuelo', type: 'text', placeholder: 'Ej: AR4321' },
-                    { name: 'returnDepartureAirport', label: 'Aeropuerto de Salida', type: 'airport', placeholder: 'Buscar por código o ciudad...' },
-                    { name: 'returnArrivalAirport', label: 'Aeropuerto de Llegada', type: 'airport', placeholder: 'Buscar por código o ciudad...' },
-                    { name: 'returnDepartureDate', label: 'Fecha de Salida', type: 'date' },
-                    { name: 'returnDepartureTime', label: 'Hora de Salida', type: 'time' },
-                    { name: 'returnArrivalDate', label: 'Fecha de Llegada', type: 'date' },
-                    { name: 'returnArrivalTime', label: 'Hora de Llegada', type: 'time' },
-                ]
-            }
+        multiInstance: true,
+        subItemLabel: 'Vuelo',
+        topFields: [
+            { name: 'passengerName', label: 'Nombre del Pasajero', type: 'text', placeholder: 'Ej: Leonardo Ponzio' },
+        ],
+        subItemFields: [
+            { name: 'airline', label: 'Aerolínea', type: 'text', placeholder: 'Ej: Aerolíneas Argentinas' },
+            { name: 'flightNumber', label: 'Nro. de Vuelo', type: 'text', placeholder: 'Ej: AR1234' },
+            { name: 'departureAirport', label: 'Aeropuerto de Salida', type: 'airport', placeholder: 'Buscar por código o ciudad...' },
+            { name: 'arrivalAirport', label: 'Aeropuerto de Llegada', type: 'airport', placeholder: 'Buscar por código o ciudad...' },
+            { name: 'departureDate', label: 'Fecha de Salida', type: 'date' },
+            { name: 'departureTime', label: 'Hora de Salida', type: 'time' },
+            { name: 'arrivalDate', label: 'Fecha de Llegada', type: 'date' },
+            { name: 'arrivalTime', label: 'Hora de Llegada', type: 'time' },
         ]
     },
     'Hoteles': {
         slug: 'hoteles',
         title: 'Información del Hospedaje',
         icon: '🏨',
-        fields: [
+        multiInstance: true,
+        subItemLabel: 'Hotel',
+        subItemFields: [
             { name: 'hotelName', label: 'Nombre del Hotel', type: 'text', placeholder: 'Ej: Hotel Hilton Buenos Aires' },
             { name: 'hotelLocation', label: 'Ubicación / Ciudad', type: 'text', placeholder: 'Ej: Puerto Madero, Buenos Aires' },
             { name: 'checkInDate', label: 'Fecha de Check-in', type: 'date' },
@@ -168,7 +158,9 @@ const CATEGORY_DETAIL_CONFIG = {
         slug: 'packs',
         title: 'Detalle del Pack Turístico',
         icon: '🎒',
-        fields: [
+        multiInstance: true,
+        subItemLabel: 'Pack',
+        subItemFields: [
             { name: 'packName', label: 'Nombre del Pack', type: 'text', placeholder: 'Ej: Europa Clásica' },
             { name: 'destinations', label: 'Destinos Incluidos', type: 'textarea', placeholder: 'Ej: Madrid, Barcelona, París, Roma...' },
             { name: 'duration', label: 'Duración', type: 'text', placeholder: 'Ej: 7 noches / 8 días' },
@@ -179,7 +171,9 @@ const CATEGORY_DETAIL_CONFIG = {
         slug: 'vip',
         title: 'Servicios VIP / Premium',
         icon: '⭐',
-        fields: [
+        multiInstance: true,
+        subItemLabel: 'Servicio',
+        subItemFields: [
             { name: 'serviceDescription', label: 'Descripción del Servicio', type: 'textarea', placeholder: 'Detallar el servicio VIP/Premium...' },
             { name: 'vipLocation', label: 'Ubicación / Lugar', type: 'text', placeholder: 'Ej: Lounge VIP Ezeiza' },
             { name: 'vipDate', label: 'Fecha', type: 'date' },
@@ -191,7 +185,9 @@ const CATEGORY_DETAIL_CONFIG = {
         slug: 'traslados',
         title: 'Información de Traslados',
         icon: '🚐',
-        fields: [
+        multiInstance: true,
+        subItemLabel: 'Traslado',
+        subItemFields: [
             { name: 'pickupPoint', label: 'Punto de Recogida', type: 'airport', placeholder: 'Buscar aeropuerto o escribir dirección...' },
             { name: 'dropoffPoint', label: 'Punto de Destino', type: 'text', placeholder: 'Ej: Hotel Hilton Puerto Madero' },
             { name: 'vehicleType', label: 'Tipo de Vehículo', type: 'select', options: ['Sedan', 'Van', 'Minibus', 'Bus', 'SUV', 'Limusina'] },
@@ -204,7 +200,9 @@ const CATEGORY_DETAIL_CONFIG = {
         slug: 'tours',
         title: 'Detalle del Tour',
         icon: '🗺️',
-        fields: [
+        multiInstance: true,
+        subItemLabel: 'Tour',
+        subItemFields: [
             { name: 'tourName', label: 'Nombre del Tour', type: 'text', placeholder: 'Ej: City Tour Buenos Aires' },
             { name: 'tourLocation', label: 'Ubicación / Destino', type: 'text', placeholder: 'Ej: Buenos Aires, Argentina' },
             { name: 'tourDate', label: 'Fecha', type: 'date' },
@@ -217,7 +215,9 @@ const CATEGORY_DETAIL_CONFIG = {
         slug: 'seguros',
         title: 'Detalle del Seguro de Viaje',
         icon: '🛡️',
-        fields: [
+        multiInstance: true,
+        subItemLabel: 'Seguro',
+        subItemFields: [
             { name: 'insuranceCompany', label: 'Compañía Aseguradora', type: 'text', placeholder: 'Ej: Assist Card, Universal Assistance' },
             { name: 'coverageType', label: 'Tipo de Cobertura', type: 'select', options: ['Básico', 'Standard', 'Premium', 'Cobertura Total'] },
             { name: 'insuranceStartDate', label: 'Fecha de Inicio', type: 'date' },
@@ -229,7 +229,9 @@ const CATEGORY_DETAIL_CONFIG = {
         slug: 'otros',
         title: 'Información Adicional',
         icon: '📋',
-        fields: [
+        multiInstance: true,
+        subItemLabel: 'Servicio',
+        subItemFields: [
             { name: 'otherNotes', label: 'Notas / Detalles', type: 'textarea', placeholder: 'Describir el servicio adicional...' },
         ]
     }
@@ -589,20 +591,56 @@ function addItem() {
     // Usar categoría seleccionada o descripción personalizada
     let description = desc.value || category.value;
 
-    if (!description || !price.value) {
-        showMessage('Por favor completa descripción y precio', 'error');
+    // Auto-generate description for multi-instance categories
+    const catConfig = CATEGORY_DETAIL_CONFIG[category.value];
+    if (catConfig && catConfig.multiInstance && !desc.value) {
+        const existingCount = appState.items.filter(i => i.category === category.value).length;
+        const baseNames = {
+            'Aéreos': 'Paquete Aéreo',
+            'Hoteles': 'Paquete Hotel',
+            'Packs Turísticos': 'Pack Turístico',
+            'VIP/Premium': 'Servicio VIP',
+            'Traslados': 'Paquete Traslado',
+            'Tours': 'Paquete Tour',
+            'Seguros': 'Seguro de Viaje',
+            'Otros Servicios': 'Servicio Adicional'
+        };
+        const baseName = baseNames[category.value] || category.value;
+        description = `${baseName} ${existingCount + 1}`;
+    }
+
+    // Para items con categoría, el precio puede ser 0 (se calcula de sub-items)
+    const isCategorized = !!(catConfig && category.value);
+    if (!description) {
+        showMessage('Por favor completa la descripción', 'error');
+        return;
+    }
+    if (!isCategorized && !price.value) {
+        showMessage('Por favor completa el precio', 'error');
         return;
     }
 
+    const qty = parseFloat(quantity.value) || 1;
     const item = {
         id: Date.now(),
         description: description,
         category: category.value || null,
-        quantity: parseFloat(quantity.value) || 1,
-        price: parseFloat(price.value)
+        quantity: qty,
+        price: parseFloat(price.value) || 0
     };
 
     appState.items.push(item);
+
+    // Inicializar sub-items en el estado basado en la cantidad
+    if (catConfig && catConfig.subItemFields) {
+        const sectionKey = catConfig.slug + '_' + item.id;
+        const subItems = [];
+        for (let i = 0; i < qty; i++) {
+            subItems.push({});
+        }
+        appState.categoryDetails[sectionKey] = { subItems: subItems };
+    }
+
     renderItems();
     category.value = '';
     desc.value = '';
@@ -735,11 +773,15 @@ function renderItems() {
 
     let html = '';
     appState.items.forEach(item => {
-        const subtotal = item.quantity * item.price;
+        // Para items con categoría: subtotal = price (el precio ya es la suma de sub-items)
+        // Para items sin categoría: subtotal = quantity * price
+        const isCategorized = item.category && CATEGORY_DETAIL_CONFIG[item.category];
+        const subtotal = isCategorized ? item.price : (item.quantity * item.price);
+        const qtyLabel = isCategorized ? item.quantity + ' (' + (CATEGORY_DETAIL_CONFIG[item.category].subItemLabel || 'sub') + (item.quantity > 1 ? 's' : '') + ')' : item.quantity;
         html += `
             <div class="item-row">
                 <input type="text" value="${escapeHtml(item.description)}" readonly>
-                <input type="number" value="${item.quantity}" readonly>
+                <input type="text" value="${qtyLabel}" readonly>
                 <input type="text" value="${formatCurrency(item.price)}" readonly>
                 <input type="text" value="${formatCurrency(subtotal)}" readonly>
                 <button type="button" class="remove-item" onclick="removeItem(${item.id})">Eliminar</button>
@@ -763,7 +805,10 @@ function updateTotal() {
     let total = 0;
 
     if (appState.items.length > 0) {
-        total = appState.items.reduce((sum, item) => sum + (item.quantity * item.price), 0);
+        total = appState.items.reduce((sum, item) => {
+            const isCategorized = item.category && CATEGORY_DETAIL_CONFIG[item.category];
+            return sum + (isCategorized ? item.price : (item.quantity * item.price));
+        }, 0);
     } else {
         // Si es recibo, usar el campo amount
         const amountInput = document.querySelector('input[name="amount"]');
@@ -848,105 +893,292 @@ function updateCategoryDetailSections() {
 
     const activeCategories = getActiveCategories();
 
-    // Mostrar/ocultar secciones
+    // Build ordered list of expected section keys
+    const expectedKeys = [];
     CATEGORY_ORDER.forEach(categoryName => {
         const config = CATEGORY_DETAIL_CONFIG[categoryName];
-        if (!config) return;
-        const slug = config.slug;
-        const existing = document.getElementById(`detail-${slug}`);
+        if (!config || !activeCategories.has(categoryName)) return;
 
-        if (activeCategories.has(categoryName)) {
-            if (!existing) {
-                // Guardar estado actual de otras secciones antes de agregar
-                saveAllCategoryDetails();
-                const sectionHtml = renderCategorySection(categoryName);
-                const wrapper = document.createElement('div');
-                wrapper.innerHTML = sectionHtml;
-                const sectionEl = wrapper.firstElementChild;
-                sectionEl.classList.add('category-section-entering');
-                // Insertar en orden correcto
-                let inserted = false;
-                const currentSections = container.querySelectorAll('.category-detail-section');
-                for (const sec of currentSections) {
-                    const secCategory = sec.dataset.category;
-                    if (CATEGORY_ORDER.indexOf(secCategory) > CATEGORY_ORDER.indexOf(categoryName)) {
-                        container.insertBefore(sectionEl, sec);
-                        inserted = true;
-                        break;
-                    }
-                }
-                if (!inserted) container.appendChild(sectionEl);
-                // Setup de autocomplete y listeners
-                setupCategorySectionListeners(slug, config);
-                // Animación
-                requestAnimationFrame(() => {
-                    sectionEl.classList.remove('category-section-entering');
+        if (config.multiInstance) {
+            const items = appState.items.filter(i => i.category === categoryName);
+            items.forEach((item, idx) => {
+                expectedKeys.push({
+                    key: config.slug + '_' + item.id,
+                    categoryName,
+                    item,
+                    index: idx
                 });
-            }
+            });
         } else {
-            if (existing) {
-                // Guardar datos antes de remover
-                saveCategoryDetailToState(slug, config);
-                existing.classList.add('category-section-exiting');
-                setTimeout(() => {
-                    if (existing.parentNode) existing.parentNode.removeChild(existing);
-                }, 300);
+            expectedKeys.push({
+                key: config.slug,
+                categoryName,
+                item: null,
+                index: 0
+            });
+        }
+    });
+
+    const expectedKeySet = new Set(expectedKeys.map(e => e.key));
+
+    // Remove sections that shouldn't exist
+    const currentSections = container.querySelectorAll('.category-detail-section');
+    currentSections.forEach(sec => {
+        const secKey = sec.dataset.sectionKey;
+        if (!expectedKeySet.has(secKey)) {
+            const catName = sec.dataset.category;
+            const config = CATEGORY_DETAIL_CONFIG[catName];
+            if (config) saveCategoryDetailToState(secKey, config);
+            sec.classList.add('category-section-exiting');
+            setTimeout(() => {
+                if (sec.parentNode) sec.parentNode.removeChild(sec);
+            }, 300);
+        }
+    });
+
+    // Add sections that don't exist yet (in correct order)
+    expectedKeys.forEach(({ key, categoryName, item, index }) => {
+        if (document.getElementById(`detail-${key}`)) return;
+
+        saveAllCategoryDetails();
+        const config = CATEGORY_DETAIL_CONFIG[categoryName];
+        const sectionHtml = renderCategorySection(categoryName, key, item, index);
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = sectionHtml;
+        const sectionEl = wrapper.firstElementChild;
+        sectionEl.classList.add('category-section-entering');
+
+        // Insert in correct order
+        let inserted = false;
+        const existingSections = container.querySelectorAll('.category-detail-section');
+        const myOrder = expectedKeys.findIndex(e => e.key === key);
+        for (const sec of existingSections) {
+            const secKey = sec.dataset.sectionKey;
+            const secOrder = expectedKeys.findIndex(e => e.key === secKey);
+            if (secOrder > myOrder) {
+                container.insertBefore(sectionEl, sec);
+                inserted = true;
+                break;
             }
         }
+        if (!inserted) container.appendChild(sectionEl);
+
+        setupCategorySectionListeners(key, config);
+        requestAnimationFrame(() => {
+            sectionEl.classList.remove('category-section-entering');
+        });
     });
 }
 
 // Renderizar HTML de una sección de detalle
-function renderCategorySection(categoryName) {
+function renderCategorySection(categoryName, sectionKey, item, instanceIndex) {
     const config = CATEGORY_DETAIL_CONFIG[categoryName];
-    const slug = config.slug;
-    const savedData = appState.categoryDetails[slug] || {};
+    if (!sectionKey) sectionKey = config.slug;
+    const savedData = appState.categoryDetails[sectionKey] || {};
+    const subItems = savedData.subItems || [{}];
 
-    let html = `<div class="form-section category-detail-section" id="detail-${slug}" data-category="${categoryName}">`;
-    html += `<h3 class="section-title"><span class="category-icon">${config.icon}</span> ${config.title}</h3>`;
-
-    // Si tiene subsecciones (como Aéreos con ida/vuelta)
-    if (config.subsections) {
-        config.subsections.forEach(sub => {
-            html += `<div class="flight-subsection">`;
-            html += `<div class="flight-subsection-title">${sub.title}</div>`;
-            html += `<div class="form-grid">`;
-            sub.fields.forEach(field => {
-                html += renderDetailField(field, slug, savedData);
-            });
-            html += `</div></div>`;
-        });
+    // Build title
+    let title = config.title;
+    if (config.multiInstance && item) {
+        title = item.description;
+        if (config.topFields) {
+            const nameField = config.topFields.find(f => f.name === 'passengerName');
+            if (nameField && savedData.passengerName) {
+                title += ' — ' + savedData.passengerName;
+            }
+        }
     }
 
-    // Campos normales
-    if (config.fields) {
+    let html = `<div class="form-section category-detail-section" id="detail-${sectionKey}" data-category="${categoryName}" data-section-key="${sectionKey}">`;
+    html += `<h3 class="section-title"><span class="category-icon">${config.icon}</span> ${escapeHtml(title)}</h3>`;
+
+    // Top fields (e.g. passenger name for Aéreos)
+    if (config.topFields) {
         html += `<div class="form-grid">`;
-        config.fields.forEach(field => {
-            html += renderDetailField(field, slug, savedData);
+        config.topFields.forEach(field => {
+            html += renderDetailField(field, sectionKey, savedData);
         });
         html += `</div>`;
     }
 
+    // Sub-items container
+    if (config.subItemFields) {
+        html += `<div class="sub-items-container" id="sub-items-${sectionKey}">`;
+        subItems.forEach((subItemData, idx) => {
+            html += renderSubItemForm(config, sectionKey, idx, subItemData, subItems.length);
+        });
+        html += `</div>`;
+        html += `<button type="button" class="btn-add-subitem" onclick="addSubItem('${sectionKey}', '${categoryName}')">+ Agregar ${config.subItemLabel || 'Item'}</button>`;
+    }
+
     // Imagen upload + descripción (siempre presente)
-    const hasImage = appState.images && appState.images[slug];
+    const hasImage = appState.images && appState.images[sectionKey];
     html += `
         <div class="image-upload-card" style="margin-top: 16px;">
             <div class="image-upload-header">
                 <label style="margin: 0; font-size: 14px;">Imagen / Captura</label>
-                <select id="${slug}Size" class="image-size-select" onchange="handleImageSizeChange('${slug}', this.value)">
+                <select id="${sectionKey}Size" class="image-size-select" onchange="handleImageSizeChange('${sectionKey}', this.value)">
                     <option value="medium">Tamaño: Mediano</option>
                     <option value="small">Tamaño: Pequeño</option>
                     <option value="large">Tamaño: Grande</option>
                 </select>
             </div>
-            <input type="file" id="${slug}Image" accept="image/*" onchange="handleImageUpload(event, '${slug}')" style="margin-bottom: 10px;">
-            <div id="${slug}Preview" class="image-preview-container">${hasImage ? `<div class="image-preview"><img src="${appState.images[slug].data}" alt="Vista previa"><button type="button" class="remove-preview-btn" onclick="removeImage('${slug}')">✕ Eliminar</button></div>` : ''}</div>
-            <textarea id="detail-${slug}-description" placeholder="Descripción adicional (opcional)" rows="2" style="margin-top: 10px;">${savedData.description || ''}</textarea>
+            <input type="file" id="${sectionKey}Image" accept="image/*" onchange="handleImageUpload(event, '${sectionKey}')" style="margin-bottom: 10px;">
+            <div id="${sectionKey}Preview" class="image-preview-container">${hasImage ? `<div class="image-preview"><img src="${appState.images[sectionKey].data}" alt="Vista previa"><button type="button" class="remove-preview-btn" onclick="removeImage('${sectionKey}')">✕ Eliminar</button></div>` : ''}</div>
+            <textarea id="detail-${sectionKey}-description" placeholder="Descripción adicional (opcional)" rows="2" style="margin-top: 10px;">${savedData.description || ''}</textarea>
         </div>
     `;
 
     html += `</div>`;
     return html;
+}
+
+// Renderizar formulario de un sub-item individual
+function renderSubItemForm(config, sectionKey, index, subItemData, totalSubItems) {
+    const label = config.subItemLabel || 'Item';
+    let html = `<div class="sub-item-form" data-sub-index="${index}" id="sub-item-${sectionKey}-${index}">`;
+    html += `<div class="sub-item-header">`;
+    html += `<span class="sub-item-title">${label} ${index + 1}</span>`;
+    // Price field for each sub-item
+    html += `<div class="sub-item-price-group">`;
+    html += `<label>Precio:</label>`;
+    html += `<input type="number" class="sub-item-price" id="sub-price-${sectionKey}-${index}" value="${subItemData._price || ''}" placeholder="0.00" step="0.01" min="0" onchange="updateItemPriceFromSubItems('${sectionKey}')">`;
+    html += `</div>`;
+    if (totalSubItems > 1) {
+        html += `<button type="button" class="remove-subitem-btn" onclick="removeSubItem('${sectionKey}', ${index}, '${config.slug}')">✕</button>`;
+    }
+    html += `</div>`;
+    html += `<div class="form-grid">`;
+    config.subItemFields.forEach(field => {
+        const fieldId = `detail-${sectionKey}-sub-${index}-${field.name}`;
+        const value = subItemData[field.name] || '';
+        const readonlyAttr = field.readonly ? 'readonly' : '';
+        const readonlyClass = field.readonly ? 'auto-calculated' : '';
+
+        if (field.type === 'textarea') {
+            html += `
+                <div class="form-group full-width">
+                    <label>${field.label}</label>
+                    <textarea id="${fieldId}" placeholder="${field.placeholder || ''}" rows="3">${value}</textarea>
+                </div>`;
+        } else if (field.type === 'select') {
+            html += `
+                <div class="form-group">
+                    <label>${field.label}</label>
+                    <select id="${fieldId}">
+                        <option value="">Seleccionar...</option>
+                        ${field.options.map(opt => `<option value="${opt}" ${value === opt ? 'selected' : ''}>${opt}</option>`).join('')}
+                    </select>
+                </div>`;
+        } else if (field.type === 'airport') {
+            html += `
+                <div class="form-group">
+                    <label>${field.label}</label>
+                    <div class="airport-autocomplete-wrapper">
+                        <input type="text" id="${fieldId}" class="airport-input" placeholder="${field.placeholder || 'Buscar aeropuerto...'}" value="${escapeHtml(value)}" autocomplete="off">
+                        <div class="airport-autocomplete-dropdown" id="${fieldId}-dropdown"></div>
+                    </div>
+                </div>`;
+        } else {
+            html += `
+                <div class="form-group">
+                    <label>${field.label}</label>
+                    <input type="${field.type}" id="${fieldId}" placeholder="${field.placeholder || ''}" value="${escapeHtml(value)}" ${readonlyAttr} class="${readonlyClass}">
+                </div>`;
+        }
+    });
+    html += `</div>`;
+    html += `</div>`;
+    return html;
+}
+
+// Agregar un sub-item a una sección
+function addSubItem(sectionKey, categoryName) {
+    const config = CATEGORY_DETAIL_CONFIG[categoryName];
+    if (!config) return;
+
+    // Guardar estado actual antes de modificar
+    saveCategoryDetailToState(sectionKey, config);
+
+    // Agregar sub-item vacío
+    if (!appState.categoryDetails[sectionKey]) appState.categoryDetails[sectionKey] = {};
+    if (!appState.categoryDetails[sectionKey].subItems) appState.categoryDetails[sectionKey].subItems = [];
+    appState.categoryDetails[sectionKey].subItems.push({});
+
+    // Re-renderizar la sección de sub-items
+    const container = document.getElementById(`sub-items-${sectionKey}`);
+    if (container) {
+        const subItems = appState.categoryDetails[sectionKey].subItems;
+        container.innerHTML = '';
+        subItems.forEach((subData, idx) => {
+            container.innerHTML += renderSubItemForm(config, sectionKey, idx, subData, subItems.length);
+        });
+        // Re-setup listeners
+        setupSubItemListeners(sectionKey, config);
+    }
+}
+
+// Eliminar un sub-item de una sección
+function removeSubItem(sectionKey, index, slug) {
+    // Find the category config from slug
+    let config = null;
+    let categoryName = null;
+    for (const [name, cfg] of Object.entries(CATEGORY_DETAIL_CONFIG)) {
+        if (cfg.slug === slug) { config = cfg; categoryName = name; break; }
+    }
+    if (!config) return;
+
+    // Guardar estado actual
+    saveCategoryDetailToState(sectionKey, config);
+
+    const detail = appState.categoryDetails[sectionKey];
+    if (!detail || !detail.subItems || detail.subItems.length <= 1) return;
+
+    detail.subItems.splice(index, 1);
+
+    // Re-renderizar sub-items
+    const container = document.getElementById(`sub-items-${sectionKey}`);
+    if (container) {
+        container.innerHTML = '';
+        detail.subItems.forEach((subData, idx) => {
+            container.innerHTML += renderSubItemForm(config, sectionKey, idx, subData, detail.subItems.length);
+        });
+        setupSubItemListeners(sectionKey, config);
+    }
+
+    // Recalcular precio del item
+    updateItemPriceFromSubItems(sectionKey);
+}
+
+// Actualizar precio del item principal desde la suma de sub-items
+function updateItemPriceFromSubItems(sectionKey) {
+    // Find the item that owns this section
+    let foundItem = null;
+    for (const item of appState.items) {
+        if (item.category) {
+            const config = CATEGORY_DETAIL_CONFIG[item.category];
+            if (config && config.slug + '_' + item.id === sectionKey) {
+                foundItem = item;
+                break;
+            }
+        }
+    }
+    if (!foundItem) return;
+
+    // Sum all sub-item prices from DOM
+    const detail = appState.categoryDetails[sectionKey];
+    const subItems = detail ? detail.subItems : [];
+    let total = 0;
+    subItems.forEach((_, idx) => {
+        const priceInput = document.getElementById(`sub-price-${sectionKey}-${idx}`);
+        if (priceInput) {
+            total += parseFloat(priceInput.value) || 0;
+        }
+    });
+
+    foundItem.price = total;
+    renderItems();
+    updateTotal();
 }
 
 // Renderizar un campo individual
@@ -992,52 +1224,87 @@ function renderDetailField(field, slug, savedData) {
 }
 
 // Configurar listeners para una sección recién creada
-function setupCategorySectionListeners(slug, config) {
-    // Autocomplete para campos de aeropuerto
-    const allFields = [];
-    if (config.subsections) {
-        config.subsections.forEach(sub => allFields.push(...sub.fields));
-    }
-    if (config.fields) {
-        allFields.push(...config.fields);
+function setupCategorySectionListeners(sectionKey, config) {
+    // Top fields listeners
+    if (config.topFields) {
+        config.topFields.forEach(field => {
+            if (field.type === 'airport') {
+                const input = document.getElementById(`detail-${sectionKey}-${field.name}`);
+                if (input) setupAirportAutocomplete(input);
+            }
+        });
     }
 
-    allFields.forEach(field => {
-        if (field.type === 'airport') {
-            const input = document.getElementById(`detail-${slug}-${field.name}`);
-            if (input) setupAirportAutocomplete(input);
-        }
-    });
+    // Sub-item listeners
+    setupSubItemListeners(sectionKey, config);
 
-    // Auto-cálculo de noches para hoteles
-    if (slug === 'hoteles') {
-        const checkIn = document.getElementById('detail-hoteles-checkInDate');
-        const checkOut = document.getElementById('detail-hoteles-checkOutDate');
-        const nights = document.getElementById('detail-hoteles-numberOfNights');
-        if (checkIn && checkOut && nights) {
-            const calcNights = () => {
-                if (checkIn.value && checkOut.value) {
-                    const d1 = new Date(checkIn.value);
-                    const d2 = new Date(checkOut.value);
-                    const diff = Math.round((d2 - d1) / (1000 * 60 * 60 * 24));
-                    nights.value = diff > 0 ? diff : '';
-                } else {
-                    nights.value = '';
+    // For multi-instance: update section title when passenger name changes
+    if (config.multiInstance && config.topFields) {
+        const passengerInput = document.getElementById(`detail-${sectionKey}-passengerName`);
+        if (passengerInput) {
+            passengerInput.addEventListener('input', () => {
+                const section = document.getElementById(`detail-${sectionKey}`);
+                if (section) {
+                    const titleEl = section.querySelector('.section-title');
+                    const item = appState.items.find(i => sectionKey === config.slug + '_' + i.id);
+                    if (titleEl && item) {
+                        let title = item.description;
+                        if (passengerInput.value.trim()) {
+                            title += ' — ' + passengerInput.value.trim();
+                        }
+                        titleEl.innerHTML = `<span class="category-icon">${config.icon}</span> ${escapeHtml(title)}`;
+                    }
                 }
-            };
-            checkIn.addEventListener('change', calcNights);
-            checkOut.addEventListener('change', calcNights);
-            calcNights();
+            });
         }
     }
 
     // Restaurar tamaño de imagen si había uno guardado
-    if (appState.images && appState.images[slug]) {
-        const sizeSelect = document.getElementById(`${slug}Size`);
-        if (sizeSelect && appState.images[slug].size) {
-            sizeSelect.value = appState.images[slug].size;
+    if (appState.images && appState.images[sectionKey]) {
+        const sizeSelect = document.getElementById(`${sectionKey}Size`);
+        if (sizeSelect && appState.images[sectionKey].size) {
+            sizeSelect.value = appState.images[sectionKey].size;
         }
     }
+}
+
+// Configurar listeners para sub-items (aeropuertos autocomplete, hotel nights calc, etc.)
+function setupSubItemListeners(sectionKey, config) {
+    if (!config.subItemFields) return;
+    const detail = appState.categoryDetails[sectionKey] || {};
+    const subItems = detail.subItems || [{}];
+
+    subItems.forEach((_, idx) => {
+        // Airport autocomplete
+        config.subItemFields.forEach(field => {
+            if (field.type === 'airport') {
+                const input = document.getElementById(`detail-${sectionKey}-sub-${idx}-${field.name}`);
+                if (input) setupAirportAutocomplete(input);
+            }
+        });
+
+        // Hotel nights auto-calculation
+        if (config.slug === 'hoteles') {
+            const checkIn = document.getElementById(`detail-${sectionKey}-sub-${idx}-checkInDate`);
+            const checkOut = document.getElementById(`detail-${sectionKey}-sub-${idx}-checkOutDate`);
+            const nights = document.getElementById(`detail-${sectionKey}-sub-${idx}-numberOfNights`);
+            if (checkIn && checkOut && nights) {
+                const calcNights = () => {
+                    if (checkIn.value && checkOut.value) {
+                        const d1 = new Date(checkIn.value);
+                        const d2 = new Date(checkOut.value);
+                        const diff = Math.round((d2 - d1) / (1000 * 60 * 60 * 24));
+                        nights.value = diff > 0 ? diff : '';
+                    } else {
+                        nights.value = '';
+                    }
+                };
+                checkIn.addEventListener('change', calcNights);
+                checkOut.addEventListener('change', calcNights);
+                calcNights();
+            }
+        }
+    });
 }
 
 // Autocomplete de aeropuertos
@@ -1122,25 +1389,41 @@ function setupAirportAutocomplete(input) {
 }
 
 // Guardar datos de una sección en el estado
-function saveCategoryDetailToState(slug, config) {
-    if (!appState.categoryDetails[slug]) appState.categoryDetails[slug] = {};
-    const data = appState.categoryDetails[slug];
+function saveCategoryDetailToState(sectionKey, config) {
+    if (!appState.categoryDetails[sectionKey]) appState.categoryDetails[sectionKey] = {};
+    const data = appState.categoryDetails[sectionKey];
 
-    const allFields = [];
-    if (config.subsections) {
-        config.subsections.forEach(sub => allFields.push(...sub.fields));
-    }
-    if (config.fields) {
-        allFields.push(...config.fields);
+    // Top fields
+    if (config.topFields) {
+        config.topFields.forEach(field => {
+            const el = document.getElementById(`detail-${sectionKey}-${field.name}`);
+            if (el) data[field.name] = el.value;
+        });
     }
 
-    allFields.forEach(field => {
-        const el = document.getElementById(`detail-${slug}-${field.name}`);
-        if (el) data[field.name] = el.value;
-    });
+    // Sub-items
+    if (config.subItemFields) {
+        const container = document.getElementById(`sub-items-${sectionKey}`);
+        if (container) {
+            const subItemForms = container.querySelectorAll('.sub-item-form');
+            const subItems = [];
+            subItemForms.forEach((form, idx) => {
+                const subData = {};
+                config.subItemFields.forEach(field => {
+                    const el = document.getElementById(`detail-${sectionKey}-sub-${idx}-${field.name}`);
+                    if (el) subData[field.name] = el.value;
+                });
+                // Price
+                const priceEl = document.getElementById(`sub-price-${sectionKey}-${idx}`);
+                if (priceEl) subData._price = priceEl.value;
+                subItems.push(subData);
+            });
+            data.subItems = subItems;
+        }
+    }
 
     // Descripción
-    const descEl = document.getElementById(`detail-${slug}-description`);
+    const descEl = document.getElementById(`detail-${sectionKey}-description`);
     if (descEl) data.description = descEl.value;
 }
 
@@ -1149,9 +1432,18 @@ function saveAllCategoryDetails() {
     const activeCategories = getActiveCategories();
     activeCategories.forEach(categoryName => {
         const config = CATEGORY_DETAIL_CONFIG[categoryName];
-        const slug = config.slug;
-        if (document.getElementById(`detail-${slug}`)) {
-            saveCategoryDetailToState(slug, config);
+        if (config.multiInstance) {
+            const items = appState.items.filter(i => i.category === categoryName);
+            items.forEach(item => {
+                const sectionKey = config.slug + '_' + item.id;
+                if (document.getElementById(`detail-${sectionKey}`)) {
+                    saveCategoryDetailToState(sectionKey, config);
+                }
+            });
+        } else {
+            if (document.getElementById(`detail-${config.slug}`)) {
+                saveCategoryDetailToState(config.slug, config);
+            }
         }
     });
 }
@@ -1177,8 +1469,27 @@ function collectFormData() {
     activeCategories.forEach(categoryName => {
         const config = CATEGORY_DETAIL_CONFIG[categoryName];
         const slug = config.slug;
-        if (appState.categoryDetails[slug]) {
-            data.categoryDetails[slug] = { ...appState.categoryDetails[slug] };
+
+        if (config.multiInstance) {
+            // Collect as array
+            const items = appState.items.filter(i => i.category === categoryName);
+            const entries = [];
+            items.forEach(item => {
+                const sectionKey = slug + '_' + item.id;
+                if (appState.categoryDetails[sectionKey]) {
+                    entries.push({
+                        ...appState.categoryDetails[sectionKey],
+                        _itemDescription: item.description
+                    });
+                }
+            });
+            if (entries.length > 0) {
+                data.categoryDetails[slug] = entries;
+            }
+        } else {
+            if (appState.categoryDetails[slug]) {
+                data.categoryDetails[slug] = { ...appState.categoryDetails[slug] };
+            }
         }
     });
 
@@ -1219,21 +1530,34 @@ async function downloadDocument(format) {
             }
             // Para imágenes de categorías dinámicas
             const activeCategories = getActiveCategories();
-            const categoryImageSlugs = [];
+            const categoryImagesPayload = {};
             activeCategories.forEach(categoryName => {
-                const slug = CATEGORY_DETAIL_CONFIG[categoryName].slug;
-                if (appState.images[slug]) {
-                    categoryImageSlugs.push(slug);
+                const config = CATEGORY_DETAIL_CONFIG[categoryName];
+                const slug = config.slug;
+
+                if (config.multiInstance) {
+                    // Collect images indexed by position (aereos_0, aereos_1, etc.)
+                    const items = appState.items.filter(i => i.category === categoryName);
+                    items.forEach((item, idx) => {
+                        const imgKey = slug + '_' + item.id;
+                        if (appState.images[imgKey]) {
+                            categoryImagesPayload[slug + '_' + idx] = {
+                                data: appState.images[imgKey].data,
+                                size: appState.images[imgKey].size || 'medium'
+                            };
+                        }
+                    });
+                } else {
+                    if (appState.images[slug]) {
+                        categoryImagesPayload[slug] = {
+                            data: appState.images[slug].data,
+                            size: appState.images[slug].size || 'medium'
+                        };
+                    }
                 }
             });
-            if (categoryImageSlugs.length > 0) {
-                payload.data.categoryImages = {};
-                categoryImageSlugs.forEach(slug => {
-                    payload.data.categoryImages[slug] = {
-                        data: appState.images[slug].data,
-                        size: appState.images[slug].size || 'medium'
-                    };
-                });
+            if (Object.keys(categoryImagesPayload).length > 0) {
+                payload.data.categoryImages = categoryImagesPayload;
             }
         }
 

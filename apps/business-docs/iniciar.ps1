@@ -7,8 +7,10 @@ Write-Host "     Arman Travel - Sistema de Documentos" -ForegroundColor Cyan
 Write-Host "===============================================" -ForegroundColor Cyan
 Write-Host ""
 
+# Navegar a la raiz del monorepo (dos niveles arriba de apps/business-docs)
 $scriptPath = Split-Path -Parent -Path $MyInvocation.MyCommand.Definition
-Set-Location $scriptPath
+$monorepoRoot = Split-Path -Parent -Path (Split-Path -Parent -Path $scriptPath)
+Set-Location $monorepoRoot
 
 Write-Host "[*] Verificando dependencias..." -ForegroundColor Yellow
 
@@ -22,4 +24,4 @@ Write-Host "[+] Iniciando servidor en http://localhost:3001" -ForegroundColor Gr
 Write-Host "[+] Presiona Ctrl+C para detener" -ForegroundColor Green
 Write-Host ""
 
-npm start
+npm run start:docs

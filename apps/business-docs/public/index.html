@@ -673,24 +673,110 @@
             line-height: 1;
         }
 
-        /* Subsecciones de vuelo (ida / vuelta) */
-        .flight-subsection {
-            background: white;
-            border: 1px solid #e0e0e0;
-            border-radius: 6px;
-            padding: 16px;
-            margin-bottom: 12px;
+        /* Sub-item forms */
+        .sub-items-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
         }
 
-        .flight-subsection-title {
+        .sub-item-form {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 16px;
+            position: relative;
+            transition: border-color 0.2s ease;
+        }
+
+        .sub-item-form:hover {
+            border-color: #c4a0e8;
+        }
+
+        .sub-item-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .sub-item-title {
             font-size: 13px;
             font-weight: 700;
             color: #7B2CBF;
-            margin-bottom: 12px;
-            padding-bottom: 8px;
-            border-bottom: 1px solid #e0e0e0;
             text-transform: uppercase;
             letter-spacing: 0.3px;
+            flex-shrink: 0;
+        }
+
+        .sub-item-price-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-left: auto;
+        }
+
+        .sub-item-price-group label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #666;
+            margin: 0;
+        }
+
+        .sub-item-price {
+            width: 120px;
+            padding: 6px 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 13px;
+            text-align: right;
+        }
+
+        .sub-item-price:focus {
+            border-color: #7B2CBF;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(123, 44, 191, 0.15);
+        }
+
+        .remove-subitem-btn {
+            background: #ff4d4f;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: background 0.2s;
+        }
+
+        .remove-subitem-btn:hover {
+            background: #d32f2f;
+        }
+
+        .btn-add-subitem {
+            background: #f3e5f5;
+            color: #7B2CBF;
+            border: 2px dashed #c4a0e8;
+            border-radius: 8px;
+            padding: 10px 20px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 10px;
+            transition: all 0.2s ease;
+        }
+
+        .btn-add-subitem:hover {
+            background: #e8d0f5;
+            border-color: #7B2CBF;
         }
 
         /* Autocomplete de aeropuertos */

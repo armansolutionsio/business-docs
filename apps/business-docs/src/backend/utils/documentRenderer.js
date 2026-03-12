@@ -82,6 +82,10 @@ Handlebars.registerHelper('numberToText', function(num) {
   return result.trim();
 });
 
+Handlebars.registerHelper('add1', function(val) {
+  return parseInt(val) + 1;
+});
+
 Handlebars.registerHelper('if_eq', function(a, b, options) {
   if (a === b) {
     return options.fn(this);
@@ -323,6 +327,21 @@ class DocumentRenderer {
       ...sanitized,
       ...processedAssets,
     };
+
+    // Inject processed images into multi-instance categoryDetails arrays for all categories
+    if (renderData.categoryDetails && renderData.categoryImages) {
+      const categorySlugs = ['aereos', 'hoteles', 'packs', 'vip', 'traslados', 'tours', 'seguros', 'otros'];
+      categorySlugs.forEach(slug => {
+        if (Array.isArray(renderData.categoryDetails[slug])) {
+          renderData.categoryDetails[slug].forEach((entry, idx) => {
+            const imgKey = slug + '_' + idx;
+            if (renderData.categoryImages[imgKey]) {
+              entry._image = renderData.categoryImages[imgKey];
+            }
+          });
+        }
+      });
+    }
 
     if (format === 'pdf') {
       return await this.renderPDF(type, renderData, landscape);

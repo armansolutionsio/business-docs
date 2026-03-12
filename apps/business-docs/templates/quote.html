@@ -121,293 +121,331 @@
 <!-- DETALLE POR CATEGORÍAS -->
 {{#if categoryDetails}}
 
+{{!-- AÉREOS --}}
 {{#if categoryDetails.aereos}}
+{{#each categoryDetails.aereos}}
 <div style="background: #f5f5f5; padding: 18px; border-radius: 6px; margin-bottom: 15px; page-break-inside: avoid;">
     <div style="font-size: 12pt; font-weight: 700; color: #7B2CBF; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid #7B2CBF;">
-        &#9992;&#65039; Información del Vuelo
+        &#9992;&#65039; {{#if this.passengerName}}{{this._itemDescription}} — {{this.passengerName}}{{else}}{{this._itemDescription}}{{/if}}
     </div>
-    <!-- Vuelo de Ida -->
+    {{#each this.subItems}}
     <div style="background: white; padding: 12px; border-radius: 4px; border-left: 3px solid #7B2CBF; margin-bottom: 10px;">
-        <div style="font-weight: 700; color: #7B2CBF; font-size: 9pt; margin-bottom: 8px; text-transform: uppercase;">Vuelo de Ida</div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <div style="font-weight: 700; color: #7B2CBF; font-size: 9pt; text-transform: uppercase;">Vuelo {{add1 @index}}</div>
+            {{#if this._price}}<div style="font-size: 10pt; font-weight: 600; color: #2c3e50; font-family: 'Courier New', monospace;">$ {{formatCurrency this._price}}</div>{{/if}}
+        </div>
         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px 16px;">
-            {{#if categoryDetails.aereos.airline}}
-            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Aerolínea</div><div style="font-size: 10pt; color: #2c3e50;">{{categoryDetails.aereos.airline}}</div></div>
+            {{#if this.airline}}
+            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Aerolínea</div><div style="font-size: 10pt; color: #2c3e50;">{{this.airline}}</div></div>
             {{/if}}
-            {{#if categoryDetails.aereos.flightNumberOut}}
-            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Nro. Vuelo</div><div style="font-size: 10pt; color: #2c3e50; font-weight: 600;">{{categoryDetails.aereos.flightNumberOut}}</div></div>
-            {{/if}}
-            <div></div>
-            {{#if categoryDetails.aereos.departureAirport}}
-            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Aeropuerto Salida</div><div style="font-size: 10pt; color: #2c3e50;">{{categoryDetails.aereos.departureAirport}}</div></div>
-            {{/if}}
-            {{#if categoryDetails.aereos.arrivalAirport}}
-            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Aeropuerto Llegada</div><div style="font-size: 10pt; color: #2c3e50;">{{categoryDetails.aereos.arrivalAirport}}</div></div>
+            {{#if this.flightNumber}}
+            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Nro. Vuelo</div><div style="font-size: 10pt; color: #2c3e50; font-weight: 600;">{{this.flightNumber}}</div></div>
             {{/if}}
             <div></div>
-            {{#if categoryDetails.aereos.departureDate}}
-            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Fecha Salida</div><div style="font-size: 10pt; color: #2c3e50;">{{dateFormat categoryDetails.aereos.departureDate}}</div></div>
+            {{#if this.departureAirport}}
+            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Aeropuerto Salida</div><div style="font-size: 10pt; color: #2c3e50;">{{this.departureAirport}}</div></div>
             {{/if}}
-            {{#if categoryDetails.aereos.departureTime}}
-            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Hora Salida</div><div style="font-size: 10pt; color: #2c3e50;">{{categoryDetails.aereos.departureTime}} hs</div></div>
+            {{#if this.arrivalAirport}}
+            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Aeropuerto Llegada</div><div style="font-size: 10pt; color: #2c3e50;">{{this.arrivalAirport}}</div></div>
             {{/if}}
             <div></div>
-            {{#if categoryDetails.aereos.arrivalDate}}
-            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Fecha Llegada</div><div style="font-size: 10pt; color: #2c3e50;">{{dateFormat categoryDetails.aereos.arrivalDate}}</div></div>
+            {{#if this.departureDate}}
+            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Fecha Salida</div><div style="font-size: 10pt; color: #2c3e50;">{{dateFormat this.departureDate}}</div></div>
             {{/if}}
-            {{#if categoryDetails.aereos.arrivalTime}}
-            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Hora Llegada</div><div style="font-size: 10pt; color: #2c3e50;">{{categoryDetails.aereos.arrivalTime}} hs</div></div>
+            {{#if this.departureTime}}
+            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Hora Salida</div><div style="font-size: 10pt; color: #2c3e50;">{{this.departureTime}} hs</div></div>
+            {{/if}}
+            <div></div>
+            {{#if this.arrivalDate}}
+            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Fecha Llegada</div><div style="font-size: 10pt; color: #2c3e50;">{{dateFormat this.arrivalDate}}</div></div>
+            {{/if}}
+            {{#if this.arrivalTime}}
+            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Hora Llegada</div><div style="font-size: 10pt; color: #2c3e50;">{{this.arrivalTime}} hs</div></div>
             {{/if}}
         </div>
     </div>
-    <!-- Vuelo de Regreso -->
-    {{#if categoryDetails.aereos.flightNumberReturn}}
-    <div style="background: white; padding: 12px; border-radius: 4px; border-left: 3px solid #9b59b6; margin-bottom: 10px;">
-        <div style="font-weight: 700; color: #9b59b6; font-size: 9pt; margin-bottom: 8px; text-transform: uppercase;">Vuelo de Regreso</div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px 16px;">
-            {{#if categoryDetails.aereos.flightNumberReturn}}
-            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Nro. Vuelo</div><div style="font-size: 10pt; color: #2c3e50; font-weight: 600;">{{categoryDetails.aereos.flightNumberReturn}}</div></div>
-            {{/if}}
-            <div></div><div></div>
-            {{#if categoryDetails.aereos.returnDepartureAirport}}
-            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Aeropuerto Salida</div><div style="font-size: 10pt; color: #2c3e50;">{{categoryDetails.aereos.returnDepartureAirport}}</div></div>
-            {{/if}}
-            {{#if categoryDetails.aereos.returnArrivalAirport}}
-            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Aeropuerto Llegada</div><div style="font-size: 10pt; color: #2c3e50;">{{categoryDetails.aereos.returnArrivalAirport}}</div></div>
-            {{/if}}
-            <div></div>
-            {{#if categoryDetails.aereos.returnDepartureDate}}
-            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Fecha Salida</div><div style="font-size: 10pt; color: #2c3e50;">{{dateFormat categoryDetails.aereos.returnDepartureDate}}</div></div>
-            {{/if}}
-            {{#if categoryDetails.aereos.returnDepartureTime}}
-            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Hora Salida</div><div style="font-size: 10pt; color: #2c3e50;">{{categoryDetails.aereos.returnDepartureTime}} hs</div></div>
-            {{/if}}
-            <div></div>
-            {{#if categoryDetails.aereos.returnArrivalDate}}
-            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Fecha Llegada</div><div style="font-size: 10pt; color: #2c3e50;">{{dateFormat categoryDetails.aereos.returnArrivalDate}}</div></div>
-            {{/if}}
-            {{#if categoryDetails.aereos.returnArrivalTime}}
-            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Hora Llegada</div><div style="font-size: 10pt; color: #2c3e50;">{{categoryDetails.aereos.returnArrivalTime}} hs</div></div>
-            {{/if}}
-        </div>
-    </div>
+    {{/each}}
+    {{#if this._image}}
+    <img src="{{this._image.data}}" style="width: 100%; max-width: {{imageWidth this._image.size}}; height: auto; border: 1px solid #ddd; margin: 8px 0; border-radius: 4px; display: block;" alt="Detalle de vuelo" />
     {{/if}}
-    {{#if categoryImages.aereos}}
-    <img src="{{categoryImages.aereos.data}}" style="width: 100%; max-width: {{imageWidth categoryImages.aereos.size}}; height: auto; border: 1px solid #ddd; margin: 8px 0; border-radius: 4px; display: block;" alt="Detalle de vuelo" />
-    {{/if}}
-    {{#if categoryDetails.aereos.description}}<p style="font-size: 9pt; color: #555; margin: 8px 0 0 0; line-height: 1.5; white-space: pre-wrap;">{{categoryDetails.aereos.description}}</p>{{/if}}
+    {{#if this.description}}<p style="font-size: 9pt; color: #555; margin: 8px 0 0 0; line-height: 1.5; white-space: pre-wrap;">{{this.description}}</p>{{/if}}
 </div>
+{{/each}}
 {{/if}}
 
+{{!-- HOTELES --}}
 {{#if categoryDetails.hoteles}}
+{{#each categoryDetails.hoteles}}
 <div style="background: #f5f5f5; padding: 18px; border-radius: 6px; margin-bottom: 15px; page-break-inside: avoid;">
     <div style="font-size: 12pt; font-weight: 700; color: #7B2CBF; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid #7B2CBF;">
-        &#127976; Información del Hospedaje
+        &#127976; {{this._itemDescription}}
     </div>
+    {{#each this.subItems}}
     <div style="background: white; padding: 12px; border-radius: 4px; border-left: 3px solid #7B2CBF; margin-bottom: 10px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <div style="font-weight: 700; color: #7B2CBF; font-size: 9pt; text-transform: uppercase;">Hotel {{add1 @index}}</div>
+            {{#if this._price}}<div style="font-size: 10pt; font-weight: 600; color: #2c3e50; font-family: 'Courier New', monospace;">$ {{formatCurrency this._price}}</div>{{/if}}
+        </div>
         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px 16px;">
-            {{#if categoryDetails.hoteles.hotelName}}
-            <div style="grid-column: 1 / -1;"><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Hotel</div><div style="font-size: 11pt; color: #2c3e50; font-weight: 600;">{{categoryDetails.hoteles.hotelName}}</div></div>
+            {{#if this.hotelName}}
+            <div style="grid-column: 1 / -1;"><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Hotel</div><div style="font-size: 11pt; color: #2c3e50; font-weight: 600;">{{this.hotelName}}</div></div>
             {{/if}}
-            {{#if categoryDetails.hoteles.hotelLocation}}
-            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Ubicación</div><div style="font-size: 10pt; color: #2c3e50;">{{categoryDetails.hoteles.hotelLocation}}</div></div>
+            {{#if this.hotelLocation}}
+            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Ubicación</div><div style="font-size: 10pt; color: #2c3e50;">{{this.hotelLocation}}</div></div>
             {{/if}}
-            {{#if categoryDetails.hoteles.roomType}}
-            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Habitación</div><div style="font-size: 10pt; color: #2c3e50;">{{categoryDetails.hoteles.roomType}}</div></div>
+            {{#if this.roomType}}
+            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Habitación</div><div style="font-size: 10pt; color: #2c3e50;">{{this.roomType}}</div></div>
             {{/if}}
-            {{#if categoryDetails.hoteles.mealPlan}}
-            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Régimen</div><div style="font-size: 10pt; color: #2c3e50;">{{categoryDetails.hoteles.mealPlan}}</div></div>
+            {{#if this.mealPlan}}
+            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Régimen</div><div style="font-size: 10pt; color: #2c3e50;">{{this.mealPlan}}</div></div>
             {{/if}}
-            {{#if categoryDetails.hoteles.checkInDate}}
-            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Check-in</div><div style="font-size: 10pt; color: #2c3e50;">{{dateFormat categoryDetails.hoteles.checkInDate}}</div></div>
+            {{#if this.checkInDate}}
+            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Check-in</div><div style="font-size: 10pt; color: #2c3e50;">{{dateFormat this.checkInDate}}</div></div>
             {{/if}}
-            {{#if categoryDetails.hoteles.checkOutDate}}
-            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Check-out</div><div style="font-size: 10pt; color: #2c3e50;">{{dateFormat categoryDetails.hoteles.checkOutDate}}</div></div>
+            {{#if this.checkOutDate}}
+            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Check-out</div><div style="font-size: 10pt; color: #2c3e50;">{{dateFormat this.checkOutDate}}</div></div>
             {{/if}}
-            {{#if categoryDetails.hoteles.numberOfNights}}
-            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Noches</div><div style="font-size: 10pt; color: #7B2CBF; font-weight: 700;">{{categoryDetails.hoteles.numberOfNights}}</div></div>
+            {{#if this.numberOfNights}}
+            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Noches</div><div style="font-size: 10pt; color: #7B2CBF; font-weight: 700;">{{this.numberOfNights}}</div></div>
             {{/if}}
         </div>
     </div>
-    {{#if categoryImages.hoteles}}
-    <img src="{{categoryImages.hoteles.data}}" style="width: 100%; max-width: {{imageWidth categoryImages.hoteles.size}}; height: auto; border: 1px solid #ddd; margin: 8px 0; border-radius: 4px; display: block;" alt="Detalle de hospedaje" />
+    {{/each}}
+    {{#if this._image}}
+    <img src="{{this._image.data}}" style="width: 100%; max-width: {{imageWidth this._image.size}}; height: auto; border: 1px solid #ddd; margin: 8px 0; border-radius: 4px; display: block;" alt="Detalle de hospedaje" />
     {{/if}}
-    {{#if categoryDetails.hoteles.description}}<p style="font-size: 9pt; color: #555; margin: 8px 0 0 0; line-height: 1.5; white-space: pre-wrap;">{{categoryDetails.hoteles.description}}</p>{{/if}}
+    {{#if this.description}}<p style="font-size: 9pt; color: #555; margin: 8px 0 0 0; line-height: 1.5; white-space: pre-wrap;">{{this.description}}</p>{{/if}}
 </div>
+{{/each}}
 {{/if}}
 
+{{!-- PACKS TURÍSTICOS --}}
 {{#if categoryDetails.packs}}
+{{#each categoryDetails.packs}}
 <div style="background: #f5f5f5; padding: 18px; border-radius: 6px; margin-bottom: 15px; page-break-inside: avoid;">
     <div style="font-size: 12pt; font-weight: 700; color: #7B2CBF; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid #7B2CBF;">
-        &#127890; Detalle del Pack Turístico
+        &#127890; {{this._itemDescription}}
     </div>
+    {{#each this.subItems}}
     <div style="background: white; padding: 12px; border-radius: 4px; border-left: 3px solid #7B2CBF; margin-bottom: 10px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <div style="font-weight: 700; color: #7B2CBF; font-size: 9pt; text-transform: uppercase;">Pack {{add1 @index}}</div>
+            {{#if this._price}}<div style="font-size: 10pt; font-weight: 600; color: #2c3e50; font-family: 'Courier New', monospace;">$ {{formatCurrency this._price}}</div>{{/if}}
+        </div>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px;">
-            {{#if categoryDetails.packs.packName}}
-            <div style="grid-column: 1 / -1;"><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Pack</div><div style="font-size: 11pt; color: #2c3e50; font-weight: 600;">{{categoryDetails.packs.packName}}</div></div>
+            {{#if this.packName}}
+            <div style="grid-column: 1 / -1;"><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Pack</div><div style="font-size: 11pt; color: #2c3e50; font-weight: 600;">{{this.packName}}</div></div>
             {{/if}}
-            {{#if categoryDetails.packs.duration}}
-            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Duración</div><div style="font-size: 10pt; color: #2c3e50;">{{categoryDetails.packs.duration}}</div></div>
+            {{#if this.duration}}
+            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Duración</div><div style="font-size: 10pt; color: #2c3e50;">{{this.duration}}</div></div>
             {{/if}}
-            {{#if categoryDetails.packs.destinations}}
-            <div style="grid-column: 1 / -1;"><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Destinos Incluidos</div><div style="font-size: 10pt; color: #2c3e50; white-space: pre-wrap;">{{categoryDetails.packs.destinations}}</div></div>
+            {{#if this.destinations}}
+            <div style="grid-column: 1 / -1;"><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Destinos Incluidos</div><div style="font-size: 10pt; color: #2c3e50; white-space: pre-wrap;">{{this.destinations}}</div></div>
             {{/if}}
-            {{#if categoryDetails.packs.included}}
-            <div style="grid-column: 1 / -1;"><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">¿Qué Incluye?</div><div style="font-size: 10pt; color: #2c3e50; white-space: pre-wrap;">{{categoryDetails.packs.included}}</div></div>
+            {{#if this.included}}
+            <div style="grid-column: 1 / -1;"><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">¿Qué Incluye?</div><div style="font-size: 10pt; color: #2c3e50; white-space: pre-wrap;">{{this.included}}</div></div>
             {{/if}}
         </div>
     </div>
-    {{#if categoryImages.packs}}
-    <img src="{{categoryImages.packs.data}}" style="width: 100%; max-width: {{imageWidth categoryImages.packs.size}}; height: auto; border: 1px solid #ddd; margin: 8px 0; border-radius: 4px; display: block;" alt="Detalle del pack" />
+    {{/each}}
+    {{#if this._image}}
+    <img src="{{this._image.data}}" style="width: 100%; max-width: {{imageWidth this._image.size}}; height: auto; border: 1px solid #ddd; margin: 8px 0; border-radius: 4px; display: block;" alt="Detalle del pack" />
     {{/if}}
-    {{#if categoryDetails.packs.description}}<p style="font-size: 9pt; color: #555; margin: 8px 0 0 0; line-height: 1.5; white-space: pre-wrap;">{{categoryDetails.packs.description}}</p>{{/if}}
+    {{#if this.description}}<p style="font-size: 9pt; color: #555; margin: 8px 0 0 0; line-height: 1.5; white-space: pre-wrap;">{{this.description}}</p>{{/if}}
 </div>
+{{/each}}
 {{/if}}
 
+{{!-- VIP / PREMIUM --}}
 {{#if categoryDetails.vip}}
+{{#each categoryDetails.vip}}
 <div style="background: #f5f5f5; padding: 18px; border-radius: 6px; margin-bottom: 15px; page-break-inside: avoid;">
     <div style="font-size: 12pt; font-weight: 700; color: #7B2CBF; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid #7B2CBF;">
-        &#11088; Servicios VIP / Premium
+        &#11088; {{this._itemDescription}}
     </div>
+    {{#each this.subItems}}
     <div style="background: white; padding: 12px; border-radius: 4px; border-left: 3px solid #7B2CBF; margin-bottom: 10px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <div style="font-weight: 700; color: #7B2CBF; font-size: 9pt; text-transform: uppercase;">Servicio {{add1 @index}}</div>
+            {{#if this._price}}<div style="font-size: 10pt; font-weight: 600; color: #2c3e50; font-family: 'Courier New', monospace;">$ {{formatCurrency this._price}}</div>{{/if}}
+        </div>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px;">
-            {{#if categoryDetails.vip.serviceDescription}}
-            <div style="grid-column: 1 / -1;"><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Servicio</div><div style="font-size: 10pt; color: #2c3e50; white-space: pre-wrap;">{{categoryDetails.vip.serviceDescription}}</div></div>
+            {{#if this.serviceDescription}}
+            <div style="grid-column: 1 / -1;"><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Servicio</div><div style="font-size: 10pt; color: #2c3e50; white-space: pre-wrap;">{{this.serviceDescription}}</div></div>
             {{/if}}
-            {{#if categoryDetails.vip.vipLocation}}
-            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Ubicación</div><div style="font-size: 10pt; color: #2c3e50;">{{categoryDetails.vip.vipLocation}}</div></div>
+            {{#if this.vipLocation}}
+            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Ubicación</div><div style="font-size: 10pt; color: #2c3e50;">{{this.vipLocation}}</div></div>
             {{/if}}
-            {{#if categoryDetails.vip.vipDate}}
-            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Fecha</div><div style="font-size: 10pt; color: #2c3e50;">{{dateFormat categoryDetails.vip.vipDate}}</div></div>
+            {{#if this.vipDate}}
+            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Fecha</div><div style="font-size: 10pt; color: #2c3e50;">{{dateFormat this.vipDate}}</div></div>
             {{/if}}
-            {{#if categoryDetails.vip.vipTime}}
-            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Hora</div><div style="font-size: 10pt; color: #2c3e50;">{{categoryDetails.vip.vipTime}} hs</div></div>
+            {{#if this.vipTime}}
+            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Hora</div><div style="font-size: 10pt; color: #2c3e50;">{{this.vipTime}} hs</div></div>
             {{/if}}
-            {{#if categoryDetails.vip.specialNotes}}
-            <div style="grid-column: 1 / -1;"><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Notas Especiales</div><div style="font-size: 10pt; color: #2c3e50; white-space: pre-wrap;">{{categoryDetails.vip.specialNotes}}</div></div>
+            {{#if this.specialNotes}}
+            <div style="grid-column: 1 / -1;"><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Notas Especiales</div><div style="font-size: 10pt; color: #2c3e50; white-space: pre-wrap;">{{this.specialNotes}}</div></div>
             {{/if}}
         </div>
     </div>
-    {{#if categoryImages.vip}}
-    <img src="{{categoryImages.vip.data}}" style="width: 100%; max-width: {{imageWidth categoryImages.vip.size}}; height: auto; border: 1px solid #ddd; margin: 8px 0; border-radius: 4px; display: block;" alt="Detalle VIP" />
+    {{/each}}
+    {{#if this._image}}
+    <img src="{{this._image.data}}" style="width: 100%; max-width: {{imageWidth this._image.size}}; height: auto; border: 1px solid #ddd; margin: 8px 0; border-radius: 4px; display: block;" alt="Detalle VIP" />
     {{/if}}
-    {{#if categoryDetails.vip.description}}<p style="font-size: 9pt; color: #555; margin: 8px 0 0 0; line-height: 1.5; white-space: pre-wrap;">{{categoryDetails.vip.description}}</p>{{/if}}
+    {{#if this.description}}<p style="font-size: 9pt; color: #555; margin: 8px 0 0 0; line-height: 1.5; white-space: pre-wrap;">{{this.description}}</p>{{/if}}
 </div>
+{{/each}}
 {{/if}}
 
+{{!-- TRASLADOS --}}
 {{#if categoryDetails.traslados}}
+{{#each categoryDetails.traslados}}
 <div style="background: #f5f5f5; padding: 18px; border-radius: 6px; margin-bottom: 15px; page-break-inside: avoid;">
     <div style="font-size: 12pt; font-weight: 700; color: #7B2CBF; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid #7B2CBF;">
-        &#128656; Información de Traslados
+        &#128656; {{this._itemDescription}}
     </div>
+    {{#each this.subItems}}
     <div style="background: white; padding: 12px; border-radius: 4px; border-left: 3px solid #7B2CBF; margin-bottom: 10px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <div style="font-weight: 700; color: #7B2CBF; font-size: 9pt; text-transform: uppercase;">Traslado {{add1 @index}}</div>
+            {{#if this._price}}<div style="font-size: 10pt; font-weight: 600; color: #2c3e50; font-family: 'Courier New', monospace;">$ {{formatCurrency this._price}}</div>{{/if}}
+        </div>
         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px 16px;">
-            {{#if categoryDetails.traslados.pickupPoint}}
-            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Punto de Recogida</div><div style="font-size: 10pt; color: #2c3e50;">{{categoryDetails.traslados.pickupPoint}}</div></div>
+            {{#if this.pickupPoint}}
+            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Punto de Recogida</div><div style="font-size: 10pt; color: #2c3e50;">{{this.pickupPoint}}</div></div>
             {{/if}}
-            {{#if categoryDetails.traslados.dropoffPoint}}
-            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Punto de Destino</div><div style="font-size: 10pt; color: #2c3e50;">{{categoryDetails.traslados.dropoffPoint}}</div></div>
+            {{#if this.dropoffPoint}}
+            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Punto de Destino</div><div style="font-size: 10pt; color: #2c3e50;">{{this.dropoffPoint}}</div></div>
             {{/if}}
-            {{#if categoryDetails.traslados.vehicleType}}
-            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Vehículo</div><div style="font-size: 10pt; color: #2c3e50;">{{categoryDetails.traslados.vehicleType}}</div></div>
+            {{#if this.vehicleType}}
+            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Vehículo</div><div style="font-size: 10pt; color: #2c3e50;">{{this.vehicleType}}</div></div>
             {{/if}}
-            {{#if categoryDetails.traslados.transferDate}}
-            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Fecha</div><div style="font-size: 10pt; color: #2c3e50;">{{dateFormat categoryDetails.traslados.transferDate}}</div></div>
+            {{#if this.transferDate}}
+            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Fecha</div><div style="font-size: 10pt; color: #2c3e50;">{{dateFormat this.transferDate}}</div></div>
             {{/if}}
-            {{#if categoryDetails.traslados.transferTime}}
-            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Hora</div><div style="font-size: 10pt; color: #2c3e50;">{{categoryDetails.traslados.transferTime}} hs</div></div>
+            {{#if this.transferTime}}
+            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Hora</div><div style="font-size: 10pt; color: #2c3e50;">{{this.transferTime}} hs</div></div>
             {{/if}}
-            {{#if categoryDetails.traslados.passengerCount}}
-            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Pasajeros</div><div style="font-size: 10pt; color: #2c3e50;">{{categoryDetails.traslados.passengerCount}}</div></div>
+            {{#if this.passengerCount}}
+            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Pasajeros</div><div style="font-size: 10pt; color: #2c3e50;">{{this.passengerCount}}</div></div>
             {{/if}}
         </div>
     </div>
-    {{#if categoryImages.traslados}}
-    <img src="{{categoryImages.traslados.data}}" style="width: 100%; max-width: {{imageWidth categoryImages.traslados.size}}; height: auto; border: 1px solid #ddd; margin: 8px 0; border-radius: 4px; display: block;" alt="Detalle de traslados" />
+    {{/each}}
+    {{#if this._image}}
+    <img src="{{this._image.data}}" style="width: 100%; max-width: {{imageWidth this._image.size}}; height: auto; border: 1px solid #ddd; margin: 8px 0; border-radius: 4px; display: block;" alt="Detalle de traslados" />
     {{/if}}
-    {{#if categoryDetails.traslados.description}}<p style="font-size: 9pt; color: #555; margin: 8px 0 0 0; line-height: 1.5; white-space: pre-wrap;">{{categoryDetails.traslados.description}}</p>{{/if}}
+    {{#if this.description}}<p style="font-size: 9pt; color: #555; margin: 8px 0 0 0; line-height: 1.5; white-space: pre-wrap;">{{this.description}}</p>{{/if}}
 </div>
+{{/each}}
 {{/if}}
 
+{{!-- TOURS --}}
 {{#if categoryDetails.tours}}
+{{#each categoryDetails.tours}}
 <div style="background: #f5f5f5; padding: 18px; border-radius: 6px; margin-bottom: 15px; page-break-inside: avoid;">
     <div style="font-size: 12pt; font-weight: 700; color: #7B2CBF; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid #7B2CBF;">
-        &#128506;&#65039; Detalle del Tour
+        &#128506;&#65039; {{this._itemDescription}}
     </div>
+    {{#each this.subItems}}
     <div style="background: white; padding: 12px; border-radius: 4px; border-left: 3px solid #7B2CBF; margin-bottom: 10px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <div style="font-weight: 700; color: #7B2CBF; font-size: 9pt; text-transform: uppercase;">Tour {{add1 @index}}</div>
+            {{#if this._price}}<div style="font-size: 10pt; font-weight: 600; color: #2c3e50; font-family: 'Courier New', monospace;">$ {{formatCurrency this._price}}</div>{{/if}}
+        </div>
         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px 16px;">
-            {{#if categoryDetails.tours.tourName}}
-            <div style="grid-column: 1 / -1;"><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Tour</div><div style="font-size: 11pt; color: #2c3e50; font-weight: 600;">{{categoryDetails.tours.tourName}}</div></div>
+            {{#if this.tourName}}
+            <div style="grid-column: 1 / -1;"><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Tour</div><div style="font-size: 11pt; color: #2c3e50; font-weight: 600;">{{this.tourName}}</div></div>
             {{/if}}
-            {{#if categoryDetails.tours.tourLocation}}
-            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Ubicación</div><div style="font-size: 10pt; color: #2c3e50;">{{categoryDetails.tours.tourLocation}}</div></div>
+            {{#if this.tourLocation}}
+            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Ubicación</div><div style="font-size: 10pt; color: #2c3e50;">{{this.tourLocation}}</div></div>
             {{/if}}
-            {{#if categoryDetails.tours.tourDate}}
-            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Fecha</div><div style="font-size: 10pt; color: #2c3e50;">{{dateFormat categoryDetails.tours.tourDate}}</div></div>
+            {{#if this.tourDate}}
+            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Fecha</div><div style="font-size: 10pt; color: #2c3e50;">{{dateFormat this.tourDate}}</div></div>
             {{/if}}
-            {{#if categoryDetails.tours.tourDuration}}
-            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Duración</div><div style="font-size: 10pt; color: #2c3e50;">{{categoryDetails.tours.tourDuration}}</div></div>
+            {{#if this.tourDuration}}
+            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Duración</div><div style="font-size: 10pt; color: #2c3e50;">{{this.tourDuration}}</div></div>
             {{/if}}
-            {{#if categoryDetails.tours.guideIncluded}}
-            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Guía</div><div style="font-size: 10pt; color: #2c3e50;">{{categoryDetails.tours.guideIncluded}}</div></div>
+            {{#if this.guideIncluded}}
+            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Guía</div><div style="font-size: 10pt; color: #2c3e50;">{{this.guideIncluded}}</div></div>
             {{/if}}
-            {{#if categoryDetails.tours.tourIncludes}}
-            <div style="grid-column: 1 / -1;"><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">¿Qué Incluye?</div><div style="font-size: 10pt; color: #2c3e50; white-space: pre-wrap;">{{categoryDetails.tours.tourIncludes}}</div></div>
+            {{#if this.tourIncludes}}
+            <div style="grid-column: 1 / -1;"><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">¿Qué Incluye?</div><div style="font-size: 10pt; color: #2c3e50; white-space: pre-wrap;">{{this.tourIncludes}}</div></div>
             {{/if}}
         </div>
     </div>
-    {{#if categoryImages.tours}}
-    <img src="{{categoryImages.tours.data}}" style="width: 100%; max-width: {{imageWidth categoryImages.tours.size}}; height: auto; border: 1px solid #ddd; margin: 8px 0; border-radius: 4px; display: block;" alt="Detalle del tour" />
+    {{/each}}
+    {{#if this._image}}
+    <img src="{{this._image.data}}" style="width: 100%; max-width: {{imageWidth this._image.size}}; height: auto; border: 1px solid #ddd; margin: 8px 0; border-radius: 4px; display: block;" alt="Detalle del tour" />
     {{/if}}
-    {{#if categoryDetails.tours.description}}<p style="font-size: 9pt; color: #555; margin: 8px 0 0 0; line-height: 1.5; white-space: pre-wrap;">{{categoryDetails.tours.description}}</p>{{/if}}
+    {{#if this.description}}<p style="font-size: 9pt; color: #555; margin: 8px 0 0 0; line-height: 1.5; white-space: pre-wrap;">{{this.description}}</p>{{/if}}
 </div>
+{{/each}}
 {{/if}}
 
+{{!-- SEGUROS --}}
 {{#if categoryDetails.seguros}}
+{{#each categoryDetails.seguros}}
 <div style="background: #f5f5f5; padding: 18px; border-radius: 6px; margin-bottom: 15px; page-break-inside: avoid;">
     <div style="font-size: 12pt; font-weight: 700; color: #7B2CBF; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid #7B2CBF;">
-        &#128737;&#65039; Detalle del Seguro de Viaje
+        &#128737;&#65039; {{this._itemDescription}}
     </div>
+    {{#each this.subItems}}
     <div style="background: white; padding: 12px; border-radius: 4px; border-left: 3px solid #7B2CBF; margin-bottom: 10px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <div style="font-weight: 700; color: #7B2CBF; font-size: 9pt; text-transform: uppercase;">Seguro {{add1 @index}}</div>
+            {{#if this._price}}<div style="font-size: 10pt; font-weight: 600; color: #2c3e50; font-family: 'Courier New', monospace;">$ {{formatCurrency this._price}}</div>{{/if}}
+        </div>
         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px 16px;">
-            {{#if categoryDetails.seguros.insuranceCompany}}
-            <div style="grid-column: 1 / -1;"><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Compañía</div><div style="font-size: 11pt; color: #2c3e50; font-weight: 600;">{{categoryDetails.seguros.insuranceCompany}}</div></div>
+            {{#if this.insuranceCompany}}
+            <div style="grid-column: 1 / -1;"><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Compañía</div><div style="font-size: 11pt; color: #2c3e50; font-weight: 600;">{{this.insuranceCompany}}</div></div>
             {{/if}}
-            {{#if categoryDetails.seguros.coverageType}}
-            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Tipo de Cobertura</div><div style="font-size: 10pt; color: #2c3e50;">{{categoryDetails.seguros.coverageType}}</div></div>
+            {{#if this.coverageType}}
+            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Tipo de Cobertura</div><div style="font-size: 10pt; color: #2c3e50;">{{this.coverageType}}</div></div>
             {{/if}}
-            {{#if categoryDetails.seguros.insuranceStartDate}}
-            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Fecha Inicio</div><div style="font-size: 10pt; color: #2c3e50;">{{dateFormat categoryDetails.seguros.insuranceStartDate}}</div></div>
+            {{#if this.insuranceStartDate}}
+            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Fecha Inicio</div><div style="font-size: 10pt; color: #2c3e50;">{{dateFormat this.insuranceStartDate}}</div></div>
             {{/if}}
-            {{#if categoryDetails.seguros.insuranceEndDate}}
-            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Fecha Fin</div><div style="font-size: 10pt; color: #2c3e50;">{{dateFormat categoryDetails.seguros.insuranceEndDate}}</div></div>
+            {{#if this.insuranceEndDate}}
+            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Fecha Fin</div><div style="font-size: 10pt; color: #2c3e50;">{{dateFormat this.insuranceEndDate}}</div></div>
             {{/if}}
-            {{#if categoryDetails.seguros.coverageDetails}}
-            <div style="grid-column: 1 / -1;"><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Detalle de Cobertura</div><div style="font-size: 10pt; color: #2c3e50; white-space: pre-wrap;">{{categoryDetails.seguros.coverageDetails}}</div></div>
+            {{#if this.coverageDetails}}
+            <div style="grid-column: 1 / -1;"><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Detalle de Cobertura</div><div style="font-size: 10pt; color: #2c3e50; white-space: pre-wrap;">{{this.coverageDetails}}</div></div>
             {{/if}}
         </div>
     </div>
-    {{#if categoryImages.seguros}}
-    <img src="{{categoryImages.seguros.data}}" style="width: 100%; max-width: {{imageWidth categoryImages.seguros.size}}; height: auto; border: 1px solid #ddd; margin: 8px 0; border-radius: 4px; display: block;" alt="Detalle del seguro" />
+    {{/each}}
+    {{#if this._image}}
+    <img src="{{this._image.data}}" style="width: 100%; max-width: {{imageWidth this._image.size}}; height: auto; border: 1px solid #ddd; margin: 8px 0; border-radius: 4px; display: block;" alt="Detalle del seguro" />
     {{/if}}
-    {{#if categoryDetails.seguros.description}}<p style="font-size: 9pt; color: #555; margin: 8px 0 0 0; line-height: 1.5; white-space: pre-wrap;">{{categoryDetails.seguros.description}}</p>{{/if}}
+    {{#if this.description}}<p style="font-size: 9pt; color: #555; margin: 8px 0 0 0; line-height: 1.5; white-space: pre-wrap;">{{this.description}}</p>{{/if}}
 </div>
+{{/each}}
 {{/if}}
 
+{{!-- OTROS SERVICIOS --}}
 {{#if categoryDetails.otros}}
+{{#each categoryDetails.otros}}
 <div style="background: #f5f5f5; padding: 18px; border-radius: 6px; margin-bottom: 15px; page-break-inside: avoid;">
     <div style="font-size: 12pt; font-weight: 700; color: #7B2CBF; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid #7B2CBF;">
-        &#128203; Información Adicional
+        &#128203; {{this._itemDescription}}
     </div>
+    {{#each this.subItems}}
     <div style="background: white; padding: 12px; border-radius: 4px; border-left: 3px solid #7B2CBF; margin-bottom: 10px;">
-        {{#if categoryDetails.otros.otherNotes}}
-        <div style="font-size: 10pt; color: #2c3e50; white-space: pre-wrap;">{{categoryDetails.otros.otherNotes}}</div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <div style="font-weight: 700; color: #7B2CBF; font-size: 9pt; text-transform: uppercase;">Servicio {{add1 @index}}</div>
+            {{#if this._price}}<div style="font-size: 10pt; font-weight: 600; color: #2c3e50; font-family: 'Courier New', monospace;">$ {{formatCurrency this._price}}</div>{{/if}}
+        </div>
+        {{#if this.otherNotes}}
+        <div style="font-size: 10pt; color: #2c3e50; white-space: pre-wrap;">{{this.otherNotes}}</div>
         {{/if}}
     </div>
-    {{#if categoryImages.otros}}
-    <img src="{{categoryImages.otros.data}}" style="width: 100%; max-width: {{imageWidth categoryImages.otros.size}}; height: auto; border: 1px solid #ddd; margin: 8px 0; border-radius: 4px; display: block;" alt="Información adicional" />
+    {{/each}}
+    {{#if this._image}}
+    <img src="{{this._image.data}}" style="width: 100%; max-width: {{imageWidth this._image.size}}; height: auto; border: 1px solid #ddd; margin: 8px 0; border-radius: 4px; display: block;" alt="Información adicional" />
     {{/if}}
-    {{#if categoryDetails.otros.description}}<p style="font-size: 9pt; color: #555; margin: 8px 0 0 0; line-height: 1.5; white-space: pre-wrap;">{{categoryDetails.otros.description}}</p>{{/if}}
+    {{#if this.description}}<p style="font-size: 9pt; color: #555; margin: 8px 0 0 0; line-height: 1.5; white-space: pre-wrap;">{{this.description}}</p>{{/if}}
 </div>
+{{/each}}
 {{/if}}
 
 {{/if}}

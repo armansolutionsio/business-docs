@@ -2,7 +2,7 @@ services:
   # Backend API (Node.js + Express)
   backend:
     build:
-      context: .
+      context: ../apps/business-docs
       dockerfile: Dockerfile
     container_name: arman-business-docs
     environment:
@@ -11,8 +11,8 @@ services:
     ports:
       - "3001:3001"
     volumes:
-      - ./public:/app/public
-      - ./src:/app/src
+      - ../apps/business-docs/public:/app/public
+      - ../apps/business-docs/src:/app/src
     restart: unless-stopped
     networks:
       - arman-travel-network

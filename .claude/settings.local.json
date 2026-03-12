@@ -4,7 +4,10 @@
       "Bash(find:*)",
       "Bash(ls:*)",
       "Bash(chmod:*)",
-      "Bash(npx playwright install chromium)"
+      "Bash(npx playwright install chromium)",
+      "Bash(xargs grep:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run:*)"
     ]
   }
 }
