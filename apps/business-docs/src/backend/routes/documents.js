@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const DocumentRenderer = require('../utils/documentRenderer');
+const log = require('../utils/logger');
 
 /**
  * Generate PDF document
@@ -18,16 +19,10 @@ router.post('/generate-pdf', async (req, res) => {
     const docNumber = data.invoiceNumber || data.receiptNumber || data.quoteNumber || 'Sin número';
     const docDate = data.invoiceDate || data.receiptDate || data.quoteDate || new Date().toISOString();
 
-    console.log('\n┌─────────────────────────────────────────────────────────────');
-    console.log('│ [PDF] INICIO DE GENERACIÓN');
-    console.log('├─────────────────────────────────────────────────────────────');
-    console.log(`│ Tipo:      ${docTypeName} (${type})`);
-    console.log(`│ Cliente:   ${clientName}`);
-    console.log(`│ Número:    ${docNumber}`);
-    console.log(`│ Fecha:     ${docDate}`);
-    console.log(`│ Landscape: ${landscape ? 'Sí' : 'No'}`);
-    console.log(`│ Hora:      ${new Date().toLocaleString('es-AR')}`);
-    console.log('└─────────────────────────────────────────────────────────────\n');
+    log.info(req, 'pdf_start', {
+      doc_type: type, client: clientName, doc_number: docNumber,
+      landscape: !!landscape,
+    });
 
     if (!type || !data) {
       console.error('[PDF] ✗ ERROR: Faltan campos requeridos (type o data)');
@@ -37,19 +32,11 @@ router.post('/generate-pdf', async (req, res) => {
     // Move travel images from data to assets for proper processing
     let processAssets = { ...assets };
     if (data.images && typeof data.images === 'object') {
-      const imageKeys = Object.keys(data.images);
       processAssets.images = data.images;
-      console.log(`[PDF] 📷 Procesando ${imageKeys.length} imagen(es):`, imageKeys.join(', '));
     }
-
-    // Move category images from data to assets for proper processing
     if (data.categoryImages && typeof data.categoryImages === 'object') {
       processAssets.categoryImages = data.categoryImages;
-      const slugs = Object.keys(data.categoryImages);
-      console.log(`[PDF] 📷 Procesando ${slugs.length} imagen(es) de categoría:`, slugs.join(', '));
     }
-
-    console.log('[PDF] 🔄 Iniciando renderizado...');
     const buffer = await DocumentRenderer.render({
       type,
       format: 'pdf',
@@ -61,28 +48,17 @@ router.post('/generate-pdf', async (req, res) => {
     const elapsedTime = Date.now() - startTime;
     const pdfSizeKB = (buffer.length / 1024).toFixed(2);
 
-    console.log('\n┌─────────────────────────────────────────────────────────────');
-    console.log('│ [PDF] ✓ GENERACIÓN EXITOSA');
-    console.log('├─────────────────────────────────────────────────────────────');
-    console.log(`│ Documento:  ${docTypeName} #${docNumber}`);
-    console.log(`│ Cliente:    ${clientName}`);
-    console.log(`│ Tamaño:     ${pdfSizeKB} KB (${buffer.length} bytes)`);
-    console.log(`│ Tiempo:     ${elapsedTime}ms`);
-    console.log(`│ Timestamp:  ${new Date().toLocaleString('es-AR')}`);
-    console.log('└─────────────────────────────────────────────────────────────\n');
+    log.info(req, 'pdf_ok', {
+      doc_type: type, client: clientName, doc_number: docNumber,
+      size_kb: parseFloat(pdfSizeKB), ms: elapsedTime,
+    });
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename=${type}_${Date.now()}.pdf`);
     res.send(buffer);
   } catch (error) {
     const elapsedTime = Date.now() - startTime;
-    console.error('\n┌─────────────────────────────────────────────────────────────');
-    console.error('│ [PDF] ✗ ERROR EN GENERACIÓN');
-    console.error('├─────────────────────────────────────────────────────────────');
-    console.error(`│ Error:   ${error.message}`);
-    console.error(`│ Stack:   ${error.stack?.split('\n')[1]?.trim() || 'N/A'}`);
-    console.error(`│ Tiempo:  ${elapsedTime}ms`);
-    console.error('└─────────────────────────────────────────────────────────────\n');
+    log.error(req, 'pdf_error', { error: error.message, ms: elapsedTime });
     res.status(500).json({ error: error.message });
   }
 });
@@ -110,7 +86,7 @@ router.post('/generate-word', async (req, res) => {
     res.setHeader('Content-Disposition', `attachment; filename=${type}_${Date.now()}.docx`);
     res.send(buffer);
   } catch (error) {
-    console.error('Word generation error:', error);
+    log.error(req, 'word_error', { error: error.message });
     res.status(500).json({ error: error.message });
   }
 });

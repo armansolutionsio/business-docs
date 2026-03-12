@@ -18,5 +18,15 @@
     "clientEmail": "cliente2@example.com",
     "clientPhone": "+54 11 9876-5432",
     "createdAt": "2025-02-12T00:00:00Z"
+  },
+  {
+    "id": "3",
+    "clientName": "Santiago Bergman",
+    "clientCUIT": "39171987",
+    "clientIVACondition": "Responsable Inscripto",
+    "clientAddress": "Roque Saenz Peña 482",
+    "clientEmail": "sbergman@armansolutions.io",
+    "clientPhone": "+541151327320",
+    "createdAt": "2026-03-12T14:06:20.665Z"
   }
 ]
