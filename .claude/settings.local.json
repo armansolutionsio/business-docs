@@ -31,7 +31,12 @@
       "Bash(psql -U postgres -h localhost -c \"SELECT usename FROM pg_user;\")",
       "Bash(tasklist //FI \"IMAGENAME eq psql.exe\")",
       "Bash(timeout /t 3 /nobreak)",
-      "Bash(node --test apps/business-docs/test/test_stage2.js)"
+      "Bash(node --test apps/business-docs/test/test_stage2.js)",
+      "Bash(psql \"postgresql://localhost:5432/postgres\" -c \"SELECT current_user\")",
+      "Bash(DATABASE_URL=postgresql://arman:arman@localhost:5435/arman_core .venv/Scripts/alembic upgrade head)",
+      "Bash(netstat -ano)",
+      "Bash(curl -s \"http://localhost:8001/v1/activity-logs?entity_id=cf9ad094-dee5-434a-80aa-3ca4067d083b&entity_type=lead&limit=100\")",
+      "Bash(curl -s \"http://localhost:8001/v1/activity-logs\")"
     ]
   }
 }

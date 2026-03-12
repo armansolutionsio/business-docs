@@ -50,12 +50,31 @@ class Lead(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     party_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("party.id"), nullable=True)
     source: Mapped[str | None] = mapped_column(String(50), nullable=True)   # WHATSAPP | WEB | REFERRAL …
-    status: Mapped[str] = mapped_column(String(20), default="NEW")          # NEW | QUALIFIED | CONVERTED | LOST
+    status: Mapped[str] = mapped_column(String(20), default="NEW")
+    # Pipeline: NEW | QUALIFIED | QUOTE_SENT | NEGOTIATION | WON | LOST
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    assigned_to: Mapped[str | None] = mapped_column(String(100), nullable=True)   # operator name
+    destination: Mapped[str | None] = mapped_column(String(200), nullable=True)   # travel destination
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     party: Mapped["Party | None"] = relationship(back_populates="leads")
+    tasks: Mapped[list["LeadTask"]] = relationship(back_populates="lead", cascade="all, delete-orphan")
+
+
+class LeadTask(Base):
+    """Task/reminder linked to a lead."""
+    __tablename__ = "lead_task"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    lead_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("lead.id", ondelete="CASCADE"), nullable=False)
+    title: Mapped[str] = mapped_column(String(300), nullable=False)
+    due_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="PENDING")   # PENDING | DONE
+    assigned_to: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    lead: Mapped["Lead"] = relationship(back_populates="tasks")
 
 
 class Sale(Base):

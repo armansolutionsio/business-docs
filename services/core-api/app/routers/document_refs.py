@@ -72,10 +72,19 @@ def create_document_ref(
 
 
 @router.get("", response_model=list[DocumentRefOut])
-def list_document_refs(sale_id: uuid.UUID | None = None, db: Session = Depends(get_db)):
-    q = db.query(DocumentRef)
+def list_document_refs(
+    sale_id: uuid.UUID | None = None,
+    lead_id: uuid.UUID | None = None,
+    party_id: uuid.UUID | None = None,
+    db: Session = Depends(get_db),
+):
+    q = db.query(DocumentRef).order_by(DocumentRef.created_at.desc())
     if sale_id:
         q = q.filter(DocumentRef.sale_id == sale_id)
+    if lead_id:
+        q = q.filter(DocumentRef.lead_id == lead_id)
+    if party_id:
+        q = q.filter(DocumentRef.party_id == party_id)
     return q.all()
 
 

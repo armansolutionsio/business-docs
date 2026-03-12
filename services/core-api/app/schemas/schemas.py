@@ -38,7 +38,10 @@ class LeadCreate(BaseModel):
     party_id: Optional[uuid.UUID] = None
     source: Optional[str] = None
     status: str = "NEW"
+    # Pipeline statuses: NEW | QUALIFIED | QUOTE_SENT | NEGOTIATION | WON | LOST
     notes: Optional[str] = None
+    assigned_to: Optional[str] = None
+    destination: Optional[str] = None
 
 
 class LeadOut(BaseModel):
@@ -47,6 +50,30 @@ class LeadOut(BaseModel):
     source: Optional[str]
     status: str
     notes: Optional[str]
+    assigned_to: Optional[str]
+    destination: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+# ── LeadTask ───────────────────────────────────────────────────────────────────
+
+class LeadTaskCreate(BaseModel):
+    title: str
+    due_date: Optional[datetime] = None
+    status: str = "PENDING"
+    assigned_to: Optional[str] = None
+
+
+class LeadTaskOut(BaseModel):
+    id: uuid.UUID
+    lead_id: uuid.UUID
+    title: str
+    due_date: Optional[datetime]
+    status: str
+    assigned_to: Optional[str]
     created_at: datetime
 
     model_config = {"from_attributes": True}

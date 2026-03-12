@@ -9,6 +9,7 @@
   "scripts": {
     "dev:docs": "npm --workspace apps/business-docs run dev",
     "build:docs": "npm --workspace apps/business-docs run build",
-    "start:docs": "npm --workspace apps/business-docs run start"
+    "start:docs": "npm --workspace apps/business-docs run start",
+    "dev:crm": "npm --workspace apps/crm-ui run dev"
   }
 }

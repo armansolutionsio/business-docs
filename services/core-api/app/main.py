@@ -2,6 +2,7 @@ import logging
 import logging.config
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.middleware.request_id import RequestIdMiddleware
 from app.routers import (
@@ -61,6 +62,15 @@ app = FastAPI(
 )
 
 app.add_middleware(RequestIdMiddleware)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],          # tighten in production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["X-Core-Doc-Ref-Id", "X-Core-Party-Id",
+                    "X-Core-Sale-Id", "X-Core-Lead-Id"],
+)
 
 app.include_router(health.router)
 app.include_router(parties.router)

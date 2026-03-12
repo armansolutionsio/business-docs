@@ -80,6 +80,24 @@ services:
     networks:
       - arman-local
 
+  crm-ui:
+    build:
+      context: ../apps/crm-ui
+      dockerfile: Dockerfile
+    container_name: arman-crm-ui
+    depends_on:
+      - core-api
+      - business-docs
+    environment:
+      VITE_CORE_API_URL: http://core-api:8000
+      VITE_BUSINESS_DOCS_URL: http://business-docs:3001
+    ports:
+      - "3002:3002"
+    volumes:
+      - ../apps/crm-ui/src:/app/src         # hot-reload
+    networks:
+      - arman-local
+
 volumes:
   postgres_data:
 
