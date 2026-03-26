@@ -7,6 +7,7 @@ import LoginPage from './pages/LoginPage.jsx';
 import InboxPage from './pages/InboxPage.jsx';
 import KanbanPage from './pages/KanbanPage.jsx';
 import LeadDetailPage from './pages/LeadDetailPage.jsx';
+import ContactosPage from './pages/ContactosPage.jsx';
 import Layout from './components/Layout.jsx';
 
 function PrivateRoute({ children }) {
@@ -18,7 +19,7 @@ export default function App() {
   return (
     <AuthProvider>
       <ToastProvider>
-      <BrowserRouter>
+      <BrowserRouter basename="/crm">
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route
@@ -29,12 +30,13 @@ export default function App() {
               </PrivateRoute>
             }
           >
-            <Route index element={<Navigate to="/inbox" replace />} />
+            <Route index element={<Navigate to="/contactos" replace />} />
+            <Route path="contactos" element={<ContactosPage />} />
             <Route path="inbox" element={<InboxPage />} />
             <Route path="kanban" element={<KanbanPage />} />
             <Route path="leads/:id" element={<LeadDetailPage />} />
           </Route>
-          <Route path="*" element={<Navigate to="/inbox" replace />} />
+          <Route path="*" element={<Navigate to="/contactos" replace />} />
         </Routes>
       </BrowserRouter>
       </ToastProvider>

@@ -48,19 +48,23 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # --------------------------------
-# Copiar package.json primero
+# Copiar manifests del monorepo
 # (mejor cache de Docker)
 # --------------------------------
 COPY package.json package-lock.json ./
+COPY apps/business-docs/package.json ./apps/business-docs/
+COPY packages/shared/package.json ./packages/shared/
 
-# Instalar dependencias Node
-RUN npm ci --omit=dev
+# Instalar dependencias Node (workspace-aware)
+RUN npm ci --omit=dev --workspace=apps/business-docs
 
 # Instalar Chromium para Playwright
 RUN npx playwright install chromium
 
-# Copiar aplicación completa
-COPY . .
+# Copiar paquete compartido, CRM dist y aplicación
+COPY packages/shared/ ./packages/shared/
+COPY apps/crm-ui/dist/ ./apps/crm-ui/dist/
+COPY apps/business-docs/ ./apps/business-docs/
 
 # Variables de entorno
 ENV NODE_ENV=production
@@ -68,6 +72,9 @@ ENV PORT=3001
 
 # Exponer puerto
 EXPOSE 3001
+
+# Cambiar al directorio de la app
+WORKDIR /app/apps/business-docs
 
 # Healthcheck real
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \

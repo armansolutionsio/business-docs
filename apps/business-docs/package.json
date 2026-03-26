@@ -22,6 +22,7 @@
   "dependencies": {
     "@arman/sdk": "*",
     "cors": "^2.8.6",
+    "pg": "^8.13.1",
     "dotenv": "^17.2.4",
     "express": "^5.2.1",
     "handlebars": "^4.7.7",

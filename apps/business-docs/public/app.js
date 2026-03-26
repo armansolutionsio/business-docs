@@ -325,6 +325,64 @@ const documentConfig = {
     }
 };
 
+// ── Integración con Core API (CRM) ──────────────────────────────────────────
+const CORE_API_URL = window.location.hostname === 'localhost'
+    ? 'http://localhost:8000'
+    : `${window.location.protocol}//${window.location.hostname}:8000`;
+
+function detectDocType(value) {
+    const digits = (value || '').replace(/\D/g, '');
+    return digits.length === 11 ? 'CUIT' : 'DNI';
+}
+
+function normalizeDoc(value) {
+    return (value || '').replace(/\D/g, '');
+}
+
+async function crmUpsertParty(clientName, clientCUIT, clientEmail, clientPhone) {
+    if (!clientCUIT) return null;
+    try {
+        const r = await fetch(`${CORE_API_URL}/v1/parties`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                doc_type: detectDocType(clientCUIT),
+                doc_number: clientCUIT,
+                country: 'AR',
+                full_name: clientName || '',
+                email: clientEmail || '',
+                phone: clientPhone || '',
+            }),
+        });
+        if (!r.ok) return null;
+        return await r.json();
+    } catch { return null; }
+}
+
+async function crmCreateLead(partyId, destination, leadId) {
+    try {
+        // Si viene leadId desde CRM, actualizar a QUOTE_SENT en lugar de crear
+        if (leadId) {
+            await fetch(`${CORE_API_URL}/v1/leads/${leadId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: 'QUOTE_SENT' }),
+            });
+            return;
+        }
+        await fetch(`${CORE_API_URL}/v1/leads`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                party_id: partyId || null,
+                destination: destination || null,
+                source: 'cotizador',
+                status: 'QUOTE_SENT',
+            }),
+        });
+    } catch { /* silencioso — no bloquear la descarga */ }
+}
+
 // Pre-rellenar formulario con parámetros de URL (ej. desde CRM)
 function prefillFromUrlParams() {
     const params = new URLSearchParams(window.location.search);
@@ -1624,6 +1682,14 @@ async function downloadDocument(format) {
         a.remove();
 
         showMessage(`${format.toUpperCase()} descargado correctamente`, 'success');
+
+        // Sincronizar con CRM: si es cotización, upsert party + crear/actualizar lead
+        if (appState.currentTab === 'quote') {
+            const urlParams = new URLSearchParams(window.location.search);
+            const leadId = urlParams.get('leadId');
+            const party = await crmUpsertParty(data.clientName, data.clientCUIT, data.clientEmail, data.clientPhone);
+            await crmCreateLead(party?.id, data.destinations || null, leadId);
+        }
     } catch (error) {
         console.error('Error:', error);
         showMessage(`Error al generar el documento: ${error.message}`, 'error');
@@ -1777,12 +1843,25 @@ async function addNewClient() {
     const address = document.getElementById('new-client-address').value.trim();
     const email = document.getElementById('new-client-email').value.trim();
     const phone = document.getElementById('new-client-phone').value.trim();
-    
+
     if (!name || !cuit) {
-        showMessage('Por favor completa nombre y CUIT', 'error');
+        showMessage('Por favor completa nombre y CUIT/DNI', 'error');
         return;
     }
-    
+
+    // Verificar si ya existe un cliente con el mismo documento
+    try {
+        const allResp = await fetch('/api/clients');
+        if (allResp.ok) {
+            const all = await allResp.json();
+            const docNorm = normalizeDoc(cuit);
+            const existing = all.find(c => normalizeDoc(c.clientCUIT) === docNorm);
+            if (existing) {
+                showMessage(`El cliente "${existing.clientName || cuit}" ya está registrado con ese documento. Se actualizarán sus datos.`, 'warning');
+            }
+        }
+    } catch { /* continuar igual */ }
+
     try {
         const response = await fetch('/api/clients', {
             method: 'POST',
@@ -1796,9 +1875,9 @@ async function addNewClient() {
                 clientPhone: phone
             })
         });
-        
-        if (!response.ok) throw new Error('Error creando cliente');
-        
+
+        if (!response.ok) throw new Error('Error guardando cliente');
+
         // Limpiar form
         document.getElementById('new-client-name').value = '';
         document.getElementById('new-client-cuit').value = '';
@@ -1806,12 +1885,12 @@ async function addNewClient() {
         document.getElementById('new-client-address').value = '';
         document.getElementById('new-client-email').value = '';
         document.getElementById('new-client-phone').value = '';
-        
-        showMessage('Cliente agregado correctamente', 'success');
+
+        showMessage('Cliente guardado correctamente', 'success');
         loadClientsList();
     } catch (error) {
         console.error('Error:', error);
-        showMessage('Error al agregar cliente', 'error');
+        showMessage('Error al guardar cliente', 'error');
     }
 }
 

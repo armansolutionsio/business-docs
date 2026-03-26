@@ -18,6 +18,9 @@ export default function Layout() {
           <span className="topbar-brand-name">CRM</span>
         </div>
         <nav className="topbar-nav">
+          <NavLink to="/contactos" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+            Contactos
+          </NavLink>
           <NavLink to="/inbox" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
             Leads
           </NavLink>

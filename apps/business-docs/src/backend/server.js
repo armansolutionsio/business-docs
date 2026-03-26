@@ -33,12 +33,21 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.static(path.join(__dirname, '../../public')));
 
+// CRM SPA — serve pre-built dist under /crm
+const crmDistPath = path.join(__dirname, '../../../crm-ui/dist');
+app.use('/crm', express.static(crmDistPath));
+app.get('/crm/{*splat}', (req, res) => {
+  res.sendFile(path.join(crmDistPath, 'index.html'));
+});
+
 // ── Routes ────────────────────────────────────────────────────────────────────
-const documentRoutes = require('./routes/documents');
-const clientRoutes   = require('./routes/clients');
+const documentRoutes  = require('./routes/documents');
+const clientRoutes    = require('./routes/clients');
+const contactosRoutes = require('./routes/contactos');
 
 app.use('/api/documents', documentRoutes);
 app.use('/api/clients', clientRoutes);
+app.use('/api/contactos', contactosRoutes);
 
 // ── Error handler ─────────────────────────────────────────────────────────────
 app.use((err, req, res, next) => {
