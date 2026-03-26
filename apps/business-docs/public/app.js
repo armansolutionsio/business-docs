@@ -314,7 +314,7 @@ const documentConfig = {
             { name: 'clientEmail', label: 'Email del Cliente', type: 'email' },
             { name: 'clientPhone', label: 'Teléfono del Cliente', type: 'tel' },
             // Comprobante
-            { name: 'quoteNumber', label: 'Número de Cotización', type: 'text', required: true },
+            { name: 'quoteNumber', label: 'Número de Cotización', type: 'text', required: false, defaultValue: '1' },
             { name: 'quoteDate', label: 'Fecha', type: 'date', required: true },
             // Condiciones
             { name: 'validity', label: 'Validez de la Oferta (días)', type: 'number', required: true, placeholder: '3', defaultValue: 3 },
@@ -596,7 +596,10 @@ function renderTab(tabName) {
     // Botones de acción
     html += `
         <div class="button-group">
-            <button type="button" class="btn btn-primary" onclick="downloadDocument('pdf')" style="grid-column: 1 / -1;">
+            <button type="button" class="btn btn-secondary" onclick="confirmQuote()" id="btnConfirmQuote" style="display: ${appState.currentTab === 'quote' ? 'flex' : 'none'};">
+                ✅ Confirmar Cotización
+            </button>
+            <button type="button" class="btn btn-primary" onclick="downloadDocument('pdf')">
                 📄 Descargar PDF
             </button>
         </div>
@@ -1576,15 +1579,84 @@ function collectFormData() {
     return data;
 }
 
-// Descargar documento
-async function downloadDocument(format) {
+// Confirmar cotización (guardar en DB sin generar PDF)
+async function confirmQuote() {
     try {
-        const form = document.getElementById('documentForm');
-        if (!form.checkValidity()) {
-            form.reportValidity();
+        showLoading(true);
+        const data = collectFormData();
+
+        // Need a contacto ID — either from selected client or create one
+        let contactoId = appState._selectedContactoId;
+
+        if (!contactoId) {
+            // Try to find/create contacto from form data
+            const clientName = data.clientName || '';
+            const clientCUIT = data.clientCUIT || '';
+            const clientEmail = data.clientEmail || '';
+            const clientPhone = data.clientPhone || '';
+
+            if (clientName || clientCUIT || clientEmail || clientPhone) {
+                try {
+                    const createRes = await fetch('/api/clients', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ clientName, clientCUIT, clientEmail, clientPhone })
+                    });
+                    if (createRes.ok) {
+                        const client = await createRes.json();
+                        contactoId = client.id;
+                        appState._selectedContactoId = contactoId;
+                    }
+                } catch (e) { console.error('Error creating client:', e); }
+            }
+        }
+
+        if (!contactoId) {
+            showMessage('Completá al menos un dato del cliente (nombre, CUIT, email o teléfono) para confirmar', 'error');
+            showLoading(false);
             return;
         }
 
+        // Save cotizacion via API
+        const cotRes = await fetch(`/api/contactos/${contactoId}/cotizaciones`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                items: data.items || [],
+                moneda: data.currency || 'ARS',
+                validez_dias: data.validityDays || 15,
+                notas: data.notes || null,
+                created_by: 'cotizador',
+            })
+        });
+
+        if (!cotRes.ok) {
+            const errBody = await cotRes.text();
+            console.error('Cotizacion save error:', cotRes.status, errBody);
+            throw new Error('Error guardando cotización');
+        }
+        const cotizacion = await cotRes.json();
+
+        showMessage(`Cotización ${cotizacion.numero} confirmada — Total: $${Number(cotizacion.total).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`, 'success');
+
+        // Auto-fill with the NEXT number for the next cotizacion
+        try {
+            const nextRes = await fetch(`/api/contactos/${contactoId}/cotizaciones/next-number`);
+            const nextData = await nextRes.json();
+            const quoteInput = document.querySelector('input[name="quoteNumber"]');
+            if (quoteInput) quoteInput.value = nextData.numero;
+        } catch (e) { /* ignore */ }
+    } catch (error) {
+        console.error('Error:', error);
+        showMessage('Error al confirmar cotización: ' + error.message, 'error');
+    } finally {
+        showLoading(false);
+    }
+}
+
+// Descargar documento
+async function downloadDocument(format) {
+    try {
         showLoading(true);
 
         const data = collectFormData();
@@ -1786,53 +1858,151 @@ function showLoading(active) {
 }
 
 // ===== GESTIÓN DE CLIENTES =====
+// ===== CLIENTES MODAL =====
+let _clientsCache = [];
+let _searchTimeout = null;
+
 function openClientsModal() {
     const modal = document.getElementById('clientsModal');
     modal.style.display = 'block';
+    document.getElementById('client-search-input').value = '';
     loadClientsList();
 }
 
 function closeClientsModal() {
-    const modal = document.getElementById('clientsModal');
-    modal.style.display = 'none';
+    document.getElementById('clientsModal').style.display = 'none';
+}
+
+function searchClients(query) {
+    clearTimeout(_searchTimeout);
+    _searchTimeout = setTimeout(async () => {
+        if (!query.trim()) { loadClientsList(); return; }
+        try {
+            const res = await fetch(`/api/clients/search?q=${encodeURIComponent(query)}`);
+            const clients = await res.json();
+            renderClientsList(clients);
+        } catch (e) { console.error(e); }
+    }, 300);
 }
 
 async function loadClientsList() {
     try {
-        const response = await fetch('/api/clients');
-        const clients = await response.json();
-        
-        const clientsList = document.getElementById('clients-list');
-        if (clients.length === 0) {
-            clientsList.innerHTML = '<p style="text-align: center; color: #999;">No hay clientes guardados</p>';
+        const response = await fetch('/api/clients/search?q=');
+        // Empty search returns nothing, so load recent
+        const res2 = await fetch('/api/clients');
+        const clients = await res2.json();
+        _clientsCache = clients;
+        renderClientsList(clients.slice(0, 50));
+    } catch (error) {
+        console.error('Error loading clients:', error);
+        document.getElementById('clients-list').innerHTML = '<p style="color: #f44336;">Error cargando clientes</p>';
+    }
+}
+
+function renderClientsList(clients) {
+    const clientsList = document.getElementById('clients-list');
+    if (clients.length === 0) {
+        clientsList.innerHTML = '<p style="text-align: center; color: #999;">No se encontraron clientes</p>';
+        return;
+    }
+
+    let html = '';
+    clients.forEach(client => {
+        html += `
+            <div class="client-card" style="border: 1px solid #e0e0e0; border-radius: 8px; padding: 12px; margin-bottom: 10px; background: #f9f9f9; transition: border-color 0.2s;">
+                <div style="display: flex; justify-content: space-between; align-items: start;">
+                    <div style="flex: 1; cursor: pointer;" onclick="useClient('${client.id}')">
+                        <strong style="color: #7B2CBF; font-size: 14px;">${escapeHtml(client.clientName || 'Sin nombre')}</strong>
+                        <p style="margin: 4px 0; font-size: 12px; color: #666;">
+                            ${client.clientCUIT ? 'Doc: ' + escapeHtml(client.clientCUIT) + ' | ' : ''}
+                            ${client.clientEmail ? escapeHtml(client.clientEmail) + ' | ' : ''}
+                            ${client.clientPhone ? 'Tel: ' + escapeHtml(client.clientPhone) : ''}
+                        </p>
+                        ${client.clientAddress ? '<p style="margin: 2px 0; font-size: 11px; color: #999;">' + escapeHtml(client.clientAddress) + '</p>' : ''}
+                    </div>
+                    <div style="display: flex; gap: 6px; flex-shrink: 0;">
+                        <button onclick="useClient('${client.id}')" style="padding: 6px 12px; font-size: 12px; background: #7B2CBF; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">Usar</button>
+                        <button onclick="viewClientCotizaciones('${client.id}')" style="padding: 6px 12px; font-size: 12px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">Cotiz.</button>
+                        <a href="/crm/contactos/${client.id}" target="_blank" style="padding: 6px 12px; font-size: 12px; background: #10b981; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; text-decoration: none; display: inline-block;">Ficha</a>
+                    </div>
+                </div>
+                <div id="client-cotizaciones-${client.id}" style="display: none;"></div>
+            </div>
+        `;
+    });
+
+    clientsList.innerHTML = html;
+}
+
+async function viewClientCotizaciones(contactoId) {
+    const container = document.getElementById(`client-cotizaciones-${contactoId}`);
+    if (!container) return;
+
+    // Toggle
+    if (container.style.display !== 'none') {
+        container.style.display = 'none';
+        return;
+    }
+
+    container.style.display = 'block';
+    container.innerHTML = '<p style="font-size: 12px; color: #999; padding: 8px;">Cargando cotizaciones...</p>';
+
+    try {
+        const res = await fetch(`/api/contactos/${contactoId}/cotizaciones`);
+        const cotizaciones = await res.json();
+
+        if (!cotizaciones.length) {
+            container.innerHTML = '<p style="font-size: 12px; color: #999; padding: 8px 0;">Sin cotizaciones previas</p>';
             return;
         }
-        
-        let html = '';
-        clients.forEach(client => {
+
+        const estadoColors = { borrador: '#94a3b8', enviada: '#3b82f6', aceptada: '#10b981', rechazada: '#ef4444', vencida: '#f59e0b' };
+        let html = '<div style="border-top: 1px solid #e0e0e0; margin-top: 10px; padding-top: 10px;">';
+        html += '<strong style="font-size: 12px; color: #7B2CBF;">Cotizaciones anteriores:</strong>';
+        cotizaciones.forEach(c => {
+            const color = estadoColors[c.estado] || '#94a3b8';
+            const total = Number(c.total || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 });
+            const fecha = c.fecha ? new Date(c.fecha).toLocaleDateString('es-AR') : '';
             html += `
-                <div class="client-card" style="border: 1px solid #e0e0e0; border-radius: 8px; padding: 12px; margin-bottom: 10px; background: #f9f9f9;">
-                    <div style="display: flex; justify-content: space-between; align-items: start;">
-                        <div style="flex: 1;">
-                            <strong style="color: #7B2CBF;">${escapeHtml(client.clientName)}</strong>
-                            <p style="margin: 4px 0; font-size: 12px; color: #666;">
-                                CUIT: ${escapeHtml(client.clientCUIT)} | 
-                                ${client.clientEmail ? 'Email: ' + escapeHtml(client.clientEmail) : ''}
-                            </p>
-                        </div>
-                        <div style="display: flex; gap: 8px;">
-                            <button class="btn-small" onclick="useClient('${client.id}')" style="padding: 6px 12px; font-size: 12px; background: #7B2CBF; color: white; border: none; border-radius: 4px; cursor: pointer;">Usar</button>
-                            <button class="btn-small" onclick="deleteClientFromList('${client.id}')" style="padding: 6px 12px; font-size: 12px; background: #f44336; color: white; border: none; border-radius: 4px; cursor: pointer;">Eliminar</button>
-                        </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #f0f0f0; font-size: 12px;">
+                    <div>
+                        <strong>${escapeHtml(c.numero)}</strong>
+                        <span style="color: #666; margin-left: 8px;">${fecha}</span>
+                        <span style="margin-left: 8px;">$${total}</span>
+                    </div>
+                    <div style="display: flex; gap: 4px; align-items: center;">
+                        <span style="background: ${color}; color: white; padding: 2px 8px; border-radius: 8px; font-size: 10px; font-weight: 600;">${c.estado}</span>
+                        <button onclick="markCotizacion(${c.id}, 'aceptada')" style="padding: 3px 8px; font-size: 10px; background: #10b981; color: white; border: none; border-radius: 4px; cursor: pointer;" title="Marcar como aceptada">&#10004;</button>
+                        <button onclick="markCotizacion(${c.id}, 'rechazada')" style="padding: 3px 8px; font-size: 10px; background: #ef4444; color: white; border: none; border-radius: 4px; cursor: pointer;" title="Marcar como rechazada">&#10008;</button>
                     </div>
                 </div>
             `;
         });
-        
-        clientsList.innerHTML = html;
-    } catch (error) {
-        console.error('Error loading clients:', error);
-        document.getElementById('clients-list').innerHTML = '<p style="color: #f44336;">Error cargando clientes</p>';
+        html += '</div>';
+        container.innerHTML = html;
+    } catch (e) {
+        container.innerHTML = '<p style="font-size: 12px; color: #f44336;">Error cargando cotizaciones</p>';
+    }
+}
+
+async function markCotizacion(cotizacionId, nuevoEstado) {
+    try {
+        // We use a direct DB update via a small API
+        const res = await fetch(`/api/cotizaciones/${cotizacionId}/estado`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ estado: nuevoEstado })
+        });
+        if (res.ok) {
+            showMessage(`Cotización marcada como ${nuevoEstado}`, 'success');
+            // Refresh the cotizaciones view - find the parent contacto
+            const data = await res.json();
+            if (data.contacto_id) viewClientCotizaciones(data.contacto_id);
+        } else {
+            showMessage('Error actualizando cotización', 'error');
+        }
+    } catch (e) {
+        showMessage('Error actualizando cotización', 'error');
     }
 }
 
@@ -1843,24 +2013,6 @@ async function addNewClient() {
     const address = document.getElementById('new-client-address').value.trim();
     const email = document.getElementById('new-client-email').value.trim();
     const phone = document.getElementById('new-client-phone').value.trim();
-
-    if (!name || !cuit) {
-        showMessage('Por favor completa nombre y CUIT/DNI', 'error');
-        return;
-    }
-
-    // Verificar si ya existe un cliente con el mismo documento
-    try {
-        const allResp = await fetch('/api/clients');
-        if (allResp.ok) {
-            const all = await allResp.json();
-            const docNorm = normalizeDoc(cuit);
-            const existing = all.find(c => normalizeDoc(c.clientCUIT) === docNorm);
-            if (existing) {
-                showMessage(`El cliente "${existing.clientName || cuit}" ya está registrado con ese documento. Se actualizarán sus datos.`, 'warning');
-            }
-        }
-    } catch { /* continuar igual */ }
 
     try {
         const response = await fetch('/api/clients', {
@@ -1878,7 +2030,6 @@ async function addNewClient() {
 
         if (!response.ok) throw new Error('Error guardando cliente');
 
-        // Limpiar form
         document.getElementById('new-client-name').value = '';
         document.getElementById('new-client-cuit').value = '';
         document.getElementById('new-client-iva').value = '';
@@ -1896,20 +2047,50 @@ async function addNewClient() {
 
 async function useClient(clientId) {
     try {
-        const response = await fetch(`/api/clients/${clientId}`);
-        const client = await response.json();
-        
-        // Llenar el formulario con datos del cliente
-        const fields = ['clientName', 'clientCUIT', 'clientIVACondition', 'clientAddress', 'clientEmail', 'clientPhone'];
-        fields.forEach(field => {
+        // Fetch full contacto data from our API
+        const response = await fetch(`/api/contactos/${clientId}`);
+        const contacto = await response.json();
+
+        // Fill form fields - map contacto fields to cotizador form fields
+        const mapping = {
+            clientName: contacto.nombre || contacto.razon_social || [contacto.nombre, contacto.apellido].filter(Boolean).join(' ') || '',
+            clientCUIT: contacto.cuit || contacto.dni || '',
+            clientEmail: contacto.email || '',
+            clientPhone: contacto.telefono || '',
+            clientAddress: [contacto.domicilio, contacto.localidad, contacto.provincia].filter(Boolean).join(', '),
+        };
+
+        // Also try payer fields (for recibos)
+        const payerMapping = {
+            payerName: mapping.clientName,
+            payerCUIT: mapping.clientCUIT,
+        };
+
+        const allMappings = { ...mapping, ...payerMapping };
+
+        Object.entries(allMappings).forEach(([field, value]) => {
+            if (!value) return;
             const input = document.querySelector(`input[name="${field}"], select[name="${field}"], textarea[name="${field}"]`);
-            if (input && client[field]) {
-                input.value = client[field];
-            }
+            if (input) input.value = value;
         });
-        
+
+        // Store selected contacto ID for later use
+        appState._selectedContactoId = clientId;
+
+        // Auto-fill quote number if on quote tab
+        if (appState.currentTab === 'quote') {
+            try {
+                const nextRes = await fetch(`/api/contactos/${clientId}/cotizaciones/next-number`);
+                const nextData = await nextRes.json();
+                const quoteInput = document.querySelector('input[name="quoteNumber"]');
+                if (quoteInput) {
+                    quoteInput.value = nextData.numero;
+                }
+            } catch (e) { console.error('Error getting next quote number:', e); }
+        }
+
         closeClientsModal();
-        showMessage('Datos del cliente cargados', 'success');
+        showMessage(`Datos de "${mapping.clientName}" cargados`, 'success');
     } catch (error) {
         console.error('Error:', error);
         showMessage('Error cargando cliente', 'error');
@@ -1917,20 +2098,7 @@ async function useClient(clientId) {
 }
 
 async function deleteClientFromList(clientId) {
-    if (!confirm('¿Estás seguro de eliminar este cliente?')) {
-        return;
-    }
-    
-    try {
-        const response = await fetch(`/api/clients/${clientId}`, { method: 'DELETE' });
-        if (!response.ok) throw new Error('Error eliminando cliente');
-        
-        showMessage('Cliente eliminado', 'success');
-        loadClientsList();
-    } catch (error) {
-        console.error('Error:', error);
-        showMessage('Error al eliminar cliente', 'error');
-    }
+    showMessage('Los contactos no se pueden eliminar. Podés marcarlos como inactivos desde la ficha.', 'info');
 }
 
 // Cerrar modal si se hace clic fuera

@@ -4,27 +4,21 @@ const express = require('express');
 const router = express.Router();
 const DocumentRenderer = require('../utils/documentRenderer');
 const log = require('../utils/logger');
-const { CoreApiClient, branding } = require('@arman/sdk');
+const { branding } = require('@arman/sdk');
+const db = require('../utils/db');
+const { logAudit } = require('../utils/auditLog');
 
-const coreClient = new CoreApiClient();
-
-/**
- * Compute fiscal totals from document items.
- * Returns: subtotal, discount, taxable_base, iva, iva_rate, other_taxes, total
- */
 function computeTotals(data) {
   const items = Array.isArray(data.items) ? data.items : [];
   const subtotal = items.reduce((sum, item) => {
     return sum + (parseFloat(item.quantity || 1) * parseFloat(item.price || 0));
   }, 0);
-
   const discount = parseFloat(data.discount || 0);
-  const taxableBase = subtotal - discount;                              // base imponible
-  const ivaRate = parseFloat(data.ivaRate !== undefined ? data.ivaRate : 0); // 0 = exento (default para agencias de viaje)
+  const taxableBase = subtotal - discount;
+  const ivaRate = parseFloat(data.ivaRate !== undefined ? data.ivaRate : 0);
   const iva = Math.round(taxableBase * ivaRate * 100) / 100;
   const otherTaxes = parseFloat(data.otherTaxes || 0);
   const total = taxableBase + iva + otherTaxes;
-
   return {
     subtotal: parseFloat(subtotal.toFixed(2)),
     discount: parseFloat(discount.toFixed(2)),
@@ -36,11 +30,6 @@ function computeTotals(data) {
   };
 }
 
-/**
- * Inject branding defaults for company fields not provided by the caller.
- * This ensures the PDF always carries Arman Travel branding without hardcoding
- * values in templates — overrides come from env vars via @arman/sdk.
- */
 function injectBranding(data) {
   return {
     companyName: data.companyName || branding.company.name,
@@ -56,170 +45,170 @@ function injectBranding(data) {
 }
 
 /**
- * Derive doc_type for Core from document type string.
+ * Find or create contacto from document data, then register the document in our DB.
  */
-function toCoreDocType(type) {
-  const map = { quote: 'QUOTE', invoice: 'INVOICE', receipt: 'RECEIPT' };
-  return map[type] || type.toUpperCase();
-}
-
-/**
- * Detect buyer doc fields in data (clientCUIT, clientDNI, payerCUIT, etc.)
- * Returns { docType, docNumber } or null if not found.
- */
-function extractBuyerDoc(data) {
-  if (data.clientCUIT && data.clientCUIT.trim()) {
-    return { docType: data.clientCUIT.length <= 8 ? 'DNI' : 'CUIT', docNumber: data.clientCUIT.trim() };
-  }
-  if (data.clientDNI && data.clientDNI.trim()) {
-    return { docType: 'DNI', docNumber: data.clientDNI.trim() };
-  }
-  if (data.payerCUIT && data.payerCUIT.trim()) {
-    return { docType: data.payerCUIT.length <= 8 ? 'DNI' : 'CUIT', docNumber: data.payerCUIT.trim() };
-  }
-  return null;
-}
-
-/**
- * Call Core API to register party, lead/sale, and document ref.
- * Returns coreRefs = { partyId, leadId, saleId, docRefId, docNumber }
- * Errors are non-fatal: returns {} on failure (PDF generation continues).
- */
-async function registerWithCore({ type, data, totals, idempotencyKey, req }) {
-  const buyerDoc = extractBuyerDoc(data);
-  if (!buyerDoc) {
-    log.info(req, 'core_skip', { reason: 'no buyer doc number in request' });
-    return {};
-  }
+async function registerInDB({ type, data, totals, req }) {
+  const refs = {};
 
   try {
-    // 1. Upsert Party
-    const buyerName = data.clientName || data.payerName || null;
-    const party = await coreClient.upsertParty({
-      docType: buyerDoc.docType,
-      docNumber: buyerDoc.docNumber,
-      fullName: buyerName,
-      email: data.clientEmail || data.payerEmail || null,
-      phone: data.clientPhone || data.payerPhone || null,
-    });
-    const partyId = party.id;
-    const refs = { partyId };
+    // 1. Find or create contacto
+    const docNum = (data.clientCUIT || data.clientDNI || data.payerCUIT || '').trim();
+    const clientName = data.clientName || data.payerName || null;
+    let contactoId = null;
 
-    // 2. Create Lead (quotes) or Sale (invoices/receipts)
-    if (type === 'quote') {
-      const leadKey = idempotencyKey ? `lead-${idempotencyKey}` : null;
-      const lead = await coreClient.createLead(
-        { partyId, source: 'QUOTE', status: 'NEW', notes: data.quoteNumber ? `Cotización ${data.quoteNumber}` : null },
-        leadKey,
-      );
-      refs.leadId = lead.id;
-    } else {
-      const saleKey = idempotencyKey ? `sale-${idempotencyKey}` : null;
-      const sale = await coreClient.createSale(
-        {
-          partyId,
-          status: type === 'invoice' ? 'CONFIRMED' : 'DRAFT',
-          currency: data.currency || 'ARS',
-          notes: data.invoiceNumber || data.receiptNumber || null,
-        },
-        saleKey,
-      );
-      refs.saleId = sale.id;
+    if (docNum) {
+      const existing = await db.query('SELECT id FROM contactos WHERE cuit = $1 OR dni = $1 LIMIT 1', [docNum]);
+      if (existing.rows.length) {
+        contactoId = existing.rows[0].id;
+      } else if (clientName) {
+        const ins = await db.query(
+          `INSERT INTO contactos (nombre, ${docNum.replace(/\D/g,'').length === 11 ? 'cuit' : 'dni'}, email, telefono, rol_actual, estado, origen)
+           VALUES ($1, $2, $3, $4, 'lead', 'nuevo', 'cotizador') RETURNING id`,
+          [clientName, docNum, data.clientEmail || data.payerEmail || '', data.clientPhone || data.payerPhone || '']
+        );
+        contactoId = ins.rows[0].id;
+      }
+    } else if (clientName) {
+      // Try match by name + phone
+      const phoneMatch = data.clientPhone || data.payerPhone;
+      if (phoneMatch) {
+        const existing = await db.query('SELECT id FROM contactos WHERE telefono = $1 LIMIT 1', [phoneMatch]);
+        if (existing.rows.length) contactoId = existing.rows[0].id;
+      }
+      if (!contactoId) {
+        const ins = await db.query(
+          `INSERT INTO contactos (nombre, email, telefono, rol_actual, estado, origen) VALUES ($1, $2, $3, 'lead', 'nuevo', 'cotizador') RETURNING id`,
+          [clientName, data.clientEmail || '', data.clientPhone || '']
+        );
+        contactoId = ins.rows[0].id;
+      }
     }
 
-    // 3. Create DocumentRef (with idempotency to prevent duplicates)
-    const externalRef = data.quoteNumber || data.invoiceNumber || data.receiptNumber || null;
-    const docRef = await coreClient.createDocumentRef(
-      {
-        partyId,
-        saleId: refs.saleId || null,
-        leadId: refs.leadId || null,
-        docType: toCoreDocType(type),
-        externalRef,
-        totals: {
-          subtotal: String(totals.subtotal),
-          discount: String(totals.discount),
-          taxable_base: String(totals.taxableBase),
-          iva: String(totals.iva),
-          iva_rate: String(totals.ivaRate),
-          other_taxes: String(totals.otherTaxes),
-          total: String(totals.total),
-        },
-      },
-      idempotencyKey || null,
-    );
-    refs.docRefId = docRef.id;
-    refs.docNumber = docRef.doc_number;
+    refs.contactoId = contactoId;
+    if (!contactoId) return refs;
 
-    log.info(req, 'core_registered', {
-      party_id: partyId,
-      lead_id: refs.leadId,
-      sale_id: refs.saleId,
-      doc_ref_id: refs.docRefId,
-      doc_number: refs.docNumber,
-    });
+    // Update last interaction
+    await db.query('UPDATE contactos SET fecha_ultima_interaccion = NOW(), updated_at = NOW() WHERE id = $1', [contactoId]);
 
-    return refs;
+    // 2. Register document
+    const items = Array.isArray(data.items) ? data.items : [];
+    const moneda = data.currency || 'ARS';
+    const createdBy = data._user || 'cotizador';
+
+    if (type === 'quote') {
+      // Generate correlative number per contact: COT-{contactoId}-{seq}
+      const countRes = await db.query('SELECT COUNT(*) FROM cotizaciones WHERE contacto_id = $1', [contactoId]);
+      const seq = parseInt(countRes.rows[0].count, 10) + 1;
+      const numero = `COT-${String(contactoId).padStart(4, '0')}-${String(seq).padStart(2, '0')}`;
+
+      const cot = await db.query(
+        `INSERT INTO cotizaciones (contacto_id, numero, fecha, validez_dias, moneda, subtotal, impuestos, total, estado, notas, created_by)
+         VALUES ($1,$2,CURRENT_DATE,$3,$4,$5,$6,$7,'enviada',$8,$9) RETURNING *`,
+        [contactoId, numero, data.validityDays || 15, moneda, totals.subtotal, totals.iva, totals.total, data.notes || null, createdBy]
+      );
+      refs.cotizacionId = cot.rows[0].id;
+      refs.docNumber = numero;
+
+      for (const item of items) {
+        await db.query(
+          `INSERT INTO cotizacion_items (cotizacion_id, descripcion, cantidad, precio_unitario, subtotal)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [refs.cotizacionId, item.description || '', item.quantity || 1, item.price || 0,
+           (parseFloat(item.quantity || 1) * parseFloat(item.price || 0))]
+        );
+      }
+
+      // Update contacto estado if still nuevo
+      await db.query(`UPDATE contactos SET estado = 'cotizado', updated_at = NOW() WHERE id = $1 AND estado IN ('nuevo','contactado','en_seguimiento')`, [contactoId]);
+      await logAudit({ tabla: 'cotizaciones', registro_id: refs.cotizacionId, accion: 'INSERT', usuario: createdBy });
+
+    } else if (type === 'invoice') {
+      const countRes = await db.query('SELECT COUNT(*) FROM facturas');
+      const num = parseInt(countRes.rows[0].count, 10) + 1;
+      const numero = `FAC-${String(num).padStart(4, '0')}`;
+
+      const fac = await db.query(
+        `INSERT INTO facturas (contacto_id, numero, tipo, fecha, moneda, subtotal, iva, total, estado, created_by)
+         VALUES ($1,$2,$3,CURRENT_DATE,$4,$5,$6,$7,'emitida',$8) RETURNING *`,
+        [contactoId, numero, data.invoiceLetter || 'B', moneda, totals.subtotal, totals.iva, totals.total, createdBy]
+      );
+      refs.facturaId = fac.rows[0].id;
+      refs.docNumber = numero;
+
+      for (const item of items) {
+        await db.query(
+          `INSERT INTO factura_items (factura_id, descripcion, cantidad, precio_unitario, subtotal)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [refs.facturaId, item.description || '', item.quantity || 1, item.price || 0,
+           (parseFloat(item.quantity || 1) * parseFloat(item.price || 0))]
+        );
+      }
+
+      await db.query(`UPDATE contactos SET rol_actual = 'cliente', estado = 'ganado', updated_at = NOW() WHERE id = $1 AND rol_actual IN ('lead','contacto')`, [contactoId]);
+      await logAudit({ tabla: 'facturas', registro_id: refs.facturaId, accion: 'INSERT', usuario: createdBy });
+
+    } else if (type === 'receipt') {
+      const countRes = await db.query('SELECT COUNT(*) FROM recibos');
+      const num = parseInt(countRes.rows[0].count, 10) + 1;
+      const numero = `REC-${String(num).padStart(4, '0')}`;
+
+      const rec = await db.query(
+        `INSERT INTO recibos (contacto_id, numero, fecha, monto, medio_pago, notas, created_by)
+         VALUES ($1,$2,CURRENT_DATE,$3,$4,$5,$6) RETURNING *`,
+        [contactoId, numero, totals.total, data.paymentMethod || null, data.concept || null, createdBy]
+      );
+      refs.reciboId = rec.rows[0].id;
+      refs.docNumber = numero;
+
+      // Register payment
+      await db.query(
+        `INSERT INTO pagos (contacto_id, monto, fecha, medio, referencia, created_by)
+         VALUES ($1,$2,CURRENT_DATE,$3,$4,$5)`,
+        [contactoId, totals.total, data.paymentMethod || null, numero, createdBy]
+      );
+
+      await logAudit({ tabla: 'recibos', registro_id: refs.reciboId, accion: 'INSERT', usuario: createdBy });
+    }
+
+    log.info(req, 'db_registered', { contacto_id: contactoId, type, doc_number: refs.docNumber });
   } catch (err) {
-    log.warn(req, 'core_integration_error', { error: err.message });
-    return {};
+    log.warn(req, 'db_registration_error', { error: err.message });
   }
+
+  return refs;
 }
 
-/**
- * Format a correlative doc number with prefix and zero-padding.
- * e.g. type=quote, num=3 → "COT-0003"
- */
 function formatDocNumber(type, num) {
   const prefixes = { quote: 'COT', invoice: 'FAC', receipt: 'REC' };
   const prefix = prefixes[type] || type.toUpperCase().slice(0, 3);
   return `${prefix}-${String(num).padStart(4, '0')}`;
 }
 
-/**
- * POST /api/documents/generate-pdf
- * Body: { type, data, assets?, landscape? }
- * Headers: Idempotency-Key (optional)
- *
- * Flow:
- *  1. Inject branding defaults into data
- *  2. Compute fiscal totals (subtotal, discount, taxable_base, iva, total)
- *  3. Register with Core API: upsert Party → create Lead/Sale → create DocumentRef
- *  4. Override doc number with correlative from Core (if available)
- *  5. Generate PDF and return it with Core ref IDs in response headers
- */
 router.post('/generate-pdf', async (req, res) => {
   const startTime = Date.now();
   try {
-    const idempotencyKey = req.headers['idempotency-key'] || null;
     const { type, data: rawData, assets, landscape } = req.body;
 
     if (!type || !rawData) {
       return res.status(400).json({ error: 'Missing required fields: type, data' });
     }
 
-    // Step 1 — inject branding defaults
     const data = injectBranding(rawData);
-
-    // Step 2 — compute fiscal totals
     const totals = computeTotals(data);
 
-    const docTypeNames = { invoice: 'Factura', receipt: 'Recibo', quote: 'Cotización' };
     const clientName = data.clientName || data.payerName || 'Sin nombre';
     const docNumber = data.invoiceNumber || data.receiptNumber || data.quoteNumber || 'Sin número';
 
     log.info(req, 'pdf_start', {
       doc_type: type, client: clientName, doc_number: docNumber,
-      landscape: !!landscape, has_idempotency_key: !!idempotencyKey,
+      landscape: !!landscape,
     });
 
-    // Step 3 — register with Core (non-fatal)
-    const coreRefs = await registerWithCore({ type, data, totals, idempotencyKey, req });
+    // Register in our DB (non-fatal)
+    const dbRefs = await registerInDB({ type, data, totals, req });
 
-    // Step 4 — enrich data with Core refs and computed totals
     const enrichedData = {
       ...data,
-      // Fiscal totals for template rendering
       subtotal: totals.subtotal,
       discount: totals.discount,
       taxableBase: totals.taxableBase,
@@ -227,21 +216,15 @@ router.post('/generate-pdf', async (req, res) => {
       ivaRate: totals.ivaRate,
       otherTaxes: totals.otherTaxes,
       total: totals.total,
-      // Core identifiers shown in PDF
-      coreDocRefId: coreRefs.docRefId || null,
-      coreSaleId: coreRefs.saleId || null,
-      coreLeadId: coreRefs.leadId || null,
     };
 
-    // Override doc number with Core's correlative if obtained
-    if (coreRefs.docNumber) {
-      const formatted = formatDocNumber(type, coreRefs.docNumber);
-      if (type === 'quote') enrichedData.quoteNumber = formatted;
-      else if (type === 'invoice') enrichedData.invoiceNumber = coreRefs.docNumber;
-      else if (type === 'receipt') enrichedData.receiptNumber = coreRefs.docNumber;
+    // Override doc number with our DB number
+    if (dbRefs.docNumber) {
+      if (type === 'quote') enrichedData.quoteNumber = dbRefs.docNumber;
+      else if (type === 'invoice') enrichedData.invoiceNumber = dbRefs.docNumber;
+      else if (type === 'receipt') enrichedData.receiptNumber = dbRefs.docNumber;
     }
 
-    // Move travel images from data to assets for proper processing
     let processAssets = { ...assets };
     if (enrichedData.images && typeof enrichedData.images === 'object') {
       processAssets.images = enrichedData.images;
@@ -250,62 +233,40 @@ router.post('/generate-pdf', async (req, res) => {
       processAssets.categoryImages = enrichedData.categoryImages;
     }
 
-    // Step 5 — generate PDF
     const buffer = await DocumentRenderer.render({
-      type,
-      format: 'pdf',
-      data: enrichedData,
-      assets: processAssets,
-      landscape: landscape || false,
+      type, format: 'pdf', data: enrichedData,
+      assets: processAssets, landscape: landscape || false,
     });
-
-    const elapsedTime = Date.now() - startTime;
-    const pdfSizeKB = (buffer.length / 1024).toFixed(2);
 
     log.info(req, 'pdf_ok', {
       doc_type: type, client: clientName,
       doc_number: enrichedData.quoteNumber || enrichedData.invoiceNumber || enrichedData.receiptNumber,
-      size_kb: parseFloat(pdfSizeKB), ms: elapsedTime,
+      size_kb: parseFloat((buffer.length / 1024).toFixed(2)), ms: Date.now() - startTime,
     });
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename=${type}_${Date.now()}.pdf`);
-    // Expose Core references so callers can link PDF to CRM records
-    if (coreRefs.docRefId) res.setHeader('X-Core-Doc-Ref-Id', coreRefs.docRefId);
-    if (coreRefs.partyId) res.setHeader('X-Core-Party-Id', coreRefs.partyId);
-    if (coreRefs.saleId) res.setHeader('X-Core-Sale-Id', coreRefs.saleId);
-    if (coreRefs.leadId) res.setHeader('X-Core-Lead-Id', coreRefs.leadId);
+    if (dbRefs.contactoId) res.setHeader('X-Contacto-Id', dbRefs.contactoId);
+    if (dbRefs.cotizacionId) res.setHeader('X-Cotizacion-Id', dbRefs.cotizacionId);
+    if (dbRefs.facturaId) res.setHeader('X-Factura-Id', dbRefs.facturaId);
+    if (dbRefs.reciboId) res.setHeader('X-Recibo-Id', dbRefs.reciboId);
     res.send(buffer);
   } catch (error) {
-    const elapsedTime = Date.now() - startTime;
-    log.error(req, 'pdf_error', { error: error.message, ms: elapsedTime });
+    log.error(req, 'pdf_error', { error: error.message, ms: Date.now() - startTime });
     res.status(500).json({ error: error.message });
   }
 });
 
-/**
- * POST /api/documents/generate-word
- * Body: { type, data, assets? }
- */
 router.post('/generate-word', async (req, res) => {
   try {
     const { type, data: rawData, assets } = req.body;
-
     if (!type || !rawData) {
       return res.status(400).json({ error: 'Missing required fields: type, data' });
     }
-
     const data = injectBranding(rawData);
     const totals = computeTotals(data);
     const enrichedData = { ...data, ...totals };
-
-    const buffer = await DocumentRenderer.render({
-      type,
-      format: 'word',
-      data: enrichedData,
-      assets,
-    });
-
+    const buffer = await DocumentRenderer.render({ type, format: 'word', data: enrichedData, assets });
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
     res.setHeader('Content-Disposition', `attachment; filename=${type}_${Date.now()}.docx`);
     res.send(buffer);
@@ -315,7 +276,6 @@ router.post('/generate-word', async (req, res) => {
   }
 });
 
-// Export helpers for testing
 router._computeTotals = computeTotals;
 router._injectBranding = injectBranding;
 router._formatDocNumber = formatDocNumber;

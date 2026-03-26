@@ -11,6 +11,7 @@ import ContactoNotas from '../components/contacto/ContactoNotas.jsx';
 import ContactoTareas from '../components/contacto/ContactoTareas.jsx';
 import ContactoOportunidades from '../components/contacto/ContactoOportunidades.jsx';
 import ContactoConversaciones from '../components/contacto/ContactoConversaciones.jsx';
+import ContactoDocumentos from '../components/contacto/ContactoDocumentos.jsx';
 import ContactoMapa from '../components/contacto/ContactoMapa.jsx';
 
 const ESTADOS = ['nuevo','contactado','en_seguimiento','cotizado','reservado','ganado','perdido','inactivo'];
@@ -83,6 +84,10 @@ export default function ContactoDetailPage() {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          <a href={`/?clientName=${encodeURIComponent(displayName)}&clientCUIT=${encodeURIComponent(contacto.cuit || contacto.dni || '')}&clientEmail=${encodeURIComponent(contacto.email || '')}&clientPhone=${encodeURIComponent(contacto.telefono || '')}`}
+            className="btn btn-primary btn-sm" style={{ textDecoration: 'none' }} target="_blank">
+            Cotizar
+          </a>
           <select value={contacto.estado} onChange={e => handleEstadoChange(e.target.value)}
             style={{ fontSize: 12, fontWeight: 600, background: color, color: '#fff', border: 'none', borderRadius: 8, padding: '6px 12px', cursor: 'pointer' }}>
             {ESTADOS.map(e => <option key={e} value={e} style={{ background: '#fff', color: '#333' }}>{e}</option>)}
@@ -100,6 +105,7 @@ export default function ContactoDetailPage() {
           <div className="tabs" style={{ marginBottom: 16 }}>
             {[
               ['timeline', 'Historial'],
+              ['documentos', 'Documentos'],
               ['oportunidades', 'Oportunidades'],
               ['conversaciones', 'Conversaciones'],
               ['notas', 'Notas'],
@@ -113,6 +119,7 @@ export default function ContactoDetailPage() {
           </div>
 
           {tab === 'timeline' && <ContactoTimeline timeline={timeline} onRefresh={load} />}
+          {tab === 'documentos' && <ContactoDocumentos contactoId={id} />}
           {tab === 'oportunidades' && <ContactoOportunidades contactoId={id} user={user} />}
           {tab === 'conversaciones' && <ContactoConversaciones contactoId={id} user={user} />}
           {tab === 'notas' && <ContactoNotas contactoId={id} user={user} />}

@@ -1,123 +1,98 @@
 const express = require('express');
 const router = express.Router();
+const db = require('../utils/db');
 
-const CORE_API_URL = process.env.CORE_API_URL || 'http://localhost:8003';
-
-function detectDocType(value) {
-  const digits = (value || '').replace(/\D/g, '');
-  return digits.length === 11 ? 'CUIT' : 'DNI';
-}
-
-function mapParty(p) {
+// Map contacto row → cotizador client format
+function mapContacto(c) {
+  const name = [c.nombre, c.apellido].filter(Boolean).join(' ') || c.razon_social || '';
   return {
-    id: p.id,
-    clientName: p.full_name || '',
-    clientCUIT: p.doc_number_normalized || '',
-    clientEmail: p.email || '',
-    clientPhone: p.phone || '',
+    id: c.id,
+    clientName: name,
+    clientCUIT: c.cuit || c.dni || '',
+    clientEmail: c.email || '',
+    clientPhone: c.telefono || '',
     clientIVACondition: '',
-    clientAddress: '',
-    createdAt: p.created_at || '',
+    clientAddress: [c.domicilio, c.localidad, c.provincia].filter(Boolean).join(', '),
+    createdAt: c.created_at || '',
   };
 }
 
-async function coreGet(path) {
-  const r = await fetch(`${CORE_API_URL}${path}`);
-  if (!r.ok) throw new Error(`Core API ${r.status}`);
-  return r.json();
-}
-
-async function corePost(path, body) {
-  const r = await fetch(`${CORE_API_URL}${path}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  if (!r.ok) {
-    const err = await r.json().catch(() => ({}));
-    throw new Error(err.detail || `Core API ${r.status}`);
-  }
-  return r.json();
-}
-
-// List all clients
-router.get('/', async (req, res) => {
+// List all clients (contactos with rol = lead/contacto/cliente)
+router.get('/', async (req, res, next) => {
   try {
-    const parties = await coreGet('/v1/parties?limit=500');
-    res.json(parties.map(mapParty));
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
+    const { rows } = await db.query(
+      `SELECT * FROM contactos ORDER BY nombre, apellido LIMIT 500`
+    );
+    res.json(rows.map(mapContacto));
+  } catch (e) { next(e); }
 });
 
 // Search clients
-router.get('/search', async (req, res) => {
+router.get('/search', async (req, res, next) => {
   try {
-    const q = (req.query.q || '').toLowerCase();
+    const q = (req.query.q || '').trim();
     if (!q) return res.json([]);
-    const parties = await coreGet('/v1/parties?limit=500');
-    const results = parties
-      .filter(p =>
-        (p.full_name || '').toLowerCase().includes(q) ||
-        (p.doc_number_normalized || '').includes(q) ||
-        (p.email || '').toLowerCase().includes(q)
-      )
-      .map(mapParty);
-    res.json(results);
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
+    const { rows } = await db.query(
+      `SELECT * FROM contactos WHERE
+        nombre ILIKE $1 OR apellido ILIKE $1 OR razon_social ILIKE $1
+        OR cuit ILIKE $1 OR dni ILIKE $1 OR email ILIKE $1 OR telefono ILIKE $1
+      ORDER BY nombre LIMIT 50`,
+      [`%${q}%`]
+    );
+    res.json(rows.map(mapContacto));
+  } catch (e) { next(e); }
 });
 
 // Get client by ID
-router.get('/:id', async (req, res) => {
+router.get('/:id', async (req, res, next) => {
   try {
-    const party = await coreGet(`/v1/parties/${req.params.id}`);
-    res.json(mapParty(party));
-  } catch (e) {
-    res.status(404).json({ error: 'Client not found' });
-  }
+    const { rows } = await db.query('SELECT * FROM contactos WHERE id = $1', [req.params.id]);
+    if (!rows.length) return res.status(404).json({ error: 'Client not found' });
+    res.json(mapContacto(rows[0]));
+  } catch (e) { next(e); }
 });
 
-// Create client → upsert party in Core API
-router.post('/', async (req, res) => {
-  try {
-    const { clientName, clientCUIT, clientEmail, clientPhone } = req.body;
-    if (!clientCUIT) return res.status(400).json({ error: 'clientCUIT is required' });
-    const party = await corePost('/v1/parties', {
-      doc_type: detectDocType(clientCUIT),
-      doc_number: clientCUIT,
-      country: 'AR',
-      full_name: clientName || '',
-      email: clientEmail || '',
-      phone: clientPhone || '',
-    });
-    res.status(201).json(mapParty(party));
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// Update client → re-upsert party (Core API merges fields)
-router.put('/:id', async (req, res) => {
+// Create client → insert into contactos
+router.post('/', async (req, res, next) => {
   try {
     const { clientName, clientCUIT, clientEmail, clientPhone } = req.body;
-    if (!clientCUIT) return res.status(400).json({ error: 'clientCUIT is required' });
-    const party = await corePost('/v1/parties', {
-      doc_type: detectDocType(clientCUIT),
-      doc_number: clientCUIT,
-      country: 'AR',
-      full_name: clientName || '',
-      email: clientEmail || '',
-      phone: clientPhone || '',
-    });
-    res.json(mapParty(party));
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
+
+    // Dedup check
+    if (clientCUIT) {
+      const existing = await db.query(
+        'SELECT * FROM contactos WHERE cuit = $1 OR dni = $1 LIMIT 1', [clientCUIT.trim()]
+      );
+      if (existing.rows.length) {
+        return res.status(200).json(mapContacto(existing.rows[0]));
+      }
+    }
+
+    const isDocCUIT = (clientCUIT || '').replace(/\D/g, '').length === 11;
+    const { rows } = await db.query(
+      `INSERT INTO contactos (nombre, ${isDocCUIT ? 'cuit' : 'dni'}, email, telefono, rol_actual, estado, origen)
+       VALUES ($1, $2, $3, $4, 'lead', 'nuevo', 'cotizador') RETURNING *`,
+      [clientName || '', (clientCUIT || '').trim(), clientEmail || '', clientPhone || '']
+    );
+    res.status(201).json(mapContacto(rows[0]));
+  } catch (e) { next(e); }
 });
 
-// Delete — parties are permanent in the shared DB
+// Update client
+router.put('/:id', async (req, res, next) => {
+  try {
+    const { clientName, clientCUIT, clientEmail, clientPhone } = req.body;
+    const isDocCUIT = (clientCUIT || '').replace(/\D/g, '').length === 11;
+    const { rows } = await db.query(
+      `UPDATE contactos SET nombre = $1, ${isDocCUIT ? 'cuit' : 'dni'} = $2, email = $3, telefono = $4, updated_at = NOW()
+       WHERE id = $5 RETURNING *`,
+      [clientName || '', (clientCUIT || '').trim(), clientEmail || '', clientPhone || '', req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Client not found' });
+    res.json(mapContacto(rows[0]));
+  } catch (e) { next(e); }
+});
+
+// Delete — not supported
 router.delete('/:id', (req, res) => {
   res.status(405).json({ error: 'Deletion not supported' });
 });
