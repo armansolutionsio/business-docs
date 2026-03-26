@@ -41,13 +41,33 @@ app.get('/crm/{*splat}', (req, res) => {
 });
 
 // ── Routes ────────────────────────────────────────────────────────────────────
-const documentRoutes  = require('./routes/documents');
-const clientRoutes    = require('./routes/clients');
-const contactosRoutes = require('./routes/contactos');
+const documentRoutes       = require('./routes/documents');
+const clientRoutes         = require('./routes/clients');
+const contactosRoutes      = require('./routes/contactos');
+const notasRoutes          = require('./routes/contactos/notas');
+const tareasRoutes         = require('./routes/contactos/tareas');
+const conversacionesRoutes = require('./routes/contactos/conversaciones');
+const oportunidadesRoutes  = require('./routes/contactos/oportunidades');
+const timelineRoutes       = require('./routes/contactos/timeline');
+const cotizacionesRoutes   = require('./routes/contactos/cotizaciones');
+const ventasRoutes         = require('./routes/contactos/ventas');
+const facturasRoutes       = require('./routes/contactos/facturas');
+const pagosRoutes          = require('./routes/contactos/pagos');
+const proveedoresRoutes    = require('./routes/proveedores');
 
 app.use('/api/documents', documentRoutes);
 app.use('/api/clients', clientRoutes);
 app.use('/api/contactos', contactosRoutes);
+app.use('/api/contactos/:contactoId/notas', notasRoutes);
+app.use('/api/contactos/:contactoId/tareas', tareasRoutes);
+app.use('/api/contactos/:contactoId/conversaciones', conversacionesRoutes);
+app.use('/api/contactos/:contactoId/oportunidades', oportunidadesRoutes);
+app.use('/api/contactos/:contactoId/timeline', timelineRoutes);
+app.use('/api/contactos/:contactoId/cotizaciones', cotizacionesRoutes);
+app.use('/api/contactos/:contactoId/ventas', ventasRoutes);
+app.use('/api/contactos/:contactoId/facturas', facturasRoutes);
+app.use('/api/contactos/:contactoId/pagos', pagosRoutes);
+app.use('/api/proveedores', proveedoresRoutes);
 
 // ── Error handler ─────────────────────────────────────────────────────────────
 app.use((err, req, res, next) => {

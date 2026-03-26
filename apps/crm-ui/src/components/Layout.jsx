@@ -27,6 +27,9 @@ export default function Layout() {
           <NavLink to="/kanban" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
             Pipeline
           </NavLink>
+          <NavLink to="/proveedores" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+            Proveedores
+          </NavLink>
         </nav>
         <div className="topbar-user">
           <div className="user-avatar">{user?.name?.[0]?.toUpperCase()}</div>

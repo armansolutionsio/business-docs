@@ -1,6 +1,4 @@
--- Import CSV data into beta_contactos
--- Run after init.sql; expects /docker-entrypoint-initdb.d/data.csv mounted
-
+-- Import CSV into legacy beta_contactos
 CREATE TEMP TABLE csv_import (
     numero_envio       TEXT,
     telefonos_destinatario TEXT,
@@ -30,6 +28,32 @@ SELECT
     NULLIF(latitud_domicilio, 'null')::DOUBLE PRECISION,
     NULLIF(longitud_domicilio, 'null')::DOUBLE PRECISION,
     'contacto'
+FROM csv_import;
+
+-- Migrate into new contactos master table
+INSERT INTO contactos (
+    tipo_registro, rol_actual, estado, nombre, dni, cuit, telefono, email,
+    domicilio, localidad, provincia, codigo_postal, latitud, longitud, origen,
+    created_at, updated_at
+)
+SELECT
+    'persona',
+    'lead',
+    'nuevo',
+    nombre_destinatario,
+    NULLIF(dni_destinatario, 'null'),
+    NULL,
+    telefonos_destinatario,
+    NULLIF(email_destinatario, 'null'),
+    domicilio_destinatario,
+    localidad_destinatario,
+    provincia_destinatario,
+    codigo_postal_destinatario,
+    NULLIF(latitud_domicilio, 'null')::DOUBLE PRECISION,
+    NULLIF(longitud_domicilio, 'null')::DOUBLE PRECISION,
+    'csv_import',
+    NOW(),
+    NOW()
 FROM csv_import;
 
 DROP TABLE csv_import;

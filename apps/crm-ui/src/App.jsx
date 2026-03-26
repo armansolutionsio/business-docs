@@ -8,6 +8,8 @@ import InboxPage from './pages/InboxPage.jsx';
 import KanbanPage from './pages/KanbanPage.jsx';
 import LeadDetailPage from './pages/LeadDetailPage.jsx';
 import ContactosPage from './pages/ContactosPage.jsx';
+import ContactoDetailPage from './pages/ContactoDetailPage.jsx';
+import ProveedoresPage from './pages/ProveedoresPage.jsx';
 import Layout from './components/Layout.jsx';
 
 function PrivateRoute({ children }) {
@@ -32,6 +34,8 @@ export default function App() {
           >
             <Route index element={<Navigate to="/contactos" replace />} />
             <Route path="contactos" element={<ContactosPage />} />
+            <Route path="contactos/:id" element={<ContactoDetailPage />} />
+            <Route path="proveedores" element={<ProveedoresPage />} />
             <Route path="inbox" element={<InboxPage />} />
             <Route path="kanban" element={<KanbanPage />} />
             <Route path="leads/:id" element={<LeadDetailPage />} />

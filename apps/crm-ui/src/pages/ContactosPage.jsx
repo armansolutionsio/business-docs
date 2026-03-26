@@ -1,27 +1,23 @@
 'use strict';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useToast } from '../ToastContext.jsx';
 
 const API = '/api/contactos';
 
-const ESTADOS = ['contacto', 'contactado', 'lead', 'cliente', 'perdido'];
+const ESTADOS = ['nuevo','contactado','en_seguimiento','cotizado','reservado','ganado','perdido','inactivo'];
 const ESTADO_COLORS = {
-  contacto:   '#64748b',
-  contactado: '#3b82f6',
-  lead:       '#f59e0b',
-  cliente:    '#10b981',
-  perdido:    '#ef4444',
+  nuevo:'#64748b', contactado:'#3b82f6', en_seguimiento:'#8b5cf6', cotizado:'#f59e0b',
+  reservado:'#06b6d4', ganado:'#10b981', perdido:'#ef4444', inactivo:'#94a3b8',
 };
 const ESTADO_LABELS = {
-  contacto:   'Contacto',
-  contactado: 'Contactado',
-  lead:       'Lead',
-  cliente:    'Cliente',
-  perdido:    'Perdido',
+  nuevo:'Nuevo', contactado:'Contactado', en_seguimiento:'En seguimiento', cotizado:'Cotizado',
+  reservado:'Reservado', ganado:'Ganado', perdido:'Perdido', inactivo:'Inactivo',
 };
 
 export default function ContactosPage() {
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [data, setData] = useState([]);
   const [total, setTotal] = useState(0);
@@ -393,7 +389,7 @@ export default function ContactosPage() {
                           {ESTADOS.map(e => <option key={e} value={e} style={{ background: '#fff', color: '#333' }}>{ESTADO_LABELS[e]}</option>)}
                         </select>
                       </td>
-                      <td style={{ fontWeight: 600 }}>{row.nombre}</td>
+                      <td style={{ fontWeight: 600, cursor: 'pointer', color: 'var(--brand)' }} onClick={() => navigate(`/contactos/${row.id}`)}>{row.nombre || row.razon_social || 'Sin nombre'}</td>
                       <td>{row.telefono}</td>
                       <td style={{ fontSize: 12 }}>{row.email}</td>
                       <td>{row.localidad}</td>
