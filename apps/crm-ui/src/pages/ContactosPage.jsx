@@ -30,6 +30,10 @@ export default function ContactosPage() {
   const [localidades, setLocalidades] = useState([]);
   const [stats, setStats] = useState([]);
 
+  // Map data — all contacts (not paginated)
+  const [mapData, setMapData] = useState([]);
+  const [mapLoading, setMapLoading] = useState(false);
+
   // Filters
   const [filters, setFilters] = useState({ provincia: '', localidad: '', estado: '', search: '' });
   const [page, setPage] = useState(0);
@@ -45,6 +49,7 @@ export default function ContactosPage() {
   const mapInstance = useRef(null);
   const markersRef = useRef(null);
 
+  // Fetch paginated data for table
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
@@ -67,6 +72,28 @@ export default function ContactosPage() {
     }
   }, [filters, page]);
 
+  // Fetch ALL contacts for the map (respecting filters but no pagination)
+  const fetchMapData = useCallback(async () => {
+    setMapLoading(true);
+    try {
+      const q = new URLSearchParams();
+      if (filters.provincia) q.append('provincia', filters.provincia);
+      if (filters.localidad) q.append('localidad', filters.localidad);
+      if (filters.estado) q.append('estado', filters.estado);
+      if (filters.search) q.append('search', filters.search);
+      q.append('limit', 10000);
+      q.append('offset', 0);
+
+      const res = await fetch(`${API}?${q}`);
+      const json = await res.json();
+      setMapData(json.data);
+    } catch (e) {
+      toast('Error cargando mapa', 'error');
+    } finally {
+      setMapLoading(false);
+    }
+  }, [filters]);
+
   const fetchMeta = useCallback(async () => {
     const [provRes, statsRes] = await Promise.all([
       fetch(`${API}/provincias`).then(r => r.json()),
@@ -86,10 +113,15 @@ export default function ContactosPage() {
   useEffect(() => { fetchData(); }, [fetchData]);
   useEffect(() => { fetchLocalidades(filters.provincia); }, [filters.provincia]);
 
+  // Fetch all map data when switching to map or when filters change
+  useEffect(() => {
+    if (view === 'map') fetchMapData();
+  }, [view, fetchMapData]);
+
   // Map initialization
   useEffect(() => {
     if (view !== 'map' || !mapRef.current) return;
-    if (mapInstance.current) return; // already initialized
+    if (mapInstance.current) return;
 
     const L = window.L;
     if (!L) return;
@@ -102,7 +134,7 @@ export default function ContactosPage() {
     markersRef.current = L.layerGroup().addTo(map);
   }, [view]);
 
-  // Update markers when data or view changes
+  // Update markers when mapData changes
   useEffect(() => {
     if (view !== 'map' || !markersRef.current) return;
     const L = window.L;
@@ -110,7 +142,7 @@ export default function ContactosPage() {
 
     markersRef.current.clearLayers();
 
-    const validPoints = data.filter(c => c.latitud && c.longitud);
+    const validPoints = mapData.filter(c => c.latitud && c.longitud);
     validPoints.forEach(c => {
       const color = ESTADO_COLORS[c.estado] || '#64748b';
       const icon = L.divIcon({
@@ -135,7 +167,7 @@ export default function ContactosPage() {
       const bounds = L.latLngBounds(validPoints.map(c => [c.latitud, c.longitud]));
       mapInstance.current.fitBounds(bounds, { padding: [30, 30] });
     }
-  }, [data, view]);
+  }, [mapData, view]);
 
   // Cleanup map on unmount
   useEffect(() => {
@@ -166,6 +198,27 @@ export default function ContactosPage() {
     });
   }
 
+  // Quick status change — no need to enter full edit mode
+  async function changeEstado(row, newEstado) {
+    try {
+      const res = await fetch(`${API}/${row.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ estado: newEstado }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error);
+      }
+      const updated = await res.json();
+      setData(d => d.map(r => r.id === row.id ? updated : r));
+      setMapData(d => d.map(r => r.id === row.id ? updated : r));
+      fetchMeta();
+    } catch (e) {
+      toast(e.message || 'Error actualizando estado', 'error');
+    }
+  }
+
   function startEdit(row) {
     setEditId(row.id);
     setEditData({ ...row });
@@ -189,10 +242,11 @@ export default function ContactosPage() {
       }
       const updated = await res.json();
       setData(d => d.map(r => r.id === editId ? updated : r));
+      setMapData(d => d.map(r => r.id === editId ? updated : r));
       setEditId(null);
       setEditData({});
       toast('Contacto actualizado', 'success');
-      fetchMeta(); // refresh stats
+      fetchMeta();
     } catch (e) {
       toast(e.message || 'Error actualizando', 'error');
     }
@@ -259,7 +313,22 @@ export default function ContactosPage() {
 
       {/* Map View */}
       {view === 'map' && (
-        <div ref={mapRef} style={{ width: '100%', height: 500, borderRadius: 8, border: '1px solid var(--border)', marginBottom: 16 }}></div>
+        <>
+          {mapLoading && <div className="loading-msg" style={{ marginBottom: 8 }}>Cargando puntos...</div>}
+          <div style={{ fontSize: 12, color: '#64748b', marginBottom: 8 }}>
+            {mapData.filter(c => c.latitud && c.longitud).length} puntos en el mapa
+          </div>
+          <div ref={mapRef} style={{ width: '100%', height: 600, borderRadius: 8, border: '1px solid var(--border)', marginBottom: 16 }}></div>
+          {/* Legend */}
+          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 12, color: '#64748b' }}>
+            {ESTADOS.map(e => (
+              <div key={e} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ width: 12, height: 12, borderRadius: '50%', background: ESTADO_COLORS[e], border: '2px solid #fff', boxShadow: '0 0 2px rgba(0,0,0,.3)' }}></span>
+                {ESTADO_LABELS[e]}
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
       {/* Table View */}
@@ -269,7 +338,7 @@ export default function ContactosPage() {
             <table className="data-table" style={{ fontSize: 13 }}>
               <thead>
                 <tr>
-                  <th>Estado</th>
+                  <th style={{ width: 140 }}>Estado</th>
                   <th>Nombre</th>
                   <th>Telefono</th>
                   <th>Email</th>
@@ -277,7 +346,7 @@ export default function ContactosPage() {
                   <th>Provincia</th>
                   <th>Domicilio</th>
                   <th>CP</th>
-                  <th style={{ width: 100 }}>Acciones</th>
+                  <th style={{ width: 70 }}>Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -289,7 +358,7 @@ export default function ContactosPage() {
                   editId === row.id ? (
                     <tr key={row.id} style={{ background: '#fffbeb' }}>
                       <td>
-                        <select value={editData.estado} onChange={e => setEditData(d => ({ ...d, estado: e.target.value }))} style={{ width: 110, fontSize: 12 }}>
+                        <select value={editData.estado} onChange={e => setEditData(d => ({ ...d, estado: e.target.value }))} style={{ width: 120, fontSize: 12 }}>
                           {ESTADOS.map(e => <option key={e} value={e}>{ESTADO_LABELS[e]}</option>)}
                         </select>
                       </td>
@@ -310,13 +379,19 @@ export default function ContactosPage() {
                   ) : (
                     <tr key={row.id}>
                       <td>
-                        <span style={{
-                          display: 'inline-block', padding: '2px 10px', borderRadius: 10,
-                          fontSize: 11, fontWeight: 700, color: '#fff',
-                          background: ESTADO_COLORS[row.estado] || '#64748b',
-                        }}>
-                          {ESTADO_LABELS[row.estado] || row.estado}
-                        </span>
+                        <select
+                          value={row.estado}
+                          onChange={e => changeEstado(row, e.target.value)}
+                          style={{
+                            width: 120, fontSize: 11, fontWeight: 700,
+                            background: ESTADO_COLORS[row.estado] || '#64748b',
+                            color: '#fff', border: 'none', borderRadius: 10,
+                            padding: '3px 8px', cursor: 'pointer',
+                            appearance: 'auto',
+                          }}
+                        >
+                          {ESTADOS.map(e => <option key={e} value={e} style={{ background: '#fff', color: '#333' }}>{ESTADO_LABELS[e]}</option>)}
+                        </select>
                       </td>
                       <td style={{ fontWeight: 600 }}>{row.nombre}</td>
                       <td>{row.telefono}</td>
