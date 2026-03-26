@@ -1,0 +1,7 @@
+{
+  "name": "@arman/sdk",
+  "version": "1.0.0",
+  "description": "Shared SDK for Arman backoffice services",
+  "main": "src/index.js",
+  "license": "ISC"
+}

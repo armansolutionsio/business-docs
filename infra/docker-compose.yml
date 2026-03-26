@@ -1,0 +1,61 @@
+services:
+  # PostgreSQL
+  db:
+    image: postgres:16-alpine
+    container_name: arman-postgres
+    environment:
+      POSTGRES_USER: arman
+      POSTGRES_PASSWORD: arman123
+      POSTGRES_DB: arman
+    ports:
+      - "5435:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/01-init.sql
+      - ./seed.sql:/docker-entrypoint-initdb.d/02-seed.sql
+      - ../data/1000_tel_dest_bsas_v1.csv:/docker-entrypoint-initdb.d/data.csv
+    restart: unless-stopped
+    networks:
+      - arman-travel-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U arman"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API (Node.js + Express)
+  backend:
+    build:
+      context: ..
+      dockerfile: apps/business-docs/Dockerfile
+    container_name: arman-business-docs
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: postgres://arman:arman123@db:5432/arman
+    ports:
+      - "3001:3001"
+    volumes:
+      - ../apps/business-docs/public:/app/apps/business-docs/public
+      - ../apps/business-docs/src:/app/apps/business-docs/src
+      - ../packages/shared/src:/app/packages/shared/src
+      - ../apps/crm-ui/dist:/app/apps/crm-ui/dist
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - arman-travel-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  pgdata:
+
+networks:
+  arman-travel-network:
+    driver: bridge
