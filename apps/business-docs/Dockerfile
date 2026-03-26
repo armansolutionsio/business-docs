@@ -1,8 +1,18 @@
 # ================================
-# Arman Travel - Sistema Documental
-# Backend Node + Playwright + Sharp
+# Stage 1: Build CRM UI (Vite + React)
 # ================================
+FROM node:20-bookworm-slim AS crm-build
 
+WORKDIR /build
+COPY apps/crm-ui/package.json ./apps/crm-ui/
+COPY package.json package-lock.json ./
+RUN npm ci --workspace=apps/crm-ui
+COPY apps/crm-ui/ ./apps/crm-ui/
+RUN npx vite build apps/crm-ui --outDir dist --emptyOutDir
+
+# ================================
+# Stage 2: Backend + serve CRM dist
+# ================================
 FROM node:20-bookworm-slim
 
 # Evita prompts interactivos
@@ -63,7 +73,7 @@ RUN npx playwright install chromium
 
 # Copiar paquete compartido, CRM dist y aplicación
 COPY packages/shared/ ./packages/shared/
-COPY apps/crm-ui/dist/ ./apps/crm-ui/dist/
+COPY --from=crm-build /build/apps/crm-ui/dist/ ./apps/crm-ui/dist/
 COPY apps/business-docs/ ./apps/business-docs/
 
 # Variables de entorno

@@ -1,6 +1,18 @@
-# Root Dockerfile — delegates to the monorepo-aware Dockerfile
-# Build context must be the repo root (.)
+# ================================
+# Stage 1: Build CRM UI (Vite + React)
+# ================================
+FROM node:20-bookworm-slim AS crm-build
 
+WORKDIR /build
+COPY apps/crm-ui/package.json ./apps/crm-ui/
+COPY package.json package-lock.json ./
+RUN npm ci --workspace=apps/crm-ui
+COPY apps/crm-ui/ ./apps/crm-ui/
+RUN npx vite build apps/crm-ui --outDir dist --emptyOutDir
+
+# ================================
+# Stage 2: Backend + serve CRM dist
+# ================================
 FROM node:20-bookworm-slim
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -45,7 +57,7 @@ RUN npm ci --omit=dev --workspace=apps/business-docs
 RUN npx playwright install chromium
 
 COPY packages/shared/ ./packages/shared/
-COPY apps/crm-ui/dist/ ./apps/crm-ui/dist/
+COPY --from=crm-build /build/apps/crm-ui/dist/ ./apps/crm-ui/dist/
 COPY apps/business-docs/ ./apps/business-docs/
 
 ENV NODE_ENV=production
