@@ -1,0 +1,106 @@
+# ============================================================
+# infra-local — desarrollo local del monorepo Arman Backoffice
+# ============================================================
+# Uso:
+#   docker compose up --build          → levanta todo
+#   docker compose up db               → solo Postgres
+#   docker compose logs -f core-api    → logs del servicio
+#
+# Tests:
+#   docker compose up db -d
+#   cd ../services/core-api && pytest
+#
+# Migraciones:
+#   docker compose exec core-api alembic upgrade head
+# ============================================================
+
+services:
+
+  db:
+    image: postgres:16-alpine
+    container_name: arman-db
+    environment:
+      POSTGRES_USER: arman
+      POSTGRES_PASSWORD: arman
+      POSTGRES_DB: arman_core
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U arman -d arman_core"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - arman-local
+
+  core-api:
+    build:
+      context: ../services/core-api
+      dockerfile: Dockerfile
+    container_name: arman-core-api
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://arman:arman@db:5432/arman_core
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../services/core-api:/app   # hot-reload en desarrollo
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - arman-local
+
+  business-docs:
+    build:
+      context: ../apps/business-docs
+      dockerfile: Dockerfile
+    container_name: arman-business-docs
+    depends_on:
+      - core-api
+    environment:
+      PORT: "3001"
+      NODE_ENV: development
+      CORE_API_URL: http://core-api:8000
+      COMPANY_NAME: ${COMPANY_NAME:-Arman Travel}
+      COMPANY_CUIT: ${COMPANY_CUIT:-}
+      COMPANY_ADDRESS: ${COMPANY_ADDRESS:-}
+      COMPANY_EMAIL: ${COMPANY_EMAIL:-}
+      COMPANY_PHONE: ${COMPANY_PHONE:-}
+      COMPANY_IVA_CONDITION: ${COMPANY_IVA_CONDITION:-Responsable Inscripto}
+    ports:
+      - "3001:3001"
+    volumes:
+      - ../apps/business-docs/src:/app/src         # hot-reload
+      - ../apps/business-docs/templates:/app/templates
+      - ../packages/shared:/app/node_modules/@arman/sdk
+    networks:
+      - arman-local
+
+  crm-ui:
+    build:
+      context: ../apps/crm-ui
+      dockerfile: Dockerfile
+    container_name: arman-crm-ui
+    depends_on:
+      - core-api
+      - business-docs
+    environment:
+      VITE_CORE_API_URL: http://core-api:8000
+      VITE_BUSINESS_DOCS_URL: http://business-docs:3001
+    ports:
+      - "3002:3002"
+    volumes:
+      - ../apps/crm-ui/src:/app/src         # hot-reload
+    networks:
+      - arman-local
+
+volumes:
+  postgres_data:
+
+networks:
+  arman-local:
+    driver: bridge

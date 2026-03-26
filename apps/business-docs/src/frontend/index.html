@@ -1,0 +1,1146 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arman Travel - Sistema de Documentos</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #7B2CBF 0%, #6A1B9A 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #7B2CBF 0%, #6A1B9A 100%);
+            color: white;
+            padding: 20px 20px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            justify-content: space-between;
+        }
+
+        .header .brand {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .header-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.4);
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .header-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.6);
+            transform: translateY(-1px);
+        }
+
+        .header .brand img {
+            width: 72px;
+            height: 72px;
+            object-fit: contain;
+            background: rgba(255,255,255,0.08);
+            padding: 8px;
+            border-radius: 8px;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 0;
+            font-weight: 700;
+        }
+
+        .header p {
+            font-size: 14px;
+            opacity: 0.95;
+            margin: 0;
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid #f0f0f0;
+            overflow-x: auto;
+        }
+
+        .tab-button {
+            flex: 1;
+            padding: 15px 20px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            color: #666;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .tab-button:hover {
+            background: #f3e5f5;
+            color: #7B2CBF;
+        }
+
+        .tab-button.active {
+            color: #7B2CBF;
+            border-bottom-color: #7B2CBF;
+            background: #f3e5f5;
+        }
+
+        .tab-button:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            color: #999;
+            position: relative;
+        }
+
+        .tab-button:disabled:hover {
+            background: none;
+            color: #999;
+        }
+
+        .coming-soon {
+            display: block;
+            font-size: 9px;
+            font-style: italic;
+            font-weight: 400;
+            color: #999;
+            margin-top: 2px;
+        }
+
+        .content {
+            padding: 30px;
+            min-height: 400px;
+        }
+
+        /* Formulario */
+        .form-section {
+            background: #f8f9fa;
+            border-left: 4px solid #7B2CBF;
+            padding: 24px;
+            margin-bottom: 24px;
+            border-radius: 8px;
+        }
+
+        .section-title {
+            color: #7B2CBF;
+            font-size: 16px;
+            font-weight: 700;
+            margin: 0 0 16px 0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 16px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .required {
+            color: #e74c3c;
+            margin-left: 4px;
+        }
+
+        input[type="text"],
+        input[type="email"],
+        input[type="tel"],
+        input[type="date"],
+        input[type="number"],
+        textarea,
+        select {
+            width: 100%;
+            padding: 11px 14px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        input:focus,
+        textarea:focus,
+        select:focus {
+            outline: none;
+            border-color: #7B2CBF;
+            box-shadow: 0 0 0 3px rgba(123, 44, 191, 0.1);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        /* Items */
+        .items-input-group {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr auto;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .btn-add-item {
+            background: #7B2CBF;
+            color: white;
+            border: none;
+            padding: 11px 18px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .btn-add-item:hover {
+            background: #6A1B9A;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(123, 44, 191, 0.3);
+        }
+
+        #itemsList {
+            display: grid;
+            gap: 10px;
+        }
+
+        .item-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr auto;
+            gap: 12px;
+            align-items: center;
+            background: white;
+            padding: 12px;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+        }        
+
+        .remove-item {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .remove-item:hover {
+            background: #c0392b;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .form-row.full {
+            grid-template-columns: 1fr;
+        }
+
+        .items-section {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+
+        .items-section h3 {
+            color: #7B2CBF;
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+
+        .item-row {
+            display: grid;
+            grid-template-columns: 1fr 100px 120px 120px auto;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: flex-end;
+        }
+
+        .add-item-btn {
+            background: #7B2CBF;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.3s ease;
+        }
+
+        .add-item-btn:hover {
+            background: #6A1B9A;
+        }
+
+        .total-section {
+            background: linear-gradient(135deg, #7B2CBF 0%, #6A1B9A 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .total-value {
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        .button-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 32px;
+            padding-top: 24px;
+            border-top: 2px solid #e0e0e0;
+        }
+
+        .btn {
+            padding: 14px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            letter-spacing: 0.3px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #7B2CBF 0%, #6A1B9A 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(123, 44, 191, 0.2);
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #6A1B9A 0%, #5A0E80 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(123, 44, 191, 0.35);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #7B2CBF;
+            border: 2px solid #7B2CBF;
+        }
+
+        .btn-secondary:hover {
+            background: #f3e5f5;
+            border-color: #6A1B9A;
+        }
+
+        .message {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            display: block;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            display: block;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #1FA3B0;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .tabs {
+                overflow-x: auto;
+            }
+
+            .tab-button {
+                flex: 0 0 auto;
+                min-width: 120px;
+            }
+
+            .item-row {
+                grid-template-columns: 1fr;
+            }
+
+            .button-group {
+                grid-template-columns: 1fr;
+            }
+
+            .total-section {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* PAYMENT METHODS */
+        .payment-methods-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .payment-method-btn {
+            padding: 10px 12px;
+            background: #f5f5f5;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            color: #333;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .payment-method-btn:hover {
+            border-color: #7B2CBF;
+            background: #f0e6ff;
+        }
+
+        .payment-method-btn.active {
+            background: #7B2CBF;
+            color: white;
+            border-color: #7B2CBF;
+        }
+
+        /* MULTISELECT */
+        .multiselect-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+
+        .multiselect-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 12px;
+            background: #f5f5f5;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            color: #333;
+            transition: all 0.3s ease;
+            user-select: none;
+        }
+
+        .multiselect-option:hover {
+            border-color: #7B2CBF;
+            background: #f0e6ff;
+        }
+
+        .multiselect-option input[type="checkbox"] {
+            cursor: pointer;
+            accent-color: #7B2CBF;
+        }
+
+        .multiselect-option input[type="checkbox"]:checked + span {
+            font-weight: 700;
+            color: #7B2CBF;
+        }
+
+        /* IMAGE UPLOAD SECTION */
+        .image-upload-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 16px;
+        }
+
+        .image-upload-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .image-upload-card:hover {
+            border-color: #7B2CBF;
+            box-shadow: 0 4px 12px rgba(123, 44, 191, 0.1);
+        }
+
+        .image-upload-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .image-size-select {
+            padding: 6px 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            background: white;
+            color: #7B2CBF;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .image-size-select:hover {
+            border-color: #7B2CBF;
+        }
+
+        .image-size-select:focus {
+            outline: none;
+            border-color: #7B2CBF;
+            box-shadow: 0 0 0 3px rgba(123, 44, 191, 0.1);
+        }
+
+        .image-preview-container {
+            min-height: 100px;
+            border: 2px dashed #e0e0e0;
+            border-radius: 6px;
+            background: #f9f9f9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .image-preview {
+            position: relative;
+            width: 100%;
+            text-align: center;
+        }
+
+        .image-preview img {
+            max-width: 100%;
+            max-height: 200px;
+            object-fit: contain;
+            border-radius: 4px;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .remove-preview-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: rgba(231, 76, 60, 0.9);
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            z-index: 10;
+        }
+
+        .remove-preview-btn:hover {
+            background: #c0392b;
+            transform: scale(1.05);
+        }
+
+        .image-preview-container:empty::before {
+            content: "Sin imagen cargada";
+            color: #999;
+            font-size: 12px;
+            font-style: italic;
+        }
+
+        /* ===== SECCIONES DINÁMICAS POR CATEGORÍA ===== */
+        .category-detail-section {
+            transition: opacity 0.4s ease, max-height 0.4s ease, margin 0.4s ease, padding 0.4s ease;
+            overflow: hidden;
+        }
+
+        .category-section-entering {
+            opacity: 0;
+            max-height: 0;
+            margin-bottom: 0 !important;
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+        }
+
+        .category-section-exiting {
+            opacity: 0;
+            max-height: 0 !important;
+            margin-bottom: 0 !important;
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+            transition: all 0.3s ease;
+        }
+
+        .category-detail-section .section-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .category-icon {
+            font-size: 18px;
+            line-height: 1;
+        }
+
+        /* Sub-item forms */
+        .sub-items-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .sub-item-form {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 16px;
+            position: relative;
+            transition: border-color 0.2s ease;
+        }
+
+        .sub-item-form:hover {
+            border-color: #c4a0e8;
+        }
+
+        .sub-item-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .sub-item-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: #7B2CBF;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            flex-shrink: 0;
+        }
+
+        .sub-item-price-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-left: auto;
+        }
+
+        .sub-item-price-group label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #666;
+            margin: 0;
+        }
+
+        .sub-item-price {
+            width: 120px;
+            padding: 6px 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 13px;
+            text-align: right;
+        }
+
+        .sub-item-price:focus {
+            border-color: #7B2CBF;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(123, 44, 191, 0.15);
+        }
+
+        .remove-subitem-btn {
+            background: #ff4d4f;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: background 0.2s;
+        }
+
+        .remove-subitem-btn:hover {
+            background: #d32f2f;
+        }
+
+        .btn-add-subitem {
+            background: #f3e5f5;
+            color: #7B2CBF;
+            border: 2px dashed #c4a0e8;
+            border-radius: 8px;
+            padding: 10px 20px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 10px;
+            transition: all 0.2s ease;
+        }
+
+        .btn-add-subitem:hover {
+            background: #e8d0f5;
+            border-color: #7B2CBF;
+        }
+
+        /* Autocomplete de aeropuertos */
+        .airport-autocomplete-wrapper {
+            position: relative;
+            width: 100%;
+        }
+
+        .airport-autocomplete-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 2px solid #7B2CBF;
+            border-top: none;
+            border-radius: 0 0 6px 6px;
+            max-height: 260px;
+            overflow-y: auto;
+            z-index: 100;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+            display: none;
+        }
+
+        .airport-autocomplete-dropdown.visible {
+            display: block;
+        }
+
+        .airport-option {
+            padding: 10px 14px;
+            cursor: pointer;
+            font-size: 13px;
+            border-bottom: 1px solid #f0f0f0;
+            transition: background 0.15s ease;
+            line-height: 1.4;
+        }
+
+        .airport-option:last-child {
+            border-bottom: none;
+        }
+
+        .airport-option:hover,
+        .airport-option.highlighted {
+            background: #f3e5f5;
+        }
+
+        .airport-option .airport-code {
+            font-weight: 700;
+            color: #7B2CBF;
+            font-size: 14px;
+            margin-right: 6px;
+        }
+
+        .airport-option .airport-city {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .airport-option .airport-country {
+            font-size: 12px;
+            color: #999;
+            margin-left: 4px;
+        }
+
+        .airport-option .airport-name {
+            font-size: 11px;
+            color: #888;
+            display: block;
+            margin-top: 2px;
+        }
+
+        /* Campos auto-calculados (readonly) */
+        input[readonly].auto-calculated {
+            background: #f0e6ff !important;
+            border-color: #d1b3ff !important;
+            color: #7B2CBF !important;
+            font-weight: 600;
+            cursor: default;
+        }
+
+        /* Image upload dentro de sección de categoría */
+        .category-detail-section .image-upload-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .category-detail-section .image-upload-card:hover {
+            border-color: #7B2CBF;
+            box-shadow: 0 4px 12px rgba(123, 44, 191, 0.1);
+        }
+
+    </style>
+
+    <!-- Modal de Configuración de Empresa -->
+    <style>
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 30px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .modal-header h2 {
+            color: #7B2CBF;
+            margin: 0;
+            font-size: 20px;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 28px;
+            cursor: pointer;
+            color: #999;
+            transition: color 0.3s ease;
+        }
+
+        .modal-close:hover {
+            color: #333;
+        }
+
+        .modal-body {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .modal-body .form-group {
+            grid-column: 1 / -1;
+        }
+
+        .modal-body .form-group.half {
+            grid-column: auto;
+        }
+
+        .modal-footer {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            padding-top: 20px;
+            border-top: 2px solid #e0e0e0;
+        }
+
+        .modal-footer button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .modal-footer .btn-save {
+            background: linear-gradient(135deg, #7B2CBF 0%, #6A1B9A 100%);
+            color: white;
+        }
+
+        .modal-footer .btn-save:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(123, 44, 191, 0.3);
+        }
+
+        .modal-footer .btn-cancel {
+            background: #f0f0f0;
+            color: #333;
+            border: 2px solid #ddd;
+        }
+
+        .modal-footer .btn-cancel:hover {
+            background: #e8e8e8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="brand">
+                <img src="logo.png" alt="Arman Travel" onerror="this.style.display='none'">
+                <div>
+                    <h1>Arman Travel</h1>
+                    <p>Sistema de Gestión de Documentos Comerciales</p>
+                </div>
+            </div>
+            <button class="header-btn" onclick="openClientsModal()" title="Gestionar clientes">
+                👥 Clientes
+            </button>
+            <button class="header-btn" onclick="openCompanyModal()" title="Configurar datos de empresa">
+                ⚙️ Empresa
+            </button>
+        </div>
+
+        <div class="tabs" id="tabs">
+            <button class="tab-button" data-tab="invoice" disabled>
+                FACTURA
+                <span class="coming-soon">Próximamente</span>
+            </button>
+            <button class="tab-button" data-tab="receipt" disabled>
+                RECIBO
+                <span class="coming-soon">Próximamente</span>
+            </button>
+            <button class="tab-button active" data-tab="quote">COTIZADOR</button>
+        </div>
+
+        <div class="content" id="content">
+            <!-- El contenido será inyectado por JavaScript -->
+        </div>
+    </div>
+
+    <!-- Modal Configuración de Empresa -->
+    <div id="companyModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Configuración de Empresa</h2>
+                <button class="modal-close" onclick="closeCompanyModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group half">
+                    <label>Razón Social</label>
+                    <input type="text" id="modal-companyName" placeholder="ARMAN SOLUTIONS S.R.L.">
+                </div>
+                <div class="form-group half">
+                    <label>CUIT</label>
+                    <input type="text" id="modal-companyCUIT" placeholder="XX-XXXXXXXX-X">
+                </div>
+                <div class="form-group">
+                    <label>Domicilio</label>
+                    <input type="text" id="modal-companyAddress" placeholder="Calle, número, piso, depto.">
+                </div>
+                <div class="form-group half">
+                    <label>Condición IVA</label>
+                    <select id="modal-companyIVACondition">
+                        <option value="Responsable Inscripto">Responsable Inscripto</option>
+                        <option value="Monotributista">Monotributista</option>
+                        <option value="Exento">Exento</option>
+                        <option value="No Responsable">No Responsable</option>
+                    </select>
+                </div>
+                <div class="form-group half">
+                    <label>Punto de Venta</label>
+                    <input type="number" id="modal-companyPOS" placeholder="1">
+                </div>
+                <div class="form-group half">
+                    <label>Email</label>
+                    <input type="email" id="modal-companyEmail" placeholder="email@empresa.com">
+                </div>
+                <div class="form-group half">
+                    <label>Teléfono</label>
+                    <input type="tel" id="modal-companyPhone" placeholder="+54 11 XXXX-XXXX">
+                </div>
+                <div class="form-group half">
+                    <label>Fecha Inicio Actividades</label>
+                    <input type="date" id="modal-companyStartDate">
+                </div>
+                <div class="form-group half">
+                    <label>Ingresos Brutos</label>
+                    <input type="text" id="modal-companyGrossIncome" placeholder="Número de IIBB">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-save" onclick="saveCompanyData()">💾 Guardar</button>
+                <button class="btn-cancel" onclick="closeCompanyModal()">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Clientes Modal -->
+    <div id="clientsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>👥 Gestionar Clientes</h2>
+                <span class="close-btn" onclick="closeClientsModal()">&times;</span>
+            </div>
+            <div class="modal-body" style="max-height: 600px; overflow-y: auto;">
+                <div style="margin-bottom: 20px;">
+                    <h3 style="margin-top: 0; color: #7B2CBF;">Nuevo Cliente</h3>
+                    <div class="form-grid" style="gap: 10px;">
+                        <div class="form-group">
+                            <label>Nombre/Razón Social</label>
+                            <input type="text" id="new-client-name" placeholder="Ej: ACME S.A.">
+                        </div>
+                        <div class="form-group">
+                            <label>CUIT/DNI</label>
+                            <input type="text" id="new-client-cuit" placeholder="XX-XXXXXXXX-X">
+                        </div>
+                        <div class="form-group">
+                            <label>Condición IVA</label>
+                            <select id="new-client-iva">
+                                <option value="">Seleccionar...</option>
+                                <option value="Responsable Inscripto">Responsable Inscripto</option>
+                                <option value="Monotributista">Monotributista</option>
+                                <option value="Exento">Exento</option>
+                                <option value="Consumidor Final">Consumidor Final</option>
+                            </select>
+                        </div>
+                        <div class="form-group full-width">
+                            <label>Domicilio</label>
+                            <input type="text" id="new-client-address" placeholder="Dirección completa">
+                        </div>
+                        <div class="form-group">
+                            <label>Email</label>
+                            <input type="email" id="new-client-email" placeholder="cliente@example.com">
+                        </div>
+                        <div class="form-group">
+                            <label>Teléfono</label>
+                            <input type="tel" id="new-client-phone" placeholder="+54 11 XXXX-XXXX">
+                        </div>
+                        <div style="grid-column: 1 / -1;">
+                            <button class="btn btn-primary" onclick="addNewClient()" style="width: 100%;">+ Agregar Cliente</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="border-top: 2px solid #f0f0f0; padding-top: 20px;">
+                    <h3 style="margin-top: 0; color: #7B2CBF;">Clientes Guardados</h3>
+                    <div id="clients-list" style="max-height: 300px; overflow-y: auto;">
+                        <p style="text-align: center; color: #999;">Cargando clientes...</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="closeClientsModal()">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

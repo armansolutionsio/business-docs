@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "Bash(ls:*)",
+      "Bash(chmod:*)",
+      "Bash(npx playwright install chromium)",
+      "Bash(xargs grep:*)"
+    ]
+  }
+}
