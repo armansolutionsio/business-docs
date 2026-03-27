@@ -51,12 +51,18 @@ async function registerInDB({ type, data, totals, req }) {
   const refs = {};
 
   try {
-    // 1. Find or create contacto
+    // 1. Find or create contacto — use _contactoId if frontend already resolved it
     const docNum = (data.clientCUIT || data.clientDNI || data.payerCUIT || '').trim();
     const clientName = data.clientName || data.payerName || null;
-    let contactoId = null;
+    let contactoId = data._contactoId ? parseInt(data._contactoId) : null;
 
-    if (docNum) {
+    // Verify the provided contactoId exists
+    if (contactoId) {
+      const check = await db.query('SELECT id FROM contactos WHERE id = $1', [contactoId]);
+      if (!check.rows.length) contactoId = null;
+    }
+
+    if (!contactoId && docNum) {
       const existing = await db.query('SELECT id FROM contactos WHERE cuit = $1 OR dni = $1 LIMIT 1', [docNum]);
       if (existing.rows.length) {
         contactoId = existing.rows[0].id;
@@ -118,8 +124,8 @@ async function registerInDB({ type, data, totals, req }) {
         );
       }
 
-      // Update contacto estado if still nuevo
-      await db.query(`UPDATE contactos SET estado = 'cotizado', updated_at = NOW() WHERE id = $1 AND estado IN ('nuevo','contactado','calificado')`, [contactoId]);
+      // Only advance estado if it's in an early stage — don't override if already further in the funnel
+      await db.query(`UPDATE contactos SET estado = CASE WHEN estado IN ('nuevo') THEN 'contactado' ELSE estado END, fecha_ultima_interaccion = NOW(), updated_at = NOW() WHERE id = $1`, [contactoId]);
       await logAudit({ tabla: 'cotizaciones', registro_id: refs.cotizacionId, accion: 'INSERT', usuario: createdBy });
 
     } else if (type === 'invoice') {
@@ -204,8 +210,8 @@ router.post('/generate-pdf', async (req, res) => {
       landscape: !!landscape,
     });
 
-    // Register in our DB (non-fatal)
-    const dbRefs = await registerInDB({ type, data, totals, req });
+    // Register in our DB (non-fatal) — skip if already confirmed from frontend
+    const dbRefs = data._skipDbRegistration ? {} : await registerInDB({ type, data, totals, req });
 
     const enrichedData = {
       ...data,

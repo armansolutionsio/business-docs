@@ -334,6 +334,7 @@ export default function ContactosPage() {
             <table className="data-table" style={{ fontSize: 13 }}>
               <thead>
                 <tr>
+                  <th style={{ width: 75 }}>Codigo</th>
                   <th style={{ width: 140 }}>Estado</th>
                   <th>Nombre</th>
                   <th>Telefono</th>
@@ -347,12 +348,13 @@ export default function ContactosPage() {
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={9} className="loading-msg">Cargando...</td></tr>
+                  <tr><td colSpan={10} className="loading-msg">Cargando...</td></tr>
                 ) : !data.length ? (
-                  <tr><td colSpan={9} className="empty-msg">Sin resultados</td></tr>
+                  <tr><td colSpan={10} className="empty-msg">Sin resultados</td></tr>
                 ) : data.map(row => (
                   editId === row.id ? (
                     <tr key={row.id} style={{ background: '#fffbeb' }}>
+                      <td style={{ fontFamily: 'monospace', fontSize: 11, color: '#94a3b8' }}>{row.codigo || ''}</td>
                       <td>
                         <select value={editData.estado} onChange={e => setEditData(d => ({ ...d, estado: e.target.value }))} style={{ width: 120, fontSize: 12 }}>
                           {ESTADOS.map(e => <option key={e} value={e}>{ESTADO_LABELS[e]}</option>)}
@@ -374,6 +376,7 @@ export default function ContactosPage() {
                     </tr>
                   ) : (
                     <tr key={row.id}>
+                      <td style={{ fontFamily: 'monospace', fontSize: 11, color: '#94a3b8' }}>{row.codigo || ''}</td>
                       <td>
                         <select
                           value={row.estado}

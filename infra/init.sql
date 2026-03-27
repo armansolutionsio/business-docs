@@ -6,6 +6,7 @@
 -- 1. CONTACTOS (master table)
 CREATE TABLE IF NOT EXISTS contactos (
     id                    SERIAL PRIMARY KEY,
+    codigo                TEXT UNIQUE,  -- human-readable ID, auto-generated: C-0001
     tipo_registro         VARCHAR(20) DEFAULT 'persona',  -- persona / empresa
     rol_actual            VARCHAR(30) DEFAULT 'lead',     -- lead / contacto / cliente / pasajero / proveedor
     estado                VARCHAR(30) NOT NULL DEFAULT 'nuevo', -- nuevo / contactado / calificado / cotizado / negociacion / ganado / perdido / dormido / cliente_recurrente
@@ -307,6 +308,24 @@ CREATE TABLE IF NOT EXISTS audit_log (
     created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_audit_tabla ON audit_log (tabla, registro_id);
+
+-- ============================================================================
+-- Auto-generate codigo for contactos: C-0001, C-0002, etc.
+-- ============================================================================
+CREATE OR REPLACE FUNCTION generate_contacto_codigo()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.codigo IS NULL THEN
+    NEW.codigo := 'C-' || LPAD(NEW.id::TEXT, 5, '0');
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_contacto_codigo ON contactos;
+CREATE TRIGGER trg_contacto_codigo
+  BEFORE INSERT ON contactos
+  FOR EACH ROW EXECUTE FUNCTION generate_contacto_codigo();
 
 -- ============================================================================
 -- LEGACY: keep beta_contactos for backward compat (seed still uses it)

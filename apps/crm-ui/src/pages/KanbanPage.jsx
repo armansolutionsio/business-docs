@@ -25,6 +25,7 @@ export default function KanbanPage() {
   const [dragOverCol, setDragOverCol] = useState(null);
   const [motivoModal, setMotivoModal] = useState(null);
   const [motivo, setMotivo] = useState('');
+  const [colSearch, setColSearch] = useState({});
 
   async function load() {
     setLoading(true);
@@ -83,7 +84,16 @@ export default function KanbanPage() {
 
   const grouped = {};
   COLUMNS.forEach(c => { grouped[c.key] = []; });
-  contactos.forEach(c => { if (grouped[c.estado]) grouped[c.estado].push(c); });
+  contactos.forEach(c => {
+    if (!grouped[c.estado]) return;
+    const q = (colSearch[c.estado] || '').toLowerCase();
+    if (q) {
+      const haystack = [c.nombre, c.apellido, c.razon_social, c.telefono, c.email, c.destino_interes, c.vendedor_asignado, c.origen]
+        .filter(Boolean).join(' ').toLowerCase();
+      if (!haystack.includes(q)) return;
+    }
+    grouped[c.estado].push(c);
+  });
 
   if (loading) return <div className="loading-msg">Cargando pipeline...</div>;
 
@@ -118,6 +128,13 @@ export default function KanbanPage() {
               </span>
             </div>
 
+            <input
+              placeholder="Buscar..."
+              value={colSearch[col.key] || ''}
+              onChange={e => setColSearch(prev => ({ ...prev, [col.key]: e.target.value }))}
+              style={{ width: '100%', padding: '6px 8px', fontSize: 11, border: '1px solid #d1d5db', borderRadius: 6, marginBottom: 8, background: '#fff' }}
+            />
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {grouped[col.key].map(c => {
                 const name = c.razon_social || [c.nombre, c.apellido].filter(Boolean).join(' ') || 'Sin nombre';
@@ -134,7 +151,10 @@ export default function KanbanPage() {
                       opacity: dragId === c.id ? 0.4 : 1,
                     }}
                   >
-                    <div style={{ fontWeight: 600, fontSize: 13, color: '#1e293b' }}>{name}</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontWeight: 600, fontSize: 13, color: '#1e293b' }}>{name}</span>
+                      {c.codigo && <span style={{ fontSize: 9, color: '#94a3b8', fontFamily: 'monospace' }}>{c.codigo}</span>}
+                    </div>
                     {c.destino_interes && <div style={{ fontSize: 11, color: '#7B2CBF', fontWeight: 500, marginTop: 2 }}>{c.destino_interes}</div>}
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, fontSize: 10, color: '#94a3b8' }}>
                       <span>{c.origen || ''}</span>

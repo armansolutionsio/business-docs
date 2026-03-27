@@ -180,12 +180,11 @@
 
         label {
             display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: #333;
-            font-size: 13px;
-            text-transform: uppercase;
-            letter-spacing: 0.3px;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #475569;
+            font-size: 12px;
+            letter-spacing: 0.2px;
         }
 
         .required {
@@ -201,13 +200,14 @@
         textarea,
         select {
             width: 100%;
-            padding: 11px 14px;
-            border: 2px solid #e0e0e0;
-            border-radius: 6px;
+            padding: 10px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
             font-size: 14px;
             font-family: inherit;
-            transition: all 0.3s ease;
-            background: white;
+            transition: border-color 0.15s ease;
+            background: #fff;
+            color: #1e293b;
         }
 
         input:focus,
@@ -215,13 +215,17 @@
         select:focus {
             outline: none;
             border-color: #7B2CBF;
-            box-shadow: 0 0 0 2px rgba(123, 44, 191, 0.08);
+            box-shadow: 0 0 0 3px rgba(123, 44, 191, 0.1);
+        }
+
+        input::placeholder, textarea::placeholder {
+            color: #94a3b8;
         }
 
         textarea {
             resize: vertical;
-            min-height: 80px;
-            font-family: 'Segoe UI', sans-serif;
+            min-height: 70px;
+            font-family: inherit;
         }
 
         /* Items */
@@ -247,8 +251,6 @@
 
         .btn-add-item:hover {
             background: #6A1B9A;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(123, 44, 191, 0.3);
         }
 
         #itemsList {
@@ -258,29 +260,38 @@
 
         .item-row {
             display: grid;
-            grid-template-columns: 2fr 1fr 1fr auto;
-            gap: 12px;
+            grid-template-columns: 1fr 70px 110px 110px 40px;
+            gap: 10px;
             align-items: center;
             background: white;
-            padding: 12px;
-            border: 1px solid #e0e0e0;
-            border-radius: 6px;
-        }        
+            padding: 10px 12px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            margin-bottom: 6px;
+            font-size: 13px;
+        }
 
         .remove-item {
-            background: #e74c3c;
-            color: white;
-            border: none;
-            padding: 8px 12px;
+            background: transparent;
+            color: #94a3b8;
+            border: 1px solid #d1d5db;
+            width: 30px;
+            height: 30px;
             border-radius: 6px;
             cursor: pointer;
             font-weight: 600;
             font-size: 12px;
-            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+            padding: 0;
         }
 
         .remove-item:hover {
-            background: #c0392b;
+            background: #fee2e2;
+            color: #ef4444;
+            border-color: #ef4444;
         }
 
         .form-row {
@@ -304,14 +315,6 @@
             color: #7B2CBF;
             margin-bottom: 15px;
             font-size: 16px;
-        }
-
-        .item-row {
-            display: grid;
-            grid-template-columns: 1fr 100px 120px 120px auto;
-            gap: 10px;
-            margin-bottom: 10px;
-            align-items: flex-end;
         }
 
         .add-item-btn {
@@ -356,18 +359,17 @@
         }
 
         .btn {
-            padding: 14px 24px;
+            padding: 12px 20px;
             border: none;
-            border-radius: 6px;
-            font-size: 15px;
-            font-weight: 700;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: all 0.15s ease;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
-            letter-spacing: 0.3px;
         }
 
         .btn-primary {
@@ -380,14 +382,14 @@
         }
 
         .btn-secondary {
-            background: white;
-            color: #7B2CBF;
-            border: 2px solid #7B2CBF;
+            background: #fff;
+            color: #374151;
+            border: 1px solid #d1d5db;
         }
 
         .btn-secondary:hover {
-            background: #f3e5f5;
-            border-color: #6A1B9A;
+            background: #f9fafb;
+            border-color: #9ca3af;
         }
 
         .message {
@@ -423,7 +425,7 @@
 
         .spinner {
             border: 4px solid #f3f3f3;
-            border-top: 4px solid #1FA3B0;
+            border-top: 4px solid #7B2CBF;
             border-radius: 50%;
             width: 40px;
             height: 40px;
@@ -894,14 +896,17 @@
         }
 
         .modal-content {
-            background-color: white;
-            margin: 5% auto;
-            padding: 30px;
-            border-radius: 8px;
-            width: 90%;
-            max-width: 600px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-            animation: slideDown 0.3s ease;
+            background-color: #fff;
+            margin: 3% auto;
+            padding: 24px;
+            border-radius: 12px;
+            width: 94%;
+            max-width: 780px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+            animation: slideDown 0.25s ease;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
         }
 
         @keyframes slideDown {
@@ -1087,25 +1092,41 @@
 
     <!-- Clientes Modal -->
     <div id="clientsModal" class="modal">
-        <div class="modal-content">
+        <div class="modal-content" style="max-width: 860px;">
             <div class="modal-header">
-                <h2>👥 Gestionar Clientes</h2>
-                <span class="close-btn" onclick="closeClientsModal()">&times;</span>
+                <h2>Clientes</h2>
+                <span class="close-btn" onclick="closeClientsModal()" style="cursor:pointer;font-size:24px;color:#94a3b8;">&times;</span>
             </div>
-            <div class="modal-body" style="max-height: 600px; overflow-y: auto;">
-                <div style="margin-bottom: 20px;">
-                    <h3 style="margin-top: 0; color: #7B2CBF;">Nuevo Cliente</h3>
-                    <div class="form-grid" style="gap: 10px;">
-                        <div class="form-group">
-                            <label>Nombre/Razón Social</label>
-                            <input type="text" id="new-client-name" placeholder="Ej: ACME S.A.">
+
+            <!-- Search first — most important action -->
+            <div style="margin-bottom: 16px;">
+                <input type="text" id="client-search-input" placeholder="Buscar cliente por nombre, documento, email o telefono..."
+                    oninput="searchClients(this.value)"
+                    style="width: 100%; padding: 12px 16px; border: 1px solid #d1d5db; border-radius: 10px; font-size: 14px; background: #f9fafb;">
+            </div>
+
+            <!-- Two-column layout: list left, form right -->
+            <div style="display: grid; grid-template-columns: 1fr 280px; gap: 20px; overflow: hidden; flex: 1; min-height: 0;">
+
+                <!-- Client list -->
+                <div style="overflow-y: auto; max-height: 55vh; min-height: 200px;" id="clients-list">
+                    <p style="text-align: center; color: #94a3b8; padding: 40px 0;">Busca un cliente o agrega uno nuevo</p>
+                </div>
+
+                <!-- New client form — sidebar -->
+                <div style="background: #f9fafb; border-radius: 10px; padding: 16px; border: 1px solid #e5e7eb; overflow-y: auto; max-height: 55vh;">
+                    <h4 style="margin: 0 0 12px 0; font-size: 13px; font-weight: 600; color: #374151; text-transform: uppercase; letter-spacing: 0.5px;">Nuevo cliente</h4>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <div>
+                            <label style="font-size: 11px;">Nombre / Razon Social</label>
+                            <input type="text" id="new-client-name" placeholder="Nombre completo">
                         </div>
-                        <div class="form-group">
-                            <label>CUIT/DNI</label>
+                        <div>
+                            <label style="font-size: 11px;">CUIT / DNI</label>
                             <input type="text" id="new-client-cuit" placeholder="XX-XXXXXXXX-X">
                         </div>
-                        <div class="form-group">
-                            <label>Condición IVA</label>
+                        <div>
+                            <label style="font-size: 11px;">Condicion IVA</label>
                             <select id="new-client-iva">
                                 <option value="">Seleccionar...</option>
                                 <option value="Responsable Inscripto">Responsable Inscripto</option>
@@ -1114,38 +1135,25 @@
                                 <option value="Consumidor Final">Consumidor Final</option>
                             </select>
                         </div>
-                        <div class="form-group full-width">
-                            <label>Domicilio</label>
-                            <input type="text" id="new-client-address" placeholder="Dirección completa">
+                        <div>
+                            <label style="font-size: 11px;">Email</label>
+                            <input type="email" id="new-client-email" placeholder="email@ejemplo.com">
                         </div>
-                        <div class="form-group">
-                            <label>Email</label>
-                            <input type="email" id="new-client-email" placeholder="cliente@example.com">
+                        <div>
+                            <label style="font-size: 11px;">Telefono</label>
+                            <input type="tel" id="new-client-phone" placeholder="+54 11 1234-5678">
                         </div>
-                        <div class="form-group">
-                            <label>Teléfono</label>
-                            <input type="tel" id="new-client-phone" placeholder="+54 11 XXXX-XXXX">
+                        <div>
+                            <label style="font-size: 11px;">Domicilio</label>
+                            <input type="text" id="new-client-address" placeholder="Direccion completa">
                         </div>
-                        <div style="grid-column: 1 / -1;">
-                            <button class="btn btn-primary" onclick="addNewClient()" style="width: 100%;">+ Agregar Cliente</button>
-                        </div>
-                    </div>
-                </div>
-
-                <div style="border-top: 2px solid #f0f0f0; padding-top: 20px;">
-                    <h3 style="margin-top: 0; color: #7B2CBF;">Clientes Guardados</h3>
-                    <div style="margin-bottom: 12px;">
-                        <input type="text" id="client-search-input" placeholder="Buscar por nombre, CUIT, email, telefono..."
-                            oninput="searchClients(this.value)"
-                            style="width: 100%; padding: 10px 14px; border: 2px solid #7B2CBF; border-radius: 6px; font-size: 14px;">
-                    </div>
-                    <div id="clients-list" style="max-height: 400px; overflow-y: auto;">
-                        <p style="text-align: center; color: #999;">Cargando clientes...</p>
+                        <button class="btn btn-primary" onclick="addNewClient()" style="width: 100%; margin-top: 4px; padding: 10px;">Agregar</button>
                     </div>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button class="btn-cancel" onclick="closeClientsModal()">Cerrar</button>
+
+            <div style="display: flex; justify-content: flex-end; padding-top: 12px; margin-top: 12px; border-top: 1px solid #e5e7eb;">
+                <button class="btn btn-secondary" onclick="closeClientsModal()" style="padding: 8px 20px;">Cerrar</button>
             </div>
         </div>
     </div>

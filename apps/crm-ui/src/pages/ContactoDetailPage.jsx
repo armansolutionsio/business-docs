@@ -73,7 +73,10 @@ export default function ContactoDetailPage() {
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
         <button className="btn btn-secondary btn-sm" onClick={() => navigate('/contactos')}>&larr; Volver</button>
         <div style={{ flex: 1 }}>
-          <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>{displayName}</h1>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+            <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>{displayName}</h1>
+            {contacto.codigo && <span style={{ fontSize: 12, color: '#94a3b8', fontFamily: 'monospace', fontWeight: 600 }}>{contacto.codigo}</span>}
+          </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 4, fontSize: 13, color: '#64748b' }}>
             <span style={{ background: color, color: '#fff', padding: '2px 10px', borderRadius: 10, fontSize: 11, fontWeight: 700 }}>
               {contacto.estado}
