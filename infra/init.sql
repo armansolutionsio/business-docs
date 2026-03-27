@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS contactos (
     id                    SERIAL PRIMARY KEY,
     tipo_registro         VARCHAR(20) DEFAULT 'persona',  -- persona / empresa
     rol_actual            VARCHAR(30) DEFAULT 'lead',     -- lead / contacto / cliente / pasajero / proveedor
-    estado                VARCHAR(30) NOT NULL DEFAULT 'nuevo', -- nuevo / contactado / en_seguimiento / cotizado / reservado / ganado / perdido / inactivo
+    estado                VARCHAR(30) NOT NULL DEFAULT 'nuevo', -- nuevo / contactado / calificado / cotizado / negociacion / ganado / perdido / dormido / cliente_recurrente
     nombre                TEXT,
     apellido              TEXT,
     razon_social          TEXT,
@@ -32,7 +32,24 @@ CREATE TABLE IF NOT EXISTS contactos (
     fecha_nacimiento      DATE,
     nacionalidad          TEXT,
     sexo                  VARCHAR(1),
+    -- Interés comercial
+    destino_interes       TEXT,
+    tipo_viaje            VARCHAR(30),  -- individual / pareja / familia / grupo / empresa
+    fecha_viaje_estimada  DATE,
+    cantidad_pasajeros    INTEGER,
+    presupuesto           NUMERIC(12,2),
+    prioridad             VARCHAR(10) DEFAULT 'media', -- baja / media / alta / urgente
+    probabilidad_cierre   INTEGER DEFAULT 0,
+    ticket_estimado       NUMERIC(12,2),
+    -- Seguimiento
+    proxima_accion        TEXT,
+    fecha_proxima_accion  DATE,
+    motivo_perdida        TEXT,
+    etiquetas             TEXT[] DEFAULT '{}',
+    -- General
     observaciones         TEXT,
+    consentimiento_whatsapp BOOLEAN DEFAULT true,
+    consentimiento_email    BOOLEAN DEFAULT false,
     fecha_ultima_interaccion TIMESTAMPTZ,
     created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at            TIMESTAMPTZ NOT NULL DEFAULT NOW()

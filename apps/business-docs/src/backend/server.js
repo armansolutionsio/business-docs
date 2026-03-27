@@ -69,7 +69,7 @@ app.patch('/api/cotizaciones/:id/estado', async (req, res, next) => {
     if (!rows.length) return res.status(404).json({ error: 'Cotizacion no encontrada' });
     // If aceptada, update contacto estado
     if (estado === 'aceptada' && rows[0].contacto_id) {
-      await dbPool.query(`UPDATE contactos SET estado = 'reservado', updated_at = NOW() WHERE id = $1 AND estado IN ('nuevo','contactado','en_seguimiento','cotizado')`, [rows[0].contacto_id]);
+      await dbPool.query(`UPDATE contactos SET estado = 'negociacion', updated_at = NOW() WHERE id = $1 AND estado IN ('nuevo','contactado','calificado','cotizado')`, [rows[0].contacto_id]);
     }
     res.json(rows[0]);
   } catch (err) { next(err); }

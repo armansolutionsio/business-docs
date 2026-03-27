@@ -14,10 +14,10 @@ import ContactoConversaciones from '../components/contacto/ContactoConversacione
 import ContactoDocumentos from '../components/contacto/ContactoDocumentos.jsx';
 import ContactoMapa from '../components/contacto/ContactoMapa.jsx';
 
-const ESTADOS = ['nuevo','contactado','en_seguimiento','cotizado','reservado','ganado','perdido','inactivo'];
+const ESTADOS = ['nuevo','contactado','calificado','cotizado','negociacion','ganado','perdido','dormido','cliente_recurrente'];
 const ESTADO_COLORS = {
-  nuevo:'#64748b', contactado:'#3b82f6', en_seguimiento:'#8b5cf6', cotizado:'#f59e0b',
-  reservado:'#06b6d4', ganado:'#10b981', perdido:'#ef4444', inactivo:'#94a3b8',
+  nuevo:'#3b82f6', contactado:'#06b6d4', calificado:'#8b5cf6', cotizado:'#f59e0b',
+  negociacion:'#d97706', ganado:'#10b981', perdido:'#ef4444', dormido:'#94a3b8', cliente_recurrente:'#065f46',
 };
 
 export default function ContactoDetailPage() {

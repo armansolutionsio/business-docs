@@ -21,10 +21,7 @@ export default function Layout() {
           <NavLink to="/contactos" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
             Contactos
           </NavLink>
-          <NavLink to="/inbox" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-            Leads
-          </NavLink>
-          <NavLink to="/kanban" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+          <NavLink to="/pipeline" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
             Pipeline
           </NavLink>
           <NavLink to="/proveedores" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>

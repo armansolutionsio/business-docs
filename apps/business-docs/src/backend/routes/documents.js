@@ -119,7 +119,7 @@ async function registerInDB({ type, data, totals, req }) {
       }
 
       // Update contacto estado if still nuevo
-      await db.query(`UPDATE contactos SET estado = 'cotizado', updated_at = NOW() WHERE id = $1 AND estado IN ('nuevo','contactado','en_seguimiento')`, [contactoId]);
+      await db.query(`UPDATE contactos SET estado = 'cotizado', updated_at = NOW() WHERE id = $1 AND estado IN ('nuevo','contactado','calificado')`, [contactoId]);
       await logAudit({ tabla: 'cotizaciones', registro_id: refs.cotizacionId, accion: 'INSERT', usuario: createdBy });
 
     } else if (type === 'invoice') {

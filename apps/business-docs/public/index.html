@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Arman Travel - Sistema de Documentos</title>
     <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -13,29 +16,29 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #7B2CBF 0%, #6A1B9A 100%);
+            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: #f0f2f5;
             min-height: 100vh;
-            padding: 20px;
+            padding: 0;
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1100px;
             margin: 0 auto;
             background: white;
-            border-radius: 10px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-            overflow: hidden;
+            min-height: 100vh;
+            box-shadow: 0 0 0 1px rgba(0,0,0,.06);
         }
 
         .header {
-            background: linear-gradient(135deg, #7B2CBF 0%, #6A1B9A 100%);
+            background: #1e1e2e;
             color: white;
-            padding: 20px 20px;
+            padding: 14px 24px;
             display: flex;
             align-items: center;
-            gap: 20px;
+            gap: 16px;
             justify-content: space-between;
+            border-bottom: 3px solid #7B2CBF;
         }
 
         .header .brand {
@@ -45,42 +48,41 @@
         }
 
         .header-btn {
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
-            border: 2px solid rgba(255, 255, 255, 0.4);
-            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.08);
+            color: rgba(255,255,255,.85);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 7px 14px;
             border-radius: 6px;
             cursor: pointer;
-            font-weight: 600;
+            font-weight: 500;
             font-size: 13px;
-            transition: all 0.3s ease;
+            transition: all 0.15s ease;
             white-space: nowrap;
+            text-decoration: none;
         }
 
         .header-btn:hover {
-            background: rgba(255, 255, 255, 0.3);
-            border-color: rgba(255, 255, 255, 0.6);
-            transform: translateY(-1px);
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
         }
 
         .header .brand img {
-            width: 72px;
-            height: 72px;
+            width: 40px;
+            height: 40px;
             object-fit: contain;
-            background: rgba(255,255,255,0.08);
-            padding: 8px;
-            border-radius: 8px;
+            border-radius: 6px;
         }
 
         .header h1 {
-            font-size: 28px;
+            font-size: 18px;
             margin-bottom: 0;
-            font-weight: 700;
+            font-weight: 600;
+            letter-spacing: -0.3px;
         }
 
         .header p {
-            font-size: 14px;
-            opacity: 0.95;
+            font-size: 12px;
+            opacity: 0.6;
             margin: 0;
         }
 
@@ -105,14 +107,14 @@
         }
 
         .tab-button:hover {
-            background: #f3e5f5;
-            color: #7B2CBF;
+            background: #f8f9fa;
+            color: #1e1e2e;
         }
 
         .tab-button.active {
             color: #7B2CBF;
             border-bottom-color: #7B2CBF;
-            background: #f3e5f5;
+            background: transparent;
         }
 
         .tab-button:disabled {
@@ -137,26 +139,28 @@
         }
 
         .content {
-            padding: 30px;
+            padding: 24px;
             min-height: 400px;
         }
 
         /* Formulario */
         .form-section {
-            background: #f8f9fa;
-            border-left: 4px solid #7B2CBF;
-            padding: 24px;
-            margin-bottom: 24px;
+            background: #fafbfc;
+            border: 1px solid #e5e7eb;
+            padding: 20px;
+            margin-bottom: 20px;
             border-radius: 8px;
         }
 
         .section-title {
-            color: #7B2CBF;
-            font-size: 16px;
+            color: #374151;
+            font-size: 13px;
             font-weight: 700;
-            margin: 0 0 16px 0;
+            margin: 0 0 14px 0;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #e5e7eb;
         }
 
         .form-grid {
@@ -211,7 +215,7 @@
         select:focus {
             outline: none;
             border-color: #7B2CBF;
-            box-shadow: 0 0 0 3px rgba(123, 44, 191, 0.1);
+            box-shadow: 0 0 0 2px rgba(123, 44, 191, 0.08);
         }
 
         textarea {
@@ -326,10 +330,10 @@
         }
 
         .total-section {
-            background: linear-gradient(135deg, #7B2CBF 0%, #6A1B9A 100%);
+            background: #1e1e2e;
             color: white;
-            padding: 20px;
-            border-radius: 5px;
+            padding: 16px 20px;
+            border-radius: 8px;
             margin: 20px 0;
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -367,15 +371,12 @@
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, #7B2CBF 0%, #6A1B9A 100%);
+            background: #7B2CBF;
             color: white;
-            box-shadow: 0 4px 15px rgba(123, 44, 191, 0.2);
         }
 
         .btn-primary:hover {
-            background: linear-gradient(135deg, #6A1B9A 0%, #5A0E80 100%);
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(123, 44, 191, 0.35);
+            background: #6A1B9A;
         }
 
         .btn-secondary {
@@ -918,9 +919,10 @@
         }
 
         .modal-header h2 {
-            color: #7B2CBF;
+            color: #1e1e2e;
             margin: 0;
-            font-size: 20px;
+            font-size: 18px;
+            font-weight: 600;
         }
 
         .modal-close {
@@ -969,13 +971,12 @@
         }
 
         .modal-footer .btn-save {
-            background: linear-gradient(135deg, #7B2CBF 0%, #6A1B9A 100%);
+            background: #7B2CBF;
             color: white;
         }
 
         .modal-footer .btn-save:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(123, 44, 191, 0.3);
+            background: #6A1B9A;
         }
 
         .modal-footer .btn-cancel {

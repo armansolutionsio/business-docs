@@ -325,62 +325,8 @@ const documentConfig = {
     }
 };
 
-// ── Integración con Core API (CRM) ──────────────────────────────────────────
-const CORE_API_URL = window.location.hostname === 'localhost'
-    ? 'http://localhost:8000'
-    : `${window.location.protocol}//${window.location.hostname}:8000`;
-
-function detectDocType(value) {
-    const digits = (value || '').replace(/\D/g, '');
-    return digits.length === 11 ? 'CUIT' : 'DNI';
-}
-
 function normalizeDoc(value) {
     return (value || '').replace(/\D/g, '');
-}
-
-async function crmUpsertParty(clientName, clientCUIT, clientEmail, clientPhone) {
-    if (!clientCUIT) return null;
-    try {
-        const r = await fetch(`${CORE_API_URL}/v1/parties`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                doc_type: detectDocType(clientCUIT),
-                doc_number: clientCUIT,
-                country: 'AR',
-                full_name: clientName || '',
-                email: clientEmail || '',
-                phone: clientPhone || '',
-            }),
-        });
-        if (!r.ok) return null;
-        return await r.json();
-    } catch { return null; }
-}
-
-async function crmCreateLead(partyId, destination, leadId) {
-    try {
-        // Si viene leadId desde CRM, actualizar a QUOTE_SENT en lugar de crear
-        if (leadId) {
-            await fetch(`${CORE_API_URL}/v1/leads/${leadId}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: 'QUOTE_SENT' }),
-            });
-            return;
-        }
-        await fetch(`${CORE_API_URL}/v1/leads`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                party_id: partyId || null,
-                destination: destination || null,
-                source: 'cotizador',
-                status: 'QUOTE_SENT',
-            }),
-        });
-    } catch { /* silencioso — no bloquear la descarga */ }
 }
 
 // Pre-rellenar formulario con parámetros de URL (ej. desde CRM)
@@ -1754,14 +1700,6 @@ async function downloadDocument(format) {
         a.remove();
 
         showMessage(`${format.toUpperCase()} descargado correctamente`, 'success');
-
-        // Sincronizar con CRM: si es cotización, upsert party + crear/actualizar lead
-        if (appState.currentTab === 'quote') {
-            const urlParams = new URLSearchParams(window.location.search);
-            const leadId = urlParams.get('leadId');
-            const party = await crmUpsertParty(data.clientName, data.clientCUIT, data.clientEmail, data.clientPhone);
-            await crmCreateLead(party?.id, data.destinations || null, leadId);
-        }
     } catch (error) {
         console.error('Error:', error);
         showMessage(`Error al generar el documento: ${error.message}`, 'error');

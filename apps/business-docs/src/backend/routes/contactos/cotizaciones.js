@@ -59,7 +59,7 @@ router.post('/', async (req, res, next) => {
     // Update contacto estado
     await db.query(
       `UPDATE contactos SET estado = 'cotizado', fecha_ultima_interaccion = NOW(), updated_at = NOW()
-       WHERE id = $1 AND estado IN ('nuevo','contactado','en_seguimiento')`, [cid]
+       WHERE id = $1 AND estado IN ('nuevo','contactado','calificado')`, [cid]
     );
     await logAudit({ tabla: 'cotizaciones', registro_id: cot.rows[0].id, accion: 'INSERT', usuario: created_by });
 

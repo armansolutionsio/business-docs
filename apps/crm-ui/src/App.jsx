@@ -4,9 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './AuthContext.jsx';
 import { ToastProvider } from './ToastContext.jsx';
 import LoginPage from './pages/LoginPage.jsx';
-import InboxPage from './pages/InboxPage.jsx';
 import KanbanPage from './pages/KanbanPage.jsx';
-import LeadDetailPage from './pages/LeadDetailPage.jsx';
 import ContactosPage from './pages/ContactosPage.jsx';
 import ContactoDetailPage from './pages/ContactoDetailPage.jsx';
 import ProveedoresPage from './pages/ProveedoresPage.jsx';
@@ -35,10 +33,8 @@ export default function App() {
             <Route index element={<Navigate to="/contactos" replace />} />
             <Route path="contactos" element={<ContactosPage />} />
             <Route path="contactos/:id" element={<ContactoDetailPage />} />
+            <Route path="pipeline" element={<KanbanPage />} />
             <Route path="proveedores" element={<ProveedoresPage />} />
-            <Route path="inbox" element={<InboxPage />} />
-            <Route path="kanban" element={<KanbanPage />} />
-            <Route path="leads/:id" element={<LeadDetailPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/contactos" replace />} />
         </Routes>
