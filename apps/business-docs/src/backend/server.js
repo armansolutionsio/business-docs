@@ -54,6 +54,8 @@ const ventasRoutes         = require('./routes/contactos/ventas');
 const facturasRoutes       = require('./routes/contactos/facturas');
 const pagosRoutes          = require('./routes/contactos/pagos');
 const proveedoresRoutes    = require('./routes/proveedores');
+const campaniasRoutes      = require('./routes/contactos/campanias');
+const mailRoutes           = require('./routes/mail');
 
 // Quick cotizacion estado update (used by cotizador frontend)
 const dbPool = require('./utils/db');
@@ -87,6 +89,8 @@ app.use('/api/contactos/:contactoId/cotizaciones', cotizacionesRoutes);
 app.use('/api/contactos/:contactoId/ventas', ventasRoutes);
 app.use('/api/contactos/:contactoId/facturas', facturasRoutes);
 app.use('/api/contactos/:contactoId/pagos', pagosRoutes);
+app.use('/api/contactos/:contactoId/campanias', campaniasRoutes);
+app.use('/api/mail', mailRoutes);
 app.use('/api/proveedores', proveedoresRoutes);
 
 // ── Error handler ─────────────────────────────────────────────────────────────

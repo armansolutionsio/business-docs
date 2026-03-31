@@ -8,6 +8,7 @@ import KanbanPage from './pages/KanbanPage.jsx';
 import ContactosPage from './pages/ContactosPage.jsx';
 import ContactoDetailPage from './pages/ContactoDetailPage.jsx';
 import ProveedoresPage from './pages/ProveedoresPage.jsx';
+import CampaniasPage from './pages/CampaniasPage.jsx';
 import Layout from './components/Layout.jsx';
 
 function PrivateRoute({ children }) {
@@ -34,6 +35,7 @@ export default function App() {
             <Route path="contactos" element={<ContactosPage />} />
             <Route path="contactos/:id" element={<ContactoDetailPage />} />
             <Route path="pipeline" element={<KanbanPage />} />
+            <Route path="campanias" element={<CampaniasPage />} />
             <Route path="proveedores" element={<ProveedoresPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/contactos" replace />} />

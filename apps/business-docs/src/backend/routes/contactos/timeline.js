@@ -22,6 +22,8 @@ router.get('/', async (req, res, next) => {
       UNION ALL
       SELECT 'pago' AS tipo, id, created_at, 'Pago $' || monto AS resumen, created_by FROM pagos WHERE contacto_id = $1
       UNION ALL
+      SELECT 'campania_mail' AS tipo, id, enviado_at AS created_at, 'Mail: ' || asunto AS resumen, enviado_por AS created_by FROM campania_mail WHERE contacto_id = $1
+      UNION ALL
       SELECT 'audit' AS tipo, id, created_at, accion || ' en ' || tabla AS resumen, usuario AS created_by FROM audit_log WHERE tabla = 'contactos' AND registro_id = $2
       ORDER BY created_at DESC
       LIMIT 200

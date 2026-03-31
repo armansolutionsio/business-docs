@@ -295,7 +295,25 @@ CREATE TABLE IF NOT EXISTS notas (
 );
 CREATE INDEX IF NOT EXISTS idx_nota_contacto ON notas (contacto_id);
 
--- 13. AUDIT LOG
+-- 13. CAMPAÑAS DE MAIL
+CREATE TABLE IF NOT EXISTS campania_mail (
+    id                SERIAL PRIMARY KEY,
+    contacto_id       INTEGER NOT NULL REFERENCES contactos(id),
+    asunto            TEXT NOT NULL,
+    cuerpo            TEXT NOT NULL,
+    destinatario      TEXT NOT NULL,        -- email al que se envió
+    estado            VARCHAR(20) DEFAULT 'enviado',  -- enviado / entregado / leido / respondido / fallido / rebotado
+    enviado_por       VARCHAR(50),
+    enviado_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    respuesta         TEXT,
+    respondido_at     TIMESTAMPTZ,
+    notas             TEXT,
+    created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_camp_mail_contacto ON campania_mail (contacto_id);
+CREATE INDEX IF NOT EXISTS idx_camp_mail_estado   ON campania_mail (estado);
+
+-- 14. AUDIT LOG
 CREATE TABLE IF NOT EXISTS audit_log (
     id             SERIAL PRIMARY KEY,
     tabla          TEXT NOT NULL,

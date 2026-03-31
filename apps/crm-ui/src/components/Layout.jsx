@@ -14,7 +14,7 @@ export default function Layout() {
     <div className="layout">
       <header className="topbar">
         <div className="topbar-brand">
-          <img src="/logo.png" alt="Arman Travel" className="topbar-logo-img" />
+          <img src={import.meta.env.BASE_URL + 'logo-arman-travel.png'} alt="Arman Travel" className="topbar-logo-img" />
           <span className="topbar-brand-name">CRM</span>
         </div>
         <nav className="topbar-nav">
@@ -23,6 +23,9 @@ export default function Layout() {
           </NavLink>
           <NavLink to="/pipeline" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
             Pipeline
+          </NavLink>
+          <NavLink to="/campanias" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+            Campañas
           </NavLink>
           <NavLink to="/proveedores" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
             Proveedores

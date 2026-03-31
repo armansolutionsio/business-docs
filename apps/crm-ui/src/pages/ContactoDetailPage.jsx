@@ -13,6 +13,8 @@ import ContactoOportunidades from '../components/contacto/ContactoOportunidades.
 import ContactoConversaciones from '../components/contacto/ContactoConversaciones.jsx';
 import ContactoDocumentos from '../components/contacto/ContactoDocumentos.jsx';
 import ContactoMapa from '../components/contacto/ContactoMapa.jsx';
+import ContactoCampanias from '../components/contacto/ContactoCampanias.jsx';
+import EnviarMailModal from '../components/contacto/EnviarMailModal.jsx';
 
 const ESTADOS = ['nuevo','contactado','calificado','cotizado','negociacion','ganado','perdido','dormido','cliente_recurrente'];
 const ESTADO_COLORS = {
@@ -29,6 +31,7 @@ export default function ContactoDetailPage() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('timeline');
   const [timeline, setTimeline] = useState([]);
+  const [showMailModal, setShowMailModal] = useState(false);
 
   async function load() {
     try {
@@ -71,7 +74,10 @@ export default function ContactoDetailPage() {
     <div className="page-container">
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
-        <button className="btn btn-secondary btn-sm" onClick={() => navigate('/contactos')}>&larr; Volver</button>
+        <button className="btn-back" onClick={() => navigate('/contactos')}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+          Volver
+        </button>
         <div style={{ flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
             <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>{displayName}</h1>
@@ -87,6 +93,9 @@ export default function ContactoDetailPage() {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          <button className="btn btn-primary btn-sm" onClick={() => setShowMailModal(true)} disabled={!contacto.email}>
+            Enviar Mail
+          </button>
           <a href={`/?clientName=${encodeURIComponent(displayName)}&clientCUIT=${encodeURIComponent(contacto.cuit || contacto.dni || '')}&clientEmail=${encodeURIComponent(contacto.email || '')}&clientPhone=${encodeURIComponent(contacto.telefono || '')}`}
             className="btn btn-primary btn-sm" style={{ textDecoration: 'none' }} target="_blank">
             Cotizar
@@ -111,6 +120,7 @@ export default function ContactoDetailPage() {
               ['documentos', 'Documentos'],
               ['oportunidades', 'Oportunidades'],
               ['conversaciones', 'Conversaciones'],
+              ['campanias', 'Campañas'],
               ['notas', 'Notas'],
               ['tareas', 'Tareas'],
               ['mapa', 'Mapa'],
@@ -125,11 +135,21 @@ export default function ContactoDetailPage() {
           {tab === 'documentos' && <ContactoDocumentos contactoId={id} />}
           {tab === 'oportunidades' && <ContactoOportunidades contactoId={id} user={user} />}
           {tab === 'conversaciones' && <ContactoConversaciones contactoId={id} user={user} />}
+          {tab === 'campanias' && <ContactoCampanias contactoId={id} user={user} />}
           {tab === 'notas' && <ContactoNotas contactoId={id} user={user} />}
           {tab === 'tareas' && <ContactoTareas contactoId={id} user={user} />}
           {tab === 'mapa' && <ContactoMapa contacto={contacto} />}
         </div>
       </div>
+
+      {showMailModal && (
+        <EnviarMailModal
+          selectedContacts={[contacto]}
+          user={user}
+          onClose={() => setShowMailModal(false)}
+          onSent={() => { setShowMailModal(false); load(); }}
+        />
+      )}
     </div>
   );
 }

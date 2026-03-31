@@ -246,7 +246,21 @@ input:focus, select:focus, textarea:focus { border-color: var(--brand); }
 .btn-block { width: 100%; }
 
 /* Page container */
-.page-container { max-width: 1200px; margin: 0 auto; }
+.page-container { max-width: 100%; margin: 0 auto; }
+
+/* Back button styling */
+.btn-back {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--white); color: var(--brand); border: 1px solid var(--brand);
+  padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600;
+  transition: all .2s;
+}
+.btn-back:hover { background: var(--brand); color: var(--white); opacity: 1; }
+.btn-back svg { width: 16px; height: 16px; }
+
+/* Responsive data table - no horizontal scroll */
+.data-table { table-layout: fixed; }
+.data-table th, .data-table td { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Status badges (component uses status-badge + status-{lowercase}) */
 .status-badge { display: inline-block; border-radius: 10px; padding: 2px 10px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; white-space: nowrap; }

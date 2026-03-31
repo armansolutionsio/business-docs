@@ -50,3 +50,8 @@ export const listCotizaciones = (id) => req('GET', `${BASE}/${id}/cotizaciones`)
 export const listVentas = (id) => req('GET', `${BASE}/${id}/ventas`);
 export const listFacturas = (id) => req('GET', `${BASE}/${id}/facturas`);
 export const listPagos = (id) => req('GET', `${BASE}/${id}/pagos`);
+
+// Campañas de mail
+export const listCampanias = (id) => req('GET', `${BASE}/${id}/campanias`);
+export const updateCampania = (id, campId, body) => req('PATCH', `${BASE}/${id}/campanias/${campId}`, body);
+export const sendMail = (body) => req('POST', '/api/mail/send', body);
