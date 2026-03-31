@@ -13,7 +13,7 @@ export default function LoginPage() {
     e.preventDefault();
     try {
       login(username, password);
-      navigate('/inbox');
+      navigate('/contactos');
     } catch {
       setError('Usuario o contraseña incorrectos');
     }

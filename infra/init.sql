@@ -6,9 +6,10 @@
 -- 1. CONTACTOS (master table)
 CREATE TABLE IF NOT EXISTS contactos (
     id                    SERIAL PRIMARY KEY,
+    codigo                TEXT UNIQUE,  -- human-readable ID, auto-generated: C-0001
     tipo_registro         VARCHAR(20) DEFAULT 'persona',  -- persona / empresa
     rol_actual            VARCHAR(30) DEFAULT 'lead',     -- lead / contacto / cliente / pasajero / proveedor
-    estado                VARCHAR(30) NOT NULL DEFAULT 'nuevo', -- nuevo / contactado / en_seguimiento / cotizado / reservado / ganado / perdido / inactivo
+    estado                VARCHAR(30) NOT NULL DEFAULT 'nuevo', -- nuevo / contactado / calificado / cotizado / negociacion / ganado / perdido / dormido / cliente_recurrente
     nombre                TEXT,
     apellido              TEXT,
     razon_social          TEXT,
@@ -32,7 +33,24 @@ CREATE TABLE IF NOT EXISTS contactos (
     fecha_nacimiento      DATE,
     nacionalidad          TEXT,
     sexo                  VARCHAR(1),
+    -- Interés comercial
+    destino_interes       TEXT,
+    tipo_viaje            VARCHAR(30),  -- individual / pareja / familia / grupo / empresa
+    fecha_viaje_estimada  DATE,
+    cantidad_pasajeros    INTEGER,
+    presupuesto           NUMERIC(12,2),
+    prioridad             VARCHAR(10) DEFAULT 'media', -- baja / media / alta / urgente
+    probabilidad_cierre   INTEGER DEFAULT 0,
+    ticket_estimado       NUMERIC(12,2),
+    -- Seguimiento
+    proxima_accion        TEXT,
+    fecha_proxima_accion  DATE,
+    motivo_perdida        TEXT,
+    etiquetas             TEXT[] DEFAULT '{}',
+    -- General
     observaciones         TEXT,
+    consentimiento_whatsapp BOOLEAN DEFAULT true,
+    consentimiento_email    BOOLEAN DEFAULT false,
     fecha_ultima_interaccion TIMESTAMPTZ,
     created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at            TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -277,7 +295,25 @@ CREATE TABLE IF NOT EXISTS notas (
 );
 CREATE INDEX IF NOT EXISTS idx_nota_contacto ON notas (contacto_id);
 
--- 13. AUDIT LOG
+-- 13. CAMPAÑAS DE MAIL
+CREATE TABLE IF NOT EXISTS campania_mail (
+    id                SERIAL PRIMARY KEY,
+    contacto_id       INTEGER NOT NULL REFERENCES contactos(id),
+    asunto            TEXT NOT NULL,
+    cuerpo            TEXT NOT NULL,
+    destinatario      TEXT NOT NULL,        -- email al que se envió
+    estado            VARCHAR(20) DEFAULT 'enviado',  -- enviado / entregado / leido / respondido / fallido / rebotado
+    enviado_por       VARCHAR(50),
+    enviado_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    respuesta         TEXT,
+    respondido_at     TIMESTAMPTZ,
+    notas             TEXT,
+    created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_camp_mail_contacto ON campania_mail (contacto_id);
+CREATE INDEX IF NOT EXISTS idx_camp_mail_estado   ON campania_mail (estado);
+
+-- 14. AUDIT LOG
 CREATE TABLE IF NOT EXISTS audit_log (
     id             SERIAL PRIMARY KEY,
     tabla          TEXT NOT NULL,
@@ -290,6 +326,24 @@ CREATE TABLE IF NOT EXISTS audit_log (
     created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_audit_tabla ON audit_log (tabla, registro_id);
+
+-- ============================================================================
+-- Auto-generate codigo for contactos: C-0001, C-0002, etc.
+-- ============================================================================
+CREATE OR REPLACE FUNCTION generate_contacto_codigo()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.codigo IS NULL THEN
+    NEW.codigo := 'C-' || LPAD(NEW.id::TEXT, 5, '0');
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_contacto_codigo ON contactos;
+CREATE TRIGGER trg_contacto_codigo
+  BEFORE INSERT ON contactos
+  FOR EACH ROW EXECUTE FUNCTION generate_contacto_codigo();
 
 -- ============================================================================
 -- LEGACY: keep beta_contactos for backward compat (seed still uses it)

@@ -54,6 +54,8 @@ const ventasRoutes         = require('./routes/contactos/ventas');
 const facturasRoutes       = require('./routes/contactos/facturas');
 const pagosRoutes          = require('./routes/contactos/pagos');
 const proveedoresRoutes    = require('./routes/proveedores');
+const campaniasRoutes      = require('./routes/contactos/campanias');
+const mailRoutes           = require('./routes/mail');
 
 // Quick cotizacion estado update (used by cotizador frontend)
 const dbPool = require('./utils/db');
@@ -69,7 +71,7 @@ app.patch('/api/cotizaciones/:id/estado', async (req, res, next) => {
     if (!rows.length) return res.status(404).json({ error: 'Cotizacion no encontrada' });
     // If aceptada, update contacto estado
     if (estado === 'aceptada' && rows[0].contacto_id) {
-      await dbPool.query(`UPDATE contactos SET estado = 'reservado', updated_at = NOW() WHERE id = $1 AND estado IN ('nuevo','contactado','en_seguimiento','cotizado')`, [rows[0].contacto_id]);
+      await dbPool.query(`UPDATE contactos SET estado = 'negociacion', updated_at = NOW() WHERE id = $1 AND estado IN ('nuevo','contactado','calificado','cotizado')`, [rows[0].contacto_id]);
     }
     res.json(rows[0]);
   } catch (err) { next(err); }
@@ -87,6 +89,8 @@ app.use('/api/contactos/:contactoId/cotizaciones', cotizacionesRoutes);
 app.use('/api/contactos/:contactoId/ventas', ventasRoutes);
 app.use('/api/contactos/:contactoId/facturas', facturasRoutes);
 app.use('/api/contactos/:contactoId/pagos', pagosRoutes);
+app.use('/api/contactos/:contactoId/campanias', campaniasRoutes);
+app.use('/api/mail', mailRoutes);
 app.use('/api/proveedores', proveedoresRoutes);
 
 // ── Error handler ─────────────────────────────────────────────────────────────

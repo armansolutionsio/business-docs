@@ -3,7 +3,7 @@ const router = express.Router();
 const db = require('../utils/db');
 const { logAudit } = require('../utils/auditLog');
 
-const VALID_ESTADOS = ['nuevo', 'contactado', 'en_seguimiento', 'cotizado', 'reservado', 'ganado', 'perdido', 'inactivo'];
+const VALID_ESTADOS = ['nuevo', 'contactado', 'calificado', 'cotizado', 'negociacion', 'ganado', 'perdido', 'dormido', 'cliente_recurrente'];
 const VALID_ROLES = ['lead', 'contacto', 'cliente', 'pasajero', 'proveedor'];
 
 // GET /api/contactos — list with filters
@@ -102,7 +102,11 @@ router.post('/', async (req, res, next) => {
     const fields = ['tipo_registro','rol_actual','estado','nombre','apellido','razon_social','dni','cuit',
       'telefono','telefono_secundario','email','email_secundario','domicilio','localidad','provincia',
       'codigo_postal','pais','latitud','longitud','origen','vendedor_asignado','canal_preferido',
-      'consentimiento_marketing','fecha_nacimiento','nacionalidad','sexo','observaciones'];
+      'consentimiento_marketing','consentimiento_whatsapp','consentimiento_email',
+      'fecha_nacimiento','nacionalidad','sexo','observaciones',
+      'destino_interes','tipo_viaje','fecha_viaje_estimada','cantidad_pasajeros','presupuesto',
+      'prioridad','probabilidad_cierre','ticket_estimado',
+      'proxima_accion','fecha_proxima_accion','motivo_perdida','etiquetas'];
     const cols = []; const vals = []; const placeholders = [];
     let idx = 1;
     for (const f of fields) {
@@ -126,7 +130,11 @@ router.patch('/:id', async (req, res, next) => {
     const allowed = ['tipo_registro','rol_actual','estado','nombre','apellido','razon_social','dni','cuit',
       'telefono','telefono_secundario','email','email_secundario','domicilio','localidad','provincia',
       'codigo_postal','pais','latitud','longitud','origen','vendedor_asignado','canal_preferido',
-      'consentimiento_marketing','fecha_nacimiento','nacionalidad','sexo','observaciones'];
+      'consentimiento_marketing','consentimiento_whatsapp','consentimiento_email',
+      'fecha_nacimiento','nacionalidad','sexo','observaciones',
+      'destino_interes','tipo_viaje','fecha_viaje_estimada','cantidad_pasajeros','presupuesto',
+      'prioridad','probabilidad_cierre','ticket_estimado',
+      'proxima_accion','fecha_proxima_accion','motivo_perdida','etiquetas'];
     const sets = []; const params = [];
     let idx = 1;
 

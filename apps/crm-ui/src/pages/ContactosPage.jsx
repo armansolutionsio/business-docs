@@ -1,25 +1,30 @@
 'use strict';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useToast } from '../ToastContext.jsx';
+import { useAuth } from '../AuthContext.jsx';
+import EnviarMailModal from '../components/contacto/EnviarMailModal.jsx';
 
 const API = '/api/contactos';
 
-const ESTADOS = ['nuevo','contactado','en_seguimiento','cotizado','reservado','ganado','perdido','inactivo'];
+const ESTADOS = ['nuevo','contactado','calificado','cotizado','negociacion','ganado','perdido','dormido','cliente_recurrente'];
 const ESTADO_COLORS = {
-  nuevo:'#64748b', contactado:'#3b82f6', en_seguimiento:'#8b5cf6', cotizado:'#f59e0b',
-  reservado:'#06b6d4', ganado:'#10b981', perdido:'#ef4444', inactivo:'#94a3b8',
+  nuevo:'#3b82f6', contactado:'#06b6d4', calificado:'#8b5cf6', cotizado:'#f59e0b',
+  negociacion:'#d97706', ganado:'#10b981', perdido:'#ef4444', dormido:'#94a3b8', cliente_recurrente:'#065f46',
 };
 const ESTADO_LABELS = {
-  nuevo:'Nuevo', contactado:'Contactado', en_seguimiento:'En seguimiento', cotizado:'Cotizado',
-  reservado:'Reservado', ganado:'Ganado', perdido:'Perdido', inactivo:'Inactivo',
+  nuevo:'Nuevo', contactado:'Contactado', calificado:'Calificado', cotizado:'Cotizado',
+  negociacion:'Negociacion', ganado:'Ganado', perdido:'Perdido', dormido:'Dormido', cliente_recurrente:'Recurrente',
 };
 
 export default function ContactosPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   const [data, setData] = useState([]);
+  const [selected, setSelected] = useState(new Set());
+  const [showMailModal, setShowMailModal] = useState(false);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [provincias, setProvincias] = useState([]);
@@ -30,9 +35,15 @@ export default function ContactosPage() {
   const [mapData, setMapData] = useState([]);
   const [mapLoading, setMapLoading] = useState(false);
 
-  // Filters
-  const [filters, setFilters] = useState({ provincia: '', localidad: '', estado: '', search: '' });
-  const [page, setPage] = useState(0);
+  // Filters — initialized from URL search params so they persist across navigation
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [filters, setFilters] = useState(() => ({
+    provincia: searchParams.get('provincia') || '',
+    localidad: searchParams.get('localidad') || '',
+    estado: searchParams.get('estado') || '',
+    search: searchParams.get('search') || '',
+  }));
+  const [page, setPage] = useState(() => parseInt(searchParams.get('page') || '0', 10));
   const PAGE_SIZE = 50;
 
   // Edit state
@@ -104,6 +115,17 @@ export default function ContactosPage() {
     const res = await fetch(`${API}/localidades${q}`);
     setLocalidades(await res.json());
   }, []);
+
+  // Sync filters + page to URL so they persist on back navigation
+  useEffect(() => {
+    const q = new URLSearchParams();
+    if (filters.provincia) q.set('provincia', filters.provincia);
+    if (filters.localidad) q.set('localidad', filters.localidad);
+    if (filters.estado) q.set('estado', filters.estado);
+    if (filters.search) q.set('search', filters.search);
+    if (page > 0) q.set('page', page);
+    setSearchParams(q, { replace: true });
+  }, [filters, page]);
 
   useEffect(() => { fetchMeta(); }, []);
   useEffect(() => { fetchData(); }, [fetchData]);
@@ -250,11 +272,34 @@ export default function ContactosPage() {
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
+  function toggleSelect(id) {
+    setSelected(s => {
+      const next = new Set(s);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    if (selected.size === data.length) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(data.map(r => r.id)));
+    }
+  }
+
+  const selectedContacts = data.filter(r => selected.has(r.id));
+
   return (
     <div className="page-container">
       <div className="page-header">
         <h1 className="page-title">Contactos</h1>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {selected.size > 0 && (
+            <button className="btn btn-primary" onClick={() => setShowMailModal(true)}>
+              Enviar Mail ({selected.size})
+            </button>
+          )}
           <button className={`btn ${view === 'table' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setView('table')}>
             Tabla
           </button>
@@ -334,25 +379,31 @@ export default function ContactosPage() {
             <table className="data-table" style={{ fontSize: 13 }}>
               <thead>
                 <tr>
-                  <th style={{ width: 140 }}>Estado</th>
-                  <th>Nombre</th>
-                  <th>Telefono</th>
-                  <th>Email</th>
-                  <th>Localidad</th>
-                  <th>Provincia</th>
-                  <th>Domicilio</th>
-                  <th>CP</th>
-                  <th style={{ width: 70 }}>Acciones</th>
+                  <th style={{ width: '3%' }}>
+                    <input type="checkbox" checked={data.length > 0 && selected.size === data.length} onChange={toggleSelectAll} />
+                  </th>
+                  <th style={{ width: '6%' }}>Codigo</th>
+                  <th style={{ width: '10%' }}>Estado</th>
+                  <th style={{ width: '14%' }}>Nombre</th>
+                  <th style={{ width: '10%' }}>Telefono</th>
+                  <th style={{ width: '15%' }}>Email</th>
+                  <th style={{ width: '10%' }}>Localidad</th>
+                  <th style={{ width: '10%' }}>Provincia</th>
+                  <th style={{ width: '14%' }}>Domicilio</th>
+                  <th style={{ width: '3%' }}>CP</th>
+                  <th style={{ width: '5%' }}>Acc.</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={9} className="loading-msg">Cargando...</td></tr>
+                  <tr><td colSpan={11} className="loading-msg">Cargando...</td></tr>
                 ) : !data.length ? (
-                  <tr><td colSpan={9} className="empty-msg">Sin resultados</td></tr>
+                  <tr><td colSpan={11} className="empty-msg">Sin resultados</td></tr>
                 ) : data.map(row => (
                   editId === row.id ? (
                     <tr key={row.id} style={{ background: '#fffbeb' }}>
+                      <td><input type="checkbox" checked={selected.has(row.id)} onChange={() => toggleSelect(row.id)} /></td>
+                      <td style={{ fontFamily: 'monospace', fontSize: 11, color: '#94a3b8' }}>{row.codigo || ''}</td>
                       <td>
                         <select value={editData.estado} onChange={e => setEditData(d => ({ ...d, estado: e.target.value }))} style={{ width: 120, fontSize: 12 }}>
                           {ESTADOS.map(e => <option key={e} value={e}>{ESTADO_LABELS[e]}</option>)}
@@ -374,6 +425,8 @@ export default function ContactosPage() {
                     </tr>
                   ) : (
                     <tr key={row.id}>
+                      <td><input type="checkbox" checked={selected.has(row.id)} onChange={() => toggleSelect(row.id)} /></td>
+                      <td style={{ fontFamily: 'monospace', fontSize: 11, color: '#94a3b8' }}>{row.codigo || ''}</td>
                       <td>
                         <select
                           value={row.estado}
@@ -423,6 +476,16 @@ export default function ContactosPage() {
             </div>
           )}
         </>
+      )}
+
+      {/* Mail Modal */}
+      {showMailModal && (
+        <EnviarMailModal
+          selectedContacts={selectedContacts}
+          user={user}
+          onClose={() => setShowMailModal(false)}
+          onSent={() => setSelected(new Set())}
+        />
       )}
     </div>
   );

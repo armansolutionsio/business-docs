@@ -33,6 +33,14 @@ services:
       NODE_ENV: production
       PORT: 3001
       DATABASE_URL: postgres://arman:arman123@db:5432/arman
+      SMTP_HOST: smtp.gmail.com
+      SMTP_PORT: 587
+      SMTP_SECURE: "false"
+      SMTP_USER: travel@armansolutions.io
+      SMTP_PASS: ${SMTP_PASS}
+      SMTP_FROM: "Arman Travel <travel@armansolutions.io>"
+      IMAP_HOST: imap.gmail.com
+      IMAP_PORT: 993
     ports:
       - "3001:3001"
     volumes:
@@ -40,6 +48,7 @@ services:
       - ../apps/business-docs/src:/app/apps/business-docs/src
       - ../packages/shared/src:/app/packages/shared/src
       - ../apps/crm-ui/dist:/app/apps/crm-ui/dist
+      - uploads:/app/apps/business-docs/uploads
     depends_on:
       db:
         condition: service_healthy
@@ -55,6 +64,7 @@ services:
 
 volumes:
   pgdata:
+  uploads:
 
 networks:
   arman-travel-network:

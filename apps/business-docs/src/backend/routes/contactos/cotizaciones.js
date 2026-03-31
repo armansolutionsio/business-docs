@@ -56,10 +56,10 @@ router.post('/', async (req, res, next) => {
       );
     }
 
-    // Update contacto estado
+    // Only advance from 'nuevo' to 'contactado' — don't override more advanced estados
     await db.query(
-      `UPDATE contactos SET estado = 'cotizado', fecha_ultima_interaccion = NOW(), updated_at = NOW()
-       WHERE id = $1 AND estado IN ('nuevo','contactado','en_seguimiento')`, [cid]
+      `UPDATE contactos SET estado = CASE WHEN estado = 'nuevo' THEN 'contactado' ELSE estado END,
+       fecha_ultima_interaccion = NOW(), updated_at = NOW() WHERE id = $1`, [cid]
     );
     await logAudit({ tabla: 'cotizaciones', registro_id: cot.rows[0].id, accion: 'INSERT', usuario: created_by });
 

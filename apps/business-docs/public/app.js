@@ -314,7 +314,7 @@ const documentConfig = {
             { name: 'clientEmail', label: 'Email del Cliente', type: 'email' },
             { name: 'clientPhone', label: 'Teléfono del Cliente', type: 'tel' },
             // Comprobante
-            { name: 'quoteNumber', label: 'Número de Cotización', type: 'text', required: false, defaultValue: '1' },
+            { name: 'quoteNumber', label: 'Número de Cotización', type: 'text', required: false, defaultValue: '', readonly: true },
             { name: 'quoteDate', label: 'Fecha', type: 'date', required: true },
             // Condiciones
             { name: 'validity', label: 'Validez de la Oferta (días)', type: 'number', required: true, placeholder: '3', defaultValue: 3 },
@@ -325,62 +325,8 @@ const documentConfig = {
     }
 };
 
-// ── Integración con Core API (CRM) ──────────────────────────────────────────
-const CORE_API_URL = window.location.hostname === 'localhost'
-    ? 'http://localhost:8000'
-    : `${window.location.protocol}//${window.location.hostname}:8000`;
-
-function detectDocType(value) {
-    const digits = (value || '').replace(/\D/g, '');
-    return digits.length === 11 ? 'CUIT' : 'DNI';
-}
-
 function normalizeDoc(value) {
     return (value || '').replace(/\D/g, '');
-}
-
-async function crmUpsertParty(clientName, clientCUIT, clientEmail, clientPhone) {
-    if (!clientCUIT) return null;
-    try {
-        const r = await fetch(`${CORE_API_URL}/v1/parties`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                doc_type: detectDocType(clientCUIT),
-                doc_number: clientCUIT,
-                country: 'AR',
-                full_name: clientName || '',
-                email: clientEmail || '',
-                phone: clientPhone || '',
-            }),
-        });
-        if (!r.ok) return null;
-        return await r.json();
-    } catch { return null; }
-}
-
-async function crmCreateLead(partyId, destination, leadId) {
-    try {
-        // Si viene leadId desde CRM, actualizar a QUOTE_SENT en lugar de crear
-        if (leadId) {
-            await fetch(`${CORE_API_URL}/v1/leads/${leadId}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: 'QUOTE_SENT' }),
-            });
-            return;
-        }
-        await fetch(`${CORE_API_URL}/v1/leads`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                party_id: partyId || null,
-                destination: destination || null,
-                source: 'cotizador',
-                status: 'QUOTE_SENT',
-            }),
-        });
-    } catch { /* silencioso — no bloquear la descarga */ }
 }
 
 // Pre-rellenar formulario con parámetros de URL (ej. desde CRM)
@@ -520,7 +466,7 @@ function renderTab(tabName) {
                 html += `
                     <div class="form-group">
                         <label>${field.label}${field.required ? '<span class="required">*</span>' : ''}</label>
-                        <input type="${field.type}" name="${field.name}" ${field.required ? 'required' : ''} placeholder="${field.placeholder || ''}" value="${field.defaultValue || ''}">
+                        <input type="${field.type}" name="${field.name}" ${field.required ? 'required' : ''} ${field.readonly ? 'readonly style="background:#f1f5f9;color:#64748b;cursor:not-allowed;"' : ''} placeholder="${field.placeholder || ''}" value="${field.defaultValue || ''}">
                     </div>
                 `;
             }
@@ -594,16 +540,23 @@ function renderTab(tabName) {
     `;
 
     // Botones de acción
-    html += `
-        <div class="button-group">
-            <button type="button" class="btn btn-secondary" onclick="confirmQuote()" id="btnConfirmQuote" style="display: ${appState.currentTab === 'quote' ? 'flex' : 'none'};">
-                ✅ Confirmar Cotización
-            </button>
-            <button type="button" class="btn btn-primary" onclick="downloadDocument('pdf')">
-                📄 Descargar PDF
-            </button>
-        </div>
-    `;
+    if (appState.currentTab === 'quote') {
+        html += `
+            <div class="button-group" style="grid-template-columns: 1fr;">
+                <button type="button" class="btn btn-primary" onclick="confirmAndDownloadQuote()" style="padding: 16px;">
+                    Confirmar y Descargar PDF
+                </button>
+            </div>
+        `;
+    } else {
+        html += `
+            <div class="button-group" style="grid-template-columns: 1fr;">
+                <button type="button" class="btn btn-primary" onclick="downloadDocument('pdf')" style="padding: 16px;">
+                    Descargar PDF
+                </button>
+            </div>
+        `;
+    }
 
     html += '</form>';
     contentDiv.innerHTML = html;
@@ -854,20 +807,33 @@ function renderItems() {
     const itemsList = document.getElementById('itemsList');
     if (!itemsList) return;
 
-    let html = '';
+    if (appState.items.length === 0) {
+        itemsList.innerHTML = '';
+        return;
+    }
+
+    let html = `
+        <div class="item-row" style="background: #f1f5f9; font-weight: 600; font-size: 12px; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; border: none; box-shadow: none;">
+            <span>Descripcion</span>
+            <span style="text-align: center;">Cant.</span>
+            <span style="text-align: right;">P. Unitario</span>
+            <span style="text-align: right;">Subtotal</span>
+            <span></span>
+        </div>
+    `;
+
     appState.items.forEach(item => {
-        // Para items con categoría: subtotal = price (el precio ya es la suma de sub-items)
-        // Para items sin categoría: subtotal = quantity * price
+        const qty = parseFloat(item.quantity) || 1;
+        const price = parseFloat(item.price) || 0;
         const isCategorized = item.category && CATEGORY_DETAIL_CONFIG[item.category];
-        const subtotal = isCategorized ? item.price : (item.quantity * item.price);
-        const qtyLabel = isCategorized ? item.quantity + ' (' + (CATEGORY_DETAIL_CONFIG[item.category].subItemLabel || 'sub') + (item.quantity > 1 ? 's' : '') + ')' : item.quantity;
+        const subtotal = isCategorized ? price : (qty * price);
         html += `
             <div class="item-row">
-                <input type="text" value="${escapeHtml(item.description)}" readonly>
-                <input type="text" value="${qtyLabel}" readonly>
-                <input type="text" value="${formatCurrency(item.price)}" readonly>
-                <input type="text" value="${formatCurrency(subtotal)}" readonly>
-                <button type="button" class="remove-item" onclick="removeItem(${item.id})">Eliminar</button>
+                <span style="font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(item.description)}</span>
+                <span style="text-align: center; font-weight: 600;">${qty}</span>
+                <span style="text-align: right;">$${formatCurrency(price)}</span>
+                <span style="text-align: right; font-weight: 700; color: #1e293b;">$${formatCurrency(subtotal)}</span>
+                <button type="button" class="remove-item" onclick="removeItem(${item.id})">X</button>
             </div>
         `;
     });
@@ -889,8 +855,10 @@ function updateTotal() {
 
     if (appState.items.length > 0) {
         total = appState.items.reduce((sum, item) => {
+            const qty = parseFloat(item.quantity) || 1;
+            const price = parseFloat(item.price) || 0;
             const isCategorized = item.category && CATEGORY_DETAIL_CONFIG[item.category];
-            return sum + (isCategorized ? item.price : (item.quantity * item.price));
+            return sum + (isCategorized ? price : (qty * price));
         }, 0);
     } else {
         // Si es recibo, usar el campo amount
@@ -1579,45 +1547,47 @@ function collectFormData() {
     return data;
 }
 
-// Confirmar cotización (guardar en DB sin generar PDF)
-async function confirmQuote() {
+// Ensure we have a contacto ID — find or create from form data
+async function ensureContactoId(data) {
+    let contactoId = appState._selectedContactoId;
+    if (contactoId) return contactoId;
+
+    const clientName = data.clientName || '';
+    const clientCUIT = data.clientCUIT || '';
+    const clientEmail = data.clientEmail || '';
+    const clientPhone = data.clientPhone || '';
+
+    if (clientName || clientCUIT || clientEmail || clientPhone) {
+        try {
+            const res = await fetch('/api/clients', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clientName, clientCUIT, clientEmail, clientPhone })
+            });
+            if (res.ok) {
+                const client = await res.json();
+                appState._selectedContactoId = client.id;
+                return client.id;
+            }
+        } catch (e) { console.error('Error creating client:', e); }
+    }
+    return null;
+}
+
+// Confirmar cotización en DB y descargar PDF en un solo paso
+async function confirmAndDownloadQuote() {
     try {
         showLoading(true);
         const data = collectFormData();
 
-        // Need a contacto ID — either from selected client or create one
-        let contactoId = appState._selectedContactoId;
-
+        const contactoId = await ensureContactoId(data);
         if (!contactoId) {
-            // Try to find/create contacto from form data
-            const clientName = data.clientName || '';
-            const clientCUIT = data.clientCUIT || '';
-            const clientEmail = data.clientEmail || '';
-            const clientPhone = data.clientPhone || '';
-
-            if (clientName || clientCUIT || clientEmail || clientPhone) {
-                try {
-                    const createRes = await fetch('/api/clients', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ clientName, clientCUIT, clientEmail, clientPhone })
-                    });
-                    if (createRes.ok) {
-                        const client = await createRes.json();
-                        contactoId = client.id;
-                        appState._selectedContactoId = contactoId;
-                    }
-                } catch (e) { console.error('Error creating client:', e); }
-            }
-        }
-
-        if (!contactoId) {
-            showMessage('Completá al menos un dato del cliente (nombre, CUIT, email o teléfono) para confirmar', 'error');
+            showMessage('Completa al menos un dato del cliente para confirmar', 'error');
             showLoading(false);
             return;
         }
 
-        // Save cotizacion via API
+        // 1. Save cotizacion in DB
         const cotRes = await fetch(`/api/contactos/${contactoId}/cotizaciones`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1637,18 +1607,60 @@ async function confirmQuote() {
         }
         const cotizacion = await cotRes.json();
 
-        showMessage(`Cotización ${cotizacion.numero} confirmada — Total: $${Number(cotizacion.total).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`, 'success');
+        // 2. Set the confirmed number in the form so the PDF uses it
+        const quoteInput = document.querySelector('input[name="quoteNumber"]');
+        if (quoteInput) quoteInput.value = cotizacion.numero;
+        data.quoteNumber = cotizacion.numero;
 
-        // Auto-fill with the NEXT number for the next cotizacion
+        // 3. Pass contactoId and skip DB registration (already confirmed above)
+        data._contactoId = contactoId;
+        data._skipDbRegistration = true;
+
+        // 4. Generate PDF
+        const payload = { type: 'quote', data: data, assets: {} };
+
+        // Process images
+        if (appState.images) {
+            if (appState.images.logo) payload.assets.logo = appState.images.logo.data;
+            if (appState.images.signature) payload.assets.signature = appState.images.signature.data;
+            if (appState.images.qr) payload.assets.qr = appState.images.qr.data;
+            if (appState.images.photo) payload.assets.photo = appState.images.photo.data;
+        }
+
+        const pdfRes = await fetch('/api/documents/generate-pdf', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (!pdfRes.ok) {
+            const errorText = await pdfRes.text();
+            throw new Error(`Error generando PDF: ${errorText}`);
+        }
+
+        // 5. Download PDF
+        const blob = await pdfRes.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const clientName = (data.clientName || 'Cliente').replace(/[^a-zA-Z0-9]/g, '_');
+        a.download = `Cotizacion_${clientName}_${cotizacion.numero.replace(/[^a-zA-Z0-9-]/g, '_')}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        a.remove();
+
+        showMessage(`Cotización ${cotizacion.numero} confirmada y descargada`, 'success');
+
+        // 6. Update quote number to next
         try {
             const nextRes = await fetch(`/api/contactos/${contactoId}/cotizaciones/next-number`);
             const nextData = await nextRes.json();
-            const quoteInput = document.querySelector('input[name="quoteNumber"]');
             if (quoteInput) quoteInput.value = nextData.numero;
         } catch (e) { /* ignore */ }
     } catch (error) {
         console.error('Error:', error);
-        showMessage('Error al confirmar cotización: ' + error.message, 'error');
+        showMessage('Error: ' + error.message, 'error');
     } finally {
         showLoading(false);
     }
@@ -1660,6 +1672,12 @@ async function downloadDocument(format) {
         showLoading(true);
 
         const data = collectFormData();
+
+        // Pass contactoId if we have one, so backend can link the document
+        if (appState._selectedContactoId) {
+            data._contactoId = appState._selectedContactoId;
+        }
+
         const payload = {
             type: appState.currentTab,
             data: data,
@@ -1754,14 +1772,6 @@ async function downloadDocument(format) {
         a.remove();
 
         showMessage(`${format.toUpperCase()} descargado correctamente`, 'success');
-
-        // Sincronizar con CRM: si es cotización, upsert party + crear/actualizar lead
-        if (appState.currentTab === 'quote') {
-            const urlParams = new URLSearchParams(window.location.search);
-            const leadId = urlParams.get('leadId');
-            const party = await crmUpsertParty(data.clientName, data.clientCUIT, data.clientEmail, data.clientPhone);
-            await crmCreateLead(party?.id, data.destinations || null, leadId);
-        }
     } catch (error) {
         console.error('Error:', error);
         showMessage(`Error al generar el documento: ${error.message}`, 'error');
@@ -1902,32 +1912,33 @@ async function loadClientsList() {
 function renderClientsList(clients) {
     const clientsList = document.getElementById('clients-list');
     if (clients.length === 0) {
-        clientsList.innerHTML = '<p style="text-align: center; color: #999;">No se encontraron clientes</p>';
+        clientsList.innerHTML = '<p style="text-align: center; color: #94a3b8; padding: 40px 0;">No se encontraron clientes</p>';
         return;
     }
 
     let html = '';
     clients.forEach(client => {
+        const name = escapeHtml(client.clientName || 'Sin nombre');
+        const initial = (client.clientName || '?')[0].toUpperCase();
         html += `
-            <div class="client-card" style="border: 1px solid #e0e0e0; border-radius: 8px; padding: 12px; margin-bottom: 10px; background: #f9f9f9; transition: border-color 0.2s;">
-                <div style="display: flex; justify-content: space-between; align-items: start;">
-                    <div style="flex: 1; cursor: pointer;" onclick="useClient('${client.id}')">
-                        <strong style="color: #7B2CBF; font-size: 14px;">${escapeHtml(client.clientName || 'Sin nombre')}</strong>
-                        <p style="margin: 4px 0; font-size: 12px; color: #666;">
-                            ${client.clientCUIT ? 'Doc: ' + escapeHtml(client.clientCUIT) + ' | ' : ''}
-                            ${client.clientEmail ? escapeHtml(client.clientEmail) + ' | ' : ''}
-                            ${client.clientPhone ? 'Tel: ' + escapeHtml(client.clientPhone) : ''}
-                        </p>
-                        ${client.clientAddress ? '<p style="margin: 2px 0; font-size: 11px; color: #999;">' + escapeHtml(client.clientAddress) + '</p>' : ''}
-                    </div>
-                    <div style="display: flex; gap: 6px; flex-shrink: 0;">
-                        <button onclick="useClient('${client.id}')" style="padding: 6px 12px; font-size: 12px; background: #7B2CBF; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">Usar</button>
-                        <button onclick="viewClientCotizaciones('${client.id}')" style="padding: 6px 12px; font-size: 12px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">Cotiz.</button>
-                        <a href="/crm/contactos/${client.id}" target="_blank" style="padding: 6px 12px; font-size: 12px; background: #10b981; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; text-decoration: none; display: inline-block;">Ficha</a>
+            <div style="display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-bottom: 1px solid #f1f5f9; cursor: pointer; transition: background 0.1s;"
+                 onmouseenter="this.style.background='#f8fafc'" onmouseleave="this.style.background='transparent'">
+                <div style="width: 38px; height: 38px; border-radius: 50%; background: #7B2CBF; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; flex-shrink: 0;">${initial}</div>
+                <div style="flex: 1; min-width: 0;" onclick="useClient('${client.id}')">
+                    <div style="font-weight: 600; font-size: 14px; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${name}</div>
+                    <div style="font-size: 12px; color: #64748b; display: flex; gap: 8px; flex-wrap: wrap; margin-top: 2px;">
+                        ${client.clientCUIT ? '<span>' + escapeHtml(client.clientCUIT) + '</span>' : ''}
+                        ${client.clientPhone ? '<span>' + escapeHtml(client.clientPhone) + '</span>' : ''}
+                        ${client.clientEmail ? '<span style="max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; vertical-align: bottom;">' + escapeHtml(client.clientEmail) + '</span>' : ''}
                     </div>
                 </div>
-                <div id="client-cotizaciones-${client.id}" style="display: none;"></div>
+                <div style="display: flex; gap: 4px; flex-shrink: 0;">
+                    <button onclick="event.stopPropagation(); useClient('${client.id}')" style="padding: 5px 10px; font-size: 11px; background: #7B2CBF; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">Usar</button>
+                    <button onclick="event.stopPropagation(); viewClientCotizaciones('${client.id}')" style="padding: 5px 10px; font-size: 11px; background: #f1f5f9; color: #475569; border: 1px solid #d1d5db; border-radius: 6px; cursor: pointer; font-weight: 500;">Cotiz.</button>
+                    <a href="/crm/contactos/${client.id}" target="_blank" onclick="event.stopPropagation()" style="padding: 5px 10px; font-size: 11px; background: #f1f5f9; color: #475569; border: 1px solid #d1d5db; border-radius: 6px; cursor: pointer; font-weight: 500; text-decoration: none;">Ficha</a>
+                </div>
             </div>
+            <div id="client-cotizaciones-${client.id}" style="display: none;"></div>
         `;
     });
 
