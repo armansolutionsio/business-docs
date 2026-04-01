@@ -9,6 +9,9 @@ const log = require('./utils/logger');
 const app = express();
 const PORT = 3000;
 
+// ── Health check ─────────────────────────────────────────────────────────────
+app.get('/health', (req, res) => res.status(200).send('OK'));
+
 // ── Request ID ────────────────────────────────────────────────────────────────
 app.use((req, res, next) => {
   req.id = req.headers['x-request-id'] || crypto.randomUUID();
