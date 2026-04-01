@@ -7,7 +7,7 @@ require('dotenv').config();
 const log = require('./utils/logger');
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = 3001;
 
 // ── Request ID ────────────────────────────────────────────────────────────────
 app.use((req, res, next) => {
