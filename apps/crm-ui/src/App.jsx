@@ -9,6 +9,8 @@ import ContactosPage from './pages/ContactosPage.jsx';
 import ContactoDetailPage from './pages/ContactoDetailPage.jsx';
 import ProveedoresPage from './pages/ProveedoresPage.jsx';
 import CampaniasPage from './pages/CampaniasPage.jsx';
+import DashboardPage from './pages/DashboardPage.jsx';
+import WhatsAppLeadsPage from './pages/WhatsAppLeadsPage.jsx';
 import Layout from './components/Layout.jsx';
 
 function PrivateRoute({ children }) {
@@ -31,14 +33,16 @@ export default function App() {
               </PrivateRoute>
             }
           >
-            <Route index element={<Navigate to="/contactos" replace />} />
+            <Route index element={<Navigate to="/dashboard" replace />} />
+            <Route path="dashboard" element={<DashboardPage />} />
             <Route path="contactos" element={<ContactosPage />} />
             <Route path="contactos/:id" element={<ContactoDetailPage />} />
             <Route path="pipeline" element={<KanbanPage />} />
+            <Route path="whatsapp" element={<WhatsAppLeadsPage />} />
             <Route path="campanias" element={<CampaniasPage />} />
             <Route path="proveedores" element={<ProveedoresPage />} />
           </Route>
-          <Route path="*" element={<Navigate to="/contactos" replace />} />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </BrowserRouter>
       </ToastProvider>

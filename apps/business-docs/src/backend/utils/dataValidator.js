@@ -55,12 +55,17 @@ class DataValidator {
     sanitized.companyEmail = sanitized.companyEmail || '';
     sanitized.companyPhone = sanitized.companyPhone || '';
     sanitized.clientName = sanitized.clientName || sanitized.payerName || '';
+    sanitized.clientDomicilio = sanitized.clientDomicilio || '';
+    sanitized.clientLocalidad = sanitized.clientLocalidad || '';
+    sanitized.clientProvincia = sanitized.clientProvincia || '';
+    sanitized.clientCodigoPostal = sanitized.clientCodigoPostal || '';
     sanitized.quoteDate = sanitized.quoteDate || new Date().toISOString().split('T')[0];
     sanitized.invoiceDate = sanitized.invoiceDate || new Date().toISOString().split('T')[0];
     sanitized.receiptDate = sanitized.receiptDate || new Date().toISOString().split('T')[0];
     sanitized.validity = sanitized.validity || 15;
     sanitized.paymentTerms = sanitized.paymentTerms || 'A convenir';
     sanitized.deliveryTerm = sanitized.deliveryTerm || 'A convenir';
+    sanitized.payerAddress = sanitized.payerAddress || '';
     sanitized.paymentMethod = sanitized.paymentMethod || '';
     sanitized.concept = sanitized.concept || '';
     sanitized.amountInLetters = sanitized.amountInLetters || '';

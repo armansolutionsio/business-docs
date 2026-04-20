@@ -42,10 +42,11 @@ services:
       IMAP_HOST: imap.gmail.com
       IMAP_PORT: 993
     ports:
-      - "3001:3001"
+      - "3000:3000"
     volumes:
       - ../apps/business-docs/public:/app/apps/business-docs/public
       - ../apps/business-docs/src:/app/apps/business-docs/src
+      - ../apps/business-docs/templates:/app/apps/business-docs/templates
       - ../packages/shared/src:/app/packages/shared/src
       - ../apps/crm-ui/dist:/app/apps/crm-ui/dist
       - uploads:/app/apps/business-docs/uploads

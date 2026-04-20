@@ -1,117 +1,156 @@
-<!-- HEADER -->
-<div class="header">
-    <div class="header-left">
+<!-- HEADER SIN LÍNEAS -->
+<div style="display: flex; align-items: flex-start; gap: 15px; padding-bottom: 15px; margin-bottom: 25px; page-break-inside: avoid;">
+    <div style="flex-shrink: 0;">
         {{#if logo}}
-        <img src="{{logo.dataUrl}}" alt="Logo" class="header-logo">
+        <img src="{{logo.dataUrl}}" alt="Logo" style="max-width: 80px; max-height: 60px; object-fit: contain;">
         {{else}}
-        <svg width="80" height="60" viewBox="0 0 80 60" class="header-logo">
+        <svg width="80" height="60" viewBox="0 0 80 60">
             <rect width="80" height="60" fill="#7B2CBF" rx="4"/>
             <text x="40" y="38" font-size="24" font-weight="bold" fill="white" text-anchor="middle" font-family="Arial">AT</text>
             <text x="40" y="52" font-size="8" fill="rgba(255,255,255,0.7)" text-anchor="middle" font-family="Arial">Travel</text>
         </svg>
         {{/if}}
-        <div class="header-company">
-            <h1>{{companyName}}</h1>
-            <p>CUIT: {{companyCUIT}}</p>
-            <p>{{companyAddress}}</p>
-        </div>
+    </div>
+    <div style="flex: 1;">
+        <h1 style="font-size: 18pt; font-weight: 700; color: #7B2CBF; margin: 0 0 3px 0;">{{companyName}}</h1>
+        <p style="font-size: 9pt; color: #666; margin: 2px 0;">CUIT: {{companyCUIT}}</p>
+        <p style="font-size: 9pt; color: #666; margin: 2px 0;">{{companyAddress}}</p>
+    </div>
+    <div style="text-align: right; padding: 12px 15px; background: linear-gradient(135deg, #7B2CBF 0%, #6A1B9A 100%); border-radius: 8px; color: white; min-width: 200px;">
+        <div style="font-size: 14pt; font-weight: 700; margin-bottom: 8px;">RECIBO</div>
+        <div style="font-size: 20pt; font-weight: 700;">N° {{receiptNumber}}</div>
     </div>
 </div>
 
-<!-- DATOS RECIBO COMPACTO -->
-<div style="display: flex; justify-content: space-between; gap: 20px; margin-bottom: 20px; padding: 12px; background: #f9f9f9; border-radius: 4px; border-left: 4px solid #7B2CBF; page-break-inside: avoid; font-size: 10pt;">
-    <div style="flex: 1;">
-        <span style="font-weight: 600; color: #7B2CBF;">Recibo Nº:</span> {{receiptNumber}}
-    </div>
-    <div style="flex: 1;">
+<!-- DATOS DEL RECIBO -->
+<div style="display: flex; justify-content: space-between; gap: 20px; margin-bottom: 20px; padding: 12px 16px; background: #f9f9f9; border-radius: 4px; border-left: 4px solid #7B2CBF; page-break-inside: avoid; font-size: 10pt;">
+    <div>
         <span style="font-weight: 600; color: #7B2CBF;">Fecha:</span> {{dateFormat receiptDate}}
     </div>
-    <div style="flex: 1;">
-        <span style="font-weight: 600; color: #7B2CBF;">Medio de Pago:</span> {{paymentMethod}}
+    <div>
+        <span style="font-weight: 600; color: #7B2CBF;">Lugar de emisión:</span> Ciudad Autónoma de Buenos Aires
     </div>
 </div>
 
 <!-- EMISOR & PAGADOR -->
 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; page-break-inside: avoid;">
-    <div class="section">
-        <div class="section-title">Datos del Emisor</div>
-        <div class="section-content">
-            <div class="info-field">
-                <div class="info-label">Razón Social</div>
-                <div class="info-value">{{companyName}}</div>
+    <div style="background: #f5f5f5; padding: 12px; border-radius: 4px;">
+        <div style="font-size: 11pt; font-weight: 700; color: white; background: #7B2CBF; padding: 8px; margin: -12px -12px 10px -12px; border-radius: 4px 4px 0 0; text-transform: uppercase;">Datos del Emisor</div>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; flex-direction: column;">
+                <div style="font-size: 8pt; font-weight: 600; text-transform: uppercase; color: #666;">Razón Social</div>
+                <div style="font-size: 10pt; color: #2c3e50; font-weight: 500;">{{companyName}}</div>
             </div>
-            <div class="info-field" style="margin-top: 8px;">
-                <div class="info-label">CUIT</div>
-                <div class="info-value">{{companyCUIT}}</div>
+            <div style="display: flex; flex-direction: column;">
+                <div style="font-size: 8pt; font-weight: 600; text-transform: uppercase; color: #666;">CUIT</div>
+                <div style="font-size: 10pt; color: #2c3e50; font-weight: 500;">{{companyCUIT}}</div>
             </div>
-            <div class="info-field" style="margin-top: 8px;">
-                <div class="info-label">Domicilio</div>
-                <div class="info-value">{{companyAddress}}</div>
+            <div style="display: flex; flex-direction: column;">
+                <div style="font-size: 8pt; font-weight: 600; text-transform: uppercase; color: #666;">Domicilio</div>
+                <div style="font-size: 10pt; color: #2c3e50; font-weight: 500;">{{companyAddress}}</div>
             </div>
+            {{#if companyEmail}}
+            <div style="display: flex; flex-direction: column;">
+                <div style="font-size: 8pt; font-weight: 600; text-transform: uppercase; color: #666;">Email</div>
+                <div style="font-size: 10pt; color: #2c3e50; font-weight: 500;">{{companyEmail}}</div>
+            </div>
+            {{/if}}
+            {{#if companyPhone}}
+            <div style="display: flex; flex-direction: column;">
+                <div style="font-size: 8pt; font-weight: 600; text-transform: uppercase; color: #666;">Teléfono</div>
+                <div style="font-size: 10pt; color: #2c3e50; font-weight: 500;">{{companyPhone}}</div>
+            </div>
+            {{/if}}
         </div>
     </div>
 
-    <div class="section">
-        <div class="section-title">Recibimos de</div>
-        <div class="section-content">
-            <div class="info-field">
-                <div class="info-label">Nombre/Razón Social</div>
-                <div class="info-value">{{payerName}}</div>
+    <div style="background: #f5f5f5; padding: 12px; border-radius: 4px;">
+        <div style="font-size: 11pt; font-weight: 700; color: white; background: #7B2CBF; padding: 8px; margin: -12px -12px 10px -12px; border-radius: 4px 4px 0 0; text-transform: uppercase;">Recibimos de</div>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; flex-direction: column;">
+                <div style="font-size: 8pt; font-weight: 600; text-transform: uppercase; color: #666;">Nombre/Razón Social</div>
+                <div style="font-size: 10pt; color: #2c3e50; font-weight: 500;">{{payerName}}</div>
             </div>
-            <div class="info-field" style="margin-top: 8px;">
-                <div class="info-label">CUIT/DNI</div>
-                <div class="info-value">{{payerCUIT}}</div>
+            {{#if payerCUIT}}
+            <div style="display: flex; flex-direction: column;">
+                <div style="font-size: 8pt; font-weight: 600; text-transform: uppercase; color: #666;">CUIT/DNI</div>
+                <div style="font-size: 10pt; color: #2c3e50; font-weight: 500;">{{payerCUIT}}</div>
             </div>
+            {{/if}}
+            {{#if payerAddress}}
+            <div style="display: flex; flex-direction: column;">
+                <div style="font-size: 8pt; font-weight: 600; text-transform: uppercase; color: #666;">Domicilio</div>
+                <div style="font-size: 10pt; color: #2c3e50; font-weight: 500;">{{payerAddress}}</div>
+            </div>
+            {{/if}}
+            {{#if payerEmail}}
+            <div style="display: flex; flex-direction: column;">
+                <div style="font-size: 8pt; font-weight: 600; text-transform: uppercase; color: #666;">Email</div>
+                <div style="font-size: 10pt; color: #2c3e50; font-weight: 500;">{{payerEmail}}</div>
+            </div>
+            {{/if}}
+            {{#if payerPhone}}
+            <div style="display: flex; flex-direction: column;">
+                <div style="font-size: 8pt; font-weight: 600; text-transform: uppercase; color: #666;">Teléfono</div>
+                <div style="font-size: 10pt; color: #2c3e50; font-weight: 500;">{{payerPhone}}</div>
+            </div>
+            {{/if}}
         </div>
     </div>
 </div>
 
 <!-- CONCEPTO -->
-<div class="section">
-    <div class="section-title">Concepto</div>
-    <div class="section-content">
-        <div class="info-value">{{concept}}</div>
+<div style="background: #f5f5f5; padding: 12px; border-radius: 4px; margin-bottom: 20px; page-break-inside: avoid;">
+    <div style="font-size: 11pt; font-weight: 700; color: white; background: #7B2CBF; padding: 8px; margin: -12px -12px 10px -12px; border-radius: 4px 4px 0 0; text-transform: uppercase;">Concepto</div>
+    <div style="padding: 8px 0;">
+        <p style="font-size: 10pt; color: #2c3e50; line-height: 1.6; white-space: pre-wrap;">{{concept}}</p>
+    </div>
+</div>
+
+<!-- MEDIO DE PAGO -->
+<div style="background: #f5f5f5; padding: 12px; border-radius: 4px; margin-bottom: 20px; page-break-inside: avoid;">
+    <div style="font-size: 11pt; font-weight: 700; color: white; background: #7B2CBF; padding: 8px; margin: -12px -12px 10px -12px; border-radius: 4px 4px 0 0; text-transform: uppercase;">Medio de Pago</div>
+    <div style="padding: 8px 0;">
+        <p style="font-size: 10pt; color: #2c3e50; font-weight: 500;">{{paymentMethod}}</p>
     </div>
 </div>
 
 <!-- IMPORTE -->
-<div class="section">
-    <div class="section-title">Importe</div>
-    <div class="section-content">
-        <div class="info-row">
-            <div class="info-field">
-                <div class="info-label">En Números</div>
-                <div class="info-value currency">$ {{formatCurrency amount}}</div>
-            </div>
-            <div class="info-field">
-                <div class="info-label">En Letras</div>
-                <div class="info-value">{{amountInLetters}}</div>
-            </div>
+<div style="display: flex; justify-content: flex-end; margin: 20px 0; page-break-inside: avoid;">
+    <div style="width: 380px; border: 2px solid #7B2CBF; border-radius: 4px; overflow: hidden;">
+        <div style="display: flex; justify-content: space-between; padding: 9px 15px; border-bottom: 1px solid #e8e8e8; font-size: 10pt; background: white;">
+            <span style="font-weight: 600; color: #444;">Importe:</span>
+            <span style="font-family: 'Courier New', monospace; font-weight: 600;">{{currencySymbol}} {{formatCurrency amount}}</span>
         </div>
-    </div>
-</div>
-
-<!-- TOTALS -->
-<div class="totals-section" style="margin-bottom: 40px;">
-    <div class="totals-box">
-        <div class="totals-row total">
+        <div style="display: flex; justify-content: space-between; padding: 9px 15px; border-bottom: 1px solid #e8e8e8; font-size: 10pt; background: #f7f7f7;">
+            <span style="font-weight: 600; color: #444;">{{#if_eq currency "USD"}}Son Dólares:{{else}}Son Pesos:{{/if_eq}}</span>
+            <span style="font-size: 9pt; color: #2c3e50;">{{amountInLetters}}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; padding: 13px 15px; background: #7B2CBF; color: white; font-weight: 700; font-size: 12pt;">
             <span>TOTAL RECIBIDO:</span>
-            <span class="currency">{{formatCurrency amount}}</span>
+            <span style="font-family: 'Courier New', monospace;">{{currencySymbol}} {{formatCurrency amount}}</span>
         </div>
     </div>
 </div>
 
 <!-- FIRMA -->
-<div class="signature-box">
-    {{#if signature}}
-    <div class="signature-item">
-        <img src="{{signature.dataUrl}}" alt="Firma" class="signature-image">
-        <div class="signature-line">Firma Autorizado</div>
+<div style="margin-top: 60px; display: flex; justify-content: flex-end; page-break-inside: avoid;">
+    <div style="text-align: center; min-width: 250px;">
+        {{#if signature}}
+        <img src="{{signature.dataUrl}}" alt="Firma" style="max-width: 200px; max-height: 80px; object-fit: contain; margin-bottom: 5px;">
+        {{else}}
+        <div style="height: 60px;"></div>
+        {{/if}}
+        <div style="border-top: 1px solid #2c3e50; padding-top: 8px; font-size: 9pt; color: #666;">
+            Firma y Sello del Emisor
+        </div>
     </div>
-    {{/if}}
 </div>
 
 <!-- FOOTER -->
-<div class="footer">
-    <p>Este documento es comprobante válido de pago.</p>
+<div style="margin-top: 30px; padding-top: 15px; border-top: 2px solid #ddd; text-align: center; font-size: 8pt; color: #999; page-break-inside: avoid;">
+    <p style="margin: 3px 0; font-weight: 600; color: #7B2CBF;">{{companyName}}</p>
+    <p style="margin: 3px 0;">Documento no válido como factura. Recibo emitido en la Ciudad Autónoma de Buenos Aires, República Argentina.</p>
+    <p style="margin: 3px 0;">Art. 1, Ley 24.240 — Defensa del Consumidor. Conserve este comprobante.</p>
+    {{#if receiptNumber}}<p style="margin: 3px 0; font-size: 7pt;">N° doc: {{receiptNumber}}</p>{{/if}}
 </div>

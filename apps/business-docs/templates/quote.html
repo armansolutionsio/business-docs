@@ -53,14 +53,22 @@
     <div style="background: #f5f5f5; padding: 12px; border-radius: 4px;">
         <div style="font-size: 11pt; font-weight: 700; color: white; background: #7B2CBF; padding: 8px; margin: -12px -12px 10px -12px; border-radius: 4px 4px 0 0; text-transform: uppercase;">Datos del Cliente</div>
         <div style="display: flex; flex-direction: column; gap: 8px;">
+            {{#if clientName}}
             <div style="display: flex; flex-direction: column;">
                 <div style="font-size: 8pt; font-weight: 600; text-transform: uppercase; color: #666;">Nombre/Empresa</div>
                 <div style="font-size: 10pt; color: #2c3e50; font-weight: 500;">{{clientName}}</div>
             </div>
+            {{/if}}
             {{#if clientCUIT}}
             <div style="display: flex; flex-direction: column;">
                 <div style="font-size: 8pt; font-weight: 600; text-transform: uppercase; color: #666;">CUIT/DNI</div>
                 <div style="font-size: 10pt; color: #2c3e50; font-weight: 500;">{{clientCUIT}}</div>
+            </div>
+            {{/if}}
+            {{#if clientDomicilio}}
+            <div style="display: flex; flex-direction: column;">
+                <div style="font-size: 8pt; font-weight: 600; text-transform: uppercase; color: #666;">Domicilio</div>
+                <div style="font-size: 10pt; color: #2c3e50; font-weight: 500;">{{clientDomicilio}}{{#if clientLocalidad}}, {{clientLocalidad}}{{/if}}{{#if clientProvincia}}, {{clientProvincia}}{{/if}}{{#if clientCodigoPostal}} ({{clientCodigoPostal}}){{/if}}</div>
             </div>
             {{/if}}
             {{#if clientEmail}}
@@ -96,8 +104,8 @@
             <tr style="background: white;">
                 <td style="padding: 10px 8px; border: 1px solid #ddd; font-size: 10pt;">{{this.description}}</td>
                 <td style="padding: 10px 8px; border: 1px solid #ddd; font-size: 10pt; text-align: center;">{{this.quantity}}</td>
-                <td style="padding: 10px 8px; border: 1px solid #ddd; font-size: 10pt; text-align: right; font-family: 'Courier New', monospace;">{{formatCurrency this.price}}</td>
-                <td style="padding: 10px 8px; border: 1px solid #ddd; font-size: 10pt; text-align: right; font-family: 'Courier New', monospace;">{{formatCurrency (multiply this.quantity this.price)}}</td>
+                <td style="padding: 10px 8px; border: 1px solid #ddd; font-size: 10pt; text-align: right; font-family: 'Courier New', monospace;">{{../currencySymbol}} {{formatCurrency this.price}}</td>
+                <td style="padding: 10px 8px; border: 1px solid #ddd; font-size: 10pt; text-align: right; font-family: 'Courier New', monospace;">{{../currencySymbol}} {{formatCurrency (multiply this.quantity this.price)}}</td>
             </tr>
             {{/each}}
         </tbody>
@@ -109,31 +117,31 @@
     <div style="width: 380px; border: 2px solid #7B2CBF; border-radius: 4px; overflow: hidden;">
         <div style="display: flex; justify-content: space-between; padding: 9px 15px; border-bottom: 1px solid #e8e8e8; font-size: 10pt; background: white;">
             <span style="font-weight: 600; color: #444;">Subtotal:</span>
-            <span style="font-family: 'Courier New', monospace; font-weight: 600;">$ {{formatCurrency subtotal}}</span>
+            <span style="font-family: 'Courier New', monospace; font-weight: 600;">{{currencySymbol}} {{formatCurrency subtotal}}</span>
         </div>
         {{#if_gt discount 0}}
         <div style="display: flex; justify-content: space-between; padding: 9px 15px; border-bottom: 1px solid #e8e8e8; font-size: 10pt; background: #fffbf0;">
             <span style="font-weight: 600; color: #c0392b;">Descuento:</span>
-            <span style="font-family: 'Courier New', monospace; color: #c0392b;">- $ {{formatCurrency discount}}</span>
+            <span style="font-family: 'Courier New', monospace; color: #c0392b;">- {{currencySymbol}} {{formatCurrency discount}}</span>
         </div>
         {{/if_gt}}
         <div style="display: flex; justify-content: space-between; padding: 9px 15px; border-bottom: 1px solid #e8e8e8; font-size: 10pt; background: #f7f7f7;">
             <span style="font-weight: 600; color: #444;">Base imponible:</span>
-            <span style="font-family: 'Courier New', monospace; font-weight: 600;">$ {{formatCurrency taxableBase}}</span>
+            <span style="font-family: 'Courier New', monospace; font-weight: 600;">{{currencySymbol}} {{formatCurrency taxableBase}}</span>
         </div>
         <div style="display: flex; justify-content: space-between; padding: 9px 15px; border-bottom: 1px solid #e8e8e8; font-size: 10pt; background: white;">
             <span style="color: #666;">IVA ({{ivaRate}}%):</span>
-            <span style="font-family: 'Courier New', monospace;">$ {{formatCurrency iva}}</span>
+            <span style="font-family: 'Courier New', monospace;">{{currencySymbol}} {{formatCurrency iva}}</span>
         </div>
         {{#if_gt otherTaxes 0}}
         <div style="display: flex; justify-content: space-between; padding: 9px 15px; border-bottom: 1px solid #e8e8e8; font-size: 10pt; background: white;">
             <span style="color: #666;">Otros impuestos:</span>
-            <span style="font-family: 'Courier New', monospace;">$ {{formatCurrency otherTaxes}}</span>
+            <span style="font-family: 'Courier New', monospace;">{{currencySymbol}} {{formatCurrency otherTaxes}}</span>
         </div>
         {{/if_gt}}
         <div style="display: flex; justify-content: space-between; padding: 13px 15px; background: #7B2CBF; color: white; font-weight: 700; font-size: 12pt;">
             <span>TOTAL COTIZADO:</span>
-            <span style="font-family: 'Courier New', monospace;">$ {{formatCurrency total}}</span>
+            <span style="font-family: 'Courier New', monospace;">{{currencySymbol}} {{formatCurrency total}}</span>
         </div>
     </div>
 </div>
@@ -161,7 +169,7 @@
     <div style="background: white; padding: 12px; border-radius: 4px; border-left: 3px solid #7B2CBF; margin-bottom: 10px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
             <div style="font-weight: 700; color: #7B2CBF; font-size: 9pt; text-transform: uppercase;">Vuelo {{add1 @index}}</div>
-            {{#if this._price}}<div style="font-size: 10pt; font-weight: 600; color: #2c3e50; font-family: 'Courier New', monospace;">$ {{formatCurrency this._price}}</div>{{/if}}
+            {{#if this._price}}<div style="font-size: 10pt; font-weight: 600; color: #2c3e50; font-family: 'Courier New', monospace;">{{@root.currencySymbol}} {{formatCurrency this._price}}</div>{{/if}}
         </div>
         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px 16px;">
             {{#if this.airline}}
@@ -213,7 +221,7 @@
     <div style="background: white; padding: 12px; border-radius: 4px; border-left: 3px solid #7B2CBF; margin-bottom: 10px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
             <div style="font-weight: 700; color: #7B2CBF; font-size: 9pt; text-transform: uppercase;">Hotel {{add1 @index}}</div>
-            {{#if this._price}}<div style="font-size: 10pt; font-weight: 600; color: #2c3e50; font-family: 'Courier New', monospace;">$ {{formatCurrency this._price}}</div>{{/if}}
+            {{#if this._price}}<div style="font-size: 10pt; font-weight: 600; color: #2c3e50; font-family: 'Courier New', monospace;">{{@root.currencySymbol}} {{formatCurrency this._price}}</div>{{/if}}
         </div>
         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px 16px;">
             {{#if this.hotelName}}
@@ -255,30 +263,111 @@
     <div style="font-size: 12pt; font-weight: 700; color: #7B2CBF; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid #7B2CBF;">
         &#127890; {{this._itemDescription}}
     </div>
+    {{!-- Info del pack --}}
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px 16px; margin-bottom: 14px;">
+        {{#if this.packName}}
+        <div style="grid-column: 1 / -1;"><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Pack</div><div style="font-size: 11pt; color: #2c3e50; font-weight: 600;">{{this.packName}}</div></div>
+        {{/if}}
+        {{#if this.destinations}}
+        <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Destinos</div><div style="font-size: 10pt; color: #2c3e50;">{{this.destinations}}</div></div>
+        {{/if}}
+        {{#if this.duration}}
+        <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Duración</div><div style="font-size: 10pt; color: #2c3e50;">{{this.duration}}</div></div>
+        {{/if}}
+        {{#if this.passengers}}
+        <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Pasajeros</div><div style="font-size: 10pt; color: #2c3e50;">{{this.passengers}}</div></div>
+        {{/if}}
+    </div>
+    {{!-- Servicios incluidos en el pack --}}
     {{#each this.subItems}}
     <div style="background: white; padding: 12px; border-radius: 4px; border-left: 3px solid #7B2CBF; margin-bottom: 10px;">
+        {{!-- VUELO --}}
+        {{#if_eq this._serviceType "vuelo"}}
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <div style="font-weight: 700; color: #7B2CBF; font-size: 9pt; text-transform: uppercase;">Pack {{add1 @index}}</div>
-            {{#if this._price}}<div style="font-size: 10pt; font-weight: 600; color: #2c3e50; font-family: 'Courier New', monospace;">$ {{formatCurrency this._price}}</div>{{/if}}
+            <div style="font-weight: 700; color: #7B2CBF; font-size: 9pt; text-transform: uppercase;">&#9992;&#65039; Vuelo{{#if this.passengerName}} — {{this.passengerName}}{{/if}}</div>
+            {{#if this._price}}<div style="font-size: 10pt; font-weight: 600; color: #2c3e50; font-family: 'Courier New', monospace;">{{@root.currencySymbol}} {{formatCurrency this._price}}</div>{{/if}}
         </div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px;">
-            {{#if this.packName}}
-            <div style="grid-column: 1 / -1;"><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Pack</div><div style="font-size: 11pt; color: #2c3e50; font-weight: 600;">{{this.packName}}</div></div>
-            {{/if}}
-            {{#if this.duration}}
-            <div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Duración</div><div style="font-size: 10pt; color: #2c3e50;">{{this.duration}}</div></div>
-            {{/if}}
-            {{#if this.destinations}}
-            <div style="grid-column: 1 / -1;"><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Destinos Incluidos</div><div style="font-size: 10pt; color: #2c3e50; white-space: pre-wrap;">{{this.destinations}}</div></div>
-            {{/if}}
-            {{#if this.included}}
-            <div style="grid-column: 1 / -1;"><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">¿Qué Incluye?</div><div style="font-size: 10pt; color: #2c3e50; white-space: pre-wrap;">{{this.included}}</div></div>
-            {{/if}}
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px 16px;">
+            {{#if this.airline}}<div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Aerolínea</div><div style="font-size: 10pt; color: #2c3e50;">{{this.airline}}</div></div>{{/if}}
+            {{#if this.flightNumber}}<div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Nro. Vuelo</div><div style="font-size: 10pt; color: #2c3e50; font-weight: 600;">{{this.flightNumber}}</div></div>{{/if}}
+            <div></div>
+            {{#if this.departureAirport}}<div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Salida</div><div style="font-size: 10pt; color: #2c3e50;">{{this.departureAirport}}</div></div>{{/if}}
+            {{#if this.arrivalAirport}}<div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Llegada</div><div style="font-size: 10pt; color: #2c3e50;">{{this.arrivalAirport}}</div></div>{{/if}}
+            <div></div>
+            {{#if this.departureDate}}<div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Fecha Salida</div><div style="font-size: 10pt; color: #2c3e50;">{{dateFormat this.departureDate}}</div></div>{{/if}}
+            {{#if this.departureTime}}<div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Hora</div><div style="font-size: 10pt; color: #2c3e50;">{{this.departureTime}} hs</div></div>{{/if}}
+            <div></div>
+            {{#if this.arrivalDate}}<div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Fecha Llegada</div><div style="font-size: 10pt; color: #2c3e50;">{{dateFormat this.arrivalDate}}</div></div>{{/if}}
+            {{#if this.arrivalTime}}<div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Hora</div><div style="font-size: 10pt; color: #2c3e50;">{{this.arrivalTime}} hs</div></div>{{/if}}
         </div>
+        {{/if_eq}}
+        {{!-- HOTEL --}}
+        {{#if_eq this._serviceType "hotel"}}
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <div style="font-weight: 700; color: #7B2CBF; font-size: 9pt; text-transform: uppercase;">&#127976; Hotel</div>
+            {{#if this._price}}<div style="font-size: 10pt; font-weight: 600; color: #2c3e50; font-family: 'Courier New', monospace;">{{@root.currencySymbol}} {{formatCurrency this._price}}</div>{{/if}}
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px 16px;">
+            {{#if this.hotelName}}<div style="grid-column: 1 / -1;"><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Hotel</div><div style="font-size: 11pt; color: #2c3e50; font-weight: 600;">{{this.hotelName}}</div></div>{{/if}}
+            {{#if this.hotelLocation}}<div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Ubicación</div><div style="font-size: 10pt; color: #2c3e50;">{{this.hotelLocation}}</div></div>{{/if}}
+            {{#if this.roomType}}<div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Habitación</div><div style="font-size: 10pt; color: #2c3e50;">{{this.roomType}}</div></div>{{/if}}
+            {{#if this.mealPlan}}<div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Régimen</div><div style="font-size: 10pt; color: #2c3e50;">{{this.mealPlan}}</div></div>{{/if}}
+            {{#if this.checkInDate}}<div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Check-in</div><div style="font-size: 10pt; color: #2c3e50;">{{dateFormat this.checkInDate}}</div></div>{{/if}}
+            {{#if this.checkOutDate}}<div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Check-out</div><div style="font-size: 10pt; color: #2c3e50;">{{dateFormat this.checkOutDate}}</div></div>{{/if}}
+            {{#if this.numberOfNights}}<div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Noches</div><div style="font-size: 10pt; color: #7B2CBF; font-weight: 700;">{{this.numberOfNights}}</div></div>{{/if}}
+        </div>
+        {{/if_eq}}
+        {{!-- TRASLADO --}}
+        {{#if_eq this._serviceType "traslado"}}
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <div style="font-weight: 700; color: #7B2CBF; font-size: 9pt; text-transform: uppercase;">&#128656; Traslado</div>
+            {{#if this._price}}<div style="font-size: 10pt; font-weight: 600; color: #2c3e50; font-family: 'Courier New', monospace;">{{@root.currencySymbol}} {{formatCurrency this._price}}</div>{{/if}}
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px 16px;">
+            {{#if this.pickupPoint}}<div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Origen</div><div style="font-size: 10pt; color: #2c3e50;">{{this.pickupPoint}}</div></div>{{/if}}
+            {{#if this.dropoffPoint}}<div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Destino</div><div style="font-size: 10pt; color: #2c3e50;">{{this.dropoffPoint}}</div></div>{{/if}}
+            {{#if this.vehicleType}}<div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Vehículo</div><div style="font-size: 10pt; color: #2c3e50;">{{this.vehicleType}}</div></div>{{/if}}
+            {{#if this.transferDate}}<div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Fecha</div><div style="font-size: 10pt; color: #2c3e50;">{{dateFormat this.transferDate}}</div></div>{{/if}}
+            {{#if this.transferTime}}<div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Hora</div><div style="font-size: 10pt; color: #2c3e50;">{{this.transferTime}} hs</div></div>{{/if}}
+        </div>
+        {{/if_eq}}
+        {{!-- TOUR --}}
+        {{#if_eq this._serviceType "tour"}}
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <div style="font-weight: 700; color: #7B2CBF; font-size: 9pt; text-transform: uppercase;">&#128506;&#65039; Tour</div>
+            {{#if this._price}}<div style="font-size: 10pt; font-weight: 600; color: #2c3e50; font-family: 'Courier New', monospace;">{{@root.currencySymbol}} {{formatCurrency this._price}}</div>{{/if}}
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px 16px;">
+            {{#if this.tourName}}<div style="grid-column: 1 / -1;"><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Tour</div><div style="font-size: 11pt; color: #2c3e50; font-weight: 600;">{{this.tourName}}</div></div>{{/if}}
+            {{#if this.tourLocation}}<div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Ubicación</div><div style="font-size: 10pt; color: #2c3e50;">{{this.tourLocation}}</div></div>{{/if}}
+            {{#if this.tourDate}}<div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Fecha</div><div style="font-size: 10pt; color: #2c3e50;">{{dateFormat this.tourDate}}</div></div>{{/if}}
+            {{#if this.tourDuration}}<div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Duración</div><div style="font-size: 10pt; color: #2c3e50;">{{this.tourDuration}}</div></div>{{/if}}
+            {{#if this.tourIncludes}}<div style="grid-column: 1 / -1;"><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">¿Qué Incluye?</div><div style="font-size: 10pt; color: #2c3e50; white-space: pre-wrap;">{{this.tourIncludes}}</div></div>{{/if}}
+        </div>
+        {{/if_eq}}
+        {{!-- SEGURO --}}
+        {{#if_eq this._serviceType "seguro"}}
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <div style="font-weight: 700; color: #7B2CBF; font-size: 9pt; text-transform: uppercase;">&#128737;&#65039; Seguro</div>
+            {{#if this._price}}<div style="font-size: 10pt; font-weight: 600; color: #2c3e50; font-family: 'Courier New', monospace;">{{@root.currencySymbol}} {{formatCurrency this._price}}</div>{{/if}}
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px 16px;">
+            {{#if this.insuranceCompany}}<div style="grid-column: 1 / -1;"><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Compañía</div><div style="font-size: 11pt; color: #2c3e50; font-weight: 600;">{{this.insuranceCompany}}</div></div>{{/if}}
+            {{#if this.coverageType}}<div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Cobertura</div><div style="font-size: 10pt; color: #2c3e50;">{{this.coverageType}}</div></div>{{/if}}
+            {{#if this.insuranceStartDate}}<div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Desde</div><div style="font-size: 10pt; color: #2c3e50;">{{dateFormat this.insuranceStartDate}}</div></div>{{/if}}
+            {{#if this.insuranceEndDate}}<div><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Hasta</div><div style="font-size: 10pt; color: #2c3e50;">{{dateFormat this.insuranceEndDate}}</div></div>{{/if}}
+            {{#if this.coverageDetails}}<div style="grid-column: 1 / -1;"><div style="font-size: 7pt; color: #999; font-weight: 600; text-transform: uppercase;">Detalle</div><div style="font-size: 10pt; color: #2c3e50; white-space: pre-wrap;">{{this.coverageDetails}}</div></div>{{/if}}
+        </div>
+        {{/if_eq}}
     </div>
     {{/each}}
     {{#if this._image}}
     <img src="{{this._image.data}}" style="width: 100%; max-width: {{imageWidth this._image.size}}; height: auto; border: 1px solid #ddd; margin: 8px 0; border-radius: 4px; display: block;" alt="Detalle del pack" />
+    {{/if}}
+    {{#if this._images}}
+    {{#each this._images}}
+    <img src="{{this.data}}" style="width: 100%; max-width: {{imageWidth this.size}}; height: auto; border: 1px solid #ddd; margin: 8px 0; border-radius: 4px; display: block;" alt="Imagen del pack" />
+    {{/each}}
     {{/if}}
     {{#if this.description}}<p style="font-size: 9pt; color: #555; margin: 8px 0 0 0; line-height: 1.5; white-space: pre-wrap;">{{this.description}}</p>{{/if}}
 </div>
@@ -296,7 +385,7 @@
     <div style="background: white; padding: 12px; border-radius: 4px; border-left: 3px solid #7B2CBF; margin-bottom: 10px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
             <div style="font-weight: 700; color: #7B2CBF; font-size: 9pt; text-transform: uppercase;">Servicio {{add1 @index}}</div>
-            {{#if this._price}}<div style="font-size: 10pt; font-weight: 600; color: #2c3e50; font-family: 'Courier New', monospace;">$ {{formatCurrency this._price}}</div>{{/if}}
+            {{#if this._price}}<div style="font-size: 10pt; font-weight: 600; color: #2c3e50; font-family: 'Courier New', monospace;">{{@root.currencySymbol}} {{formatCurrency this._price}}</div>{{/if}}
         </div>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px;">
             {{#if this.serviceDescription}}
@@ -336,7 +425,7 @@
     <div style="background: white; padding: 12px; border-radius: 4px; border-left: 3px solid #7B2CBF; margin-bottom: 10px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
             <div style="font-weight: 700; color: #7B2CBF; font-size: 9pt; text-transform: uppercase;">Traslado {{add1 @index}}</div>
-            {{#if this._price}}<div style="font-size: 10pt; font-weight: 600; color: #2c3e50; font-family: 'Courier New', monospace;">$ {{formatCurrency this._price}}</div>{{/if}}
+            {{#if this._price}}<div style="font-size: 10pt; font-weight: 600; color: #2c3e50; font-family: 'Courier New', monospace;">{{@root.currencySymbol}} {{formatCurrency this._price}}</div>{{/if}}
         </div>
         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px 16px;">
             {{#if this.pickupPoint}}
@@ -379,7 +468,7 @@
     <div style="background: white; padding: 12px; border-radius: 4px; border-left: 3px solid #7B2CBF; margin-bottom: 10px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
             <div style="font-weight: 700; color: #7B2CBF; font-size: 9pt; text-transform: uppercase;">Tour {{add1 @index}}</div>
-            {{#if this._price}}<div style="font-size: 10pt; font-weight: 600; color: #2c3e50; font-family: 'Courier New', monospace;">$ {{formatCurrency this._price}}</div>{{/if}}
+            {{#if this._price}}<div style="font-size: 10pt; font-weight: 600; color: #2c3e50; font-family: 'Courier New', monospace;">{{@root.currencySymbol}} {{formatCurrency this._price}}</div>{{/if}}
         </div>
         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px 16px;">
             {{#if this.tourName}}
@@ -422,7 +511,7 @@
     <div style="background: white; padding: 12px; border-radius: 4px; border-left: 3px solid #7B2CBF; margin-bottom: 10px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
             <div style="font-weight: 700; color: #7B2CBF; font-size: 9pt; text-transform: uppercase;">Seguro {{add1 @index}}</div>
-            {{#if this._price}}<div style="font-size: 10pt; font-weight: 600; color: #2c3e50; font-family: 'Courier New', monospace;">$ {{formatCurrency this._price}}</div>{{/if}}
+            {{#if this._price}}<div style="font-size: 10pt; font-weight: 600; color: #2c3e50; font-family: 'Courier New', monospace;">{{@root.currencySymbol}} {{formatCurrency this._price}}</div>{{/if}}
         </div>
         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px 16px;">
             {{#if this.insuranceCompany}}
@@ -462,7 +551,7 @@
     <div style="background: white; padding: 12px; border-radius: 4px; border-left: 3px solid #7B2CBF; margin-bottom: 10px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
             <div style="font-weight: 700; color: #7B2CBF; font-size: 9pt; text-transform: uppercase;">Servicio {{add1 @index}}</div>
-            {{#if this._price}}<div style="font-size: 10pt; font-weight: 600; color: #2c3e50; font-family: 'Courier New', monospace;">$ {{formatCurrency this._price}}</div>{{/if}}
+            {{#if this._price}}<div style="font-size: 10pt; font-weight: 600; color: #2c3e50; font-family: 'Courier New', monospace;">{{@root.currencySymbol}} {{formatCurrency this._price}}</div>{{/if}}
         </div>
         {{#if this.otherNotes}}
         <div style="font-size: 10pt; color: #2c3e50; white-space: pre-wrap;">{{this.otherNotes}}</div>

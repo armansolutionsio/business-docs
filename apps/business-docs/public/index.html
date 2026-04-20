@@ -165,8 +165,14 @@
 
         .form-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            grid-template-columns: repeat(2, 1fr);
             gap: 16px;
+        }
+
+        @media (max-width: 768px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
         }
 
         .form-group {
@@ -1021,10 +1027,7 @@
                 FACTURA
                 <span class="coming-soon">Próximamente</span>
             </button>
-            <button class="tab-button" data-tab="receipt" disabled>
-                RECIBO
-                <span class="coming-soon">Próximamente</span>
-            </button>
+            <button class="tab-button" data-tab="receipt">RECIBO</button>
             <button class="tab-button active" data-tab="quote">COTIZADOR</button>
         </div>
 
@@ -1049,7 +1052,7 @@
                     <label>CUIT</label>
                     <input type="text" id="modal-companyCUIT" placeholder="XX-XXXXXXXX-X">
                 </div>
-                <div class="form-group">
+                <div class="form-group half">
                     <label>Domicilio</label>
                     <input type="text" id="modal-companyAddress" placeholder="Calle, número, piso, depto.">
                 </div>
@@ -1158,6 +1161,6 @@
         </div>
     </div>
 
-    <script src="app.js"></script>
+    <script src="app.js?v=20260420b"></script>
 </body>
 </html>

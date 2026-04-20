@@ -336,8 +336,20 @@ class DocumentRenderer {
         if (Array.isArray(renderData.categoryDetails[slug])) {
           renderData.categoryDetails[slug].forEach((entry, idx) => {
             const imgKey = slug + '_' + idx;
+            // Imagen única
             if (renderData.categoryImages[imgKey]) {
               entry._image = renderData.categoryImages[imgKey];
+            }
+            // Múltiples imágenes (packs)
+            const multiImages = [];
+            for (let imgIdx = 0; imgIdx < 20; imgIdx++) {
+              const mKey = imgKey + '_img_' + imgIdx;
+              if (renderData.categoryImages[mKey]) {
+                multiImages.push(renderData.categoryImages[mKey]);
+              }
+            }
+            if (multiImages.length > 0) {
+              entry._images = multiImages;
             }
           });
         }

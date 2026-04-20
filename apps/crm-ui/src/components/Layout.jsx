@@ -18,11 +18,18 @@ export default function Layout() {
           <span className="topbar-brand-name">CRM</span>
         </div>
         <nav className="topbar-nav">
+          <NavLink to="/dashboard" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+            Dashboard
+          </NavLink>
           <NavLink to="/contactos" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
             Contactos
           </NavLink>
           <NavLink to="/pipeline" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
             Pipeline
+          </NavLink>
+          <NavLink to="/whatsapp" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ width: 16, height: 16, borderRadius: '50%', background: '#25d366', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: '#fff', fontWeight: 700 }}>W</span>
+            WhatsApp
           </NavLink>
           <NavLink to="/campanias" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
             Campañas
