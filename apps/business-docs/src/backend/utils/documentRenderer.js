@@ -34,53 +34,82 @@ Handlebars.registerHelper('dateFormat', function(date) {
   return `${day}/${month}/${year}`;
 });
 
-Handlebars.registerHelper('numberToText', function(num) {
-  // Basic number to text conversion for Argentina
+Handlebars.registerHelper('numberToText', function(num, optionsOrCurrency) {
+  // Full number-to-Spanish-text conversion for Argentina, with decimals and currency
   const units = ['cero', 'uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve'];
   const teens = ['diez', 'once', 'doce', 'trece', 'catorce', 'quince', 'dieciséis', 'diecisiete', 'dieciocho', 'diecinueve'];
   const tens = ['', '', 'veinte', 'treinta', 'cuarenta', 'cincuenta', 'sesenta', 'setenta', 'ochenta', 'noventa'];
-  const scales = ['', 'mil', 'millón', 'mil millones'];
-  
-  if (!num && num !== 0) return '';
-  const n = Math.floor(num);
-  if (n === 0) return units[0];
-  
-  let result = '';
-  let scaleIdx = 0;
-  let remaining = n;
-  
-  while (remaining > 0 && scaleIdx < scales.length) {
-    const chunk = remaining % 1000;
-    if (chunk > 0) {
-      let chunkText = '';
-      if (chunk >= 100) {
-        const hundreds = Math.floor(chunk / 100);
-        chunkText += hundreds === 1 ? 'ciento' : units[hundreds] + 'cientos';
-        remaining = chunk % 100;
-        if (remaining > 0) chunkText += ' ';
-      } else {
-        remaining = chunk;
-      }
-      
-      if (remaining >= 20) {
-        const tensDigit = Math.floor(remaining / 10);
-        const onesDigit = remaining % 10;
-        chunkText += tens[tensDigit];
-        if (onesDigit > 0) chunkText += ' y ' + units[onesDigit];
-      } else if (remaining >= 10) {
-        chunkText += teens[remaining - 10];
-      } else if (remaining > 0) {
-        chunkText += units[remaining];
-      }
-      
-      if (scales[scaleIdx]) chunkText += ' ' + scales[scaleIdx];
-      result = chunkText + (result ? ' ' + result : '');
+  const hundreds = ['', 'ciento', 'doscientos', 'trescientos', 'cuatrocientos', 'quinientos', 'seiscientos', 'setecientos', 'ochocientos', 'novecientos'];
+
+  function convertChunk(n) {
+    if (n === 0) return '';
+    if (n === 100) return 'cien';
+    let text = '';
+    if (n >= 100) {
+      text += hundreds[Math.floor(n / 100)];
+      n = n % 100;
+      if (n > 0) text += ' ';
     }
-    remaining = Math.floor(remaining / 1000);
-    scaleIdx++;
+    if (n >= 21 && n <= 29) {
+      text += 'veinti' + units[n - 20];
+    } else if (n >= 20) {
+      text += tens[Math.floor(n / 10)];
+      if (n % 10 > 0) text += ' y ' + units[n % 10];
+    } else if (n >= 10) {
+      text += teens[n - 10];
+    } else if (n > 0) {
+      text += units[n];
+    }
+    return text;
   }
-  
-  return result.trim();
+
+  function integerToText(n) {
+    if (n === 0) return 'cero';
+    if (n < 0) return 'menos ' + integerToText(-n);
+    let result = '';
+    // Millones
+    const millions = Math.floor(n / 1000000);
+    if (millions > 0) {
+      result += (millions === 1 ? 'un millón' : convertChunk(millions) + ' millones');
+      n = n % 1000000;
+      if (n > 0) result += ' ';
+    }
+    // Miles
+    const thousands = Math.floor(n / 1000);
+    if (thousands > 0) {
+      result += (thousands === 1 ? 'mil' : convertChunk(thousands) + ' mil');
+      n = n % 1000;
+      if (n > 0) result += ' ';
+    }
+    // Unidades
+    if (n > 0) {
+      result += convertChunk(n);
+    }
+    return result;
+  }
+
+  if (!num && num !== 0) return '';
+  const amount = parseFloat(num);
+  const intPart = Math.floor(Math.abs(amount));
+  const decPart = Math.round((Math.abs(amount) - intPart) * 100);
+
+  let text = integerToText(intPart);
+  // Capitalize first letter
+  text = text.charAt(0).toUpperCase() + text.slice(1);
+
+  // Determine currency from Handlebars context or explicit param
+  let currency = '';
+  if (typeof optionsOrCurrency === 'string') {
+    currency = optionsOrCurrency;
+  } else if (optionsOrCurrency && optionsOrCurrency.hash && optionsOrCurrency.hash.currency) {
+    currency = optionsOrCurrency.hash.currency;
+  }
+
+  if (decPart > 0) {
+    text += ' con ' + String(decPart).padStart(2, '0') + '/100';
+  }
+
+  return text;
 });
 
 Handlebars.registerHelper('add1', function(val) {

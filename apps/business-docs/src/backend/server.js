@@ -100,6 +100,15 @@ app.patch('/api/cotizaciones/:id/anular', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// Peek next receipt number (does not reserve)
+app.get('/api/recibos/next-number', async (req, res, next) => {
+  try {
+    const { peekNextNumber } = require('./utils/docNumbering');
+    const { seq, numero } = await peekNextNumber('recibos');
+    res.json({ numero, seq });
+  } catch (err) { next(err); }
+});
+
 // Anular recibo (preserva correlatividad)
 app.patch('/api/recibos/:id/anular', async (req, res, next) => {
   try {

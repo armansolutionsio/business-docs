@@ -349,17 +349,18 @@ const documentConfig = {
             { name: 'companyPhone', label: 'Teléfono', type: 'tel' },
             // Datos del Pagador
             { name: 'payerName', label: 'Nombre/Razón Social del Pagador', type: 'text', required: true },
-            { name: 'payerCUIT', label: 'CUIT/DNI del Pagador', type: 'text' },
-            { name: 'payerAddress', label: 'Domicilio del Pagador', type: 'text' },
+            { name: 'payerCUIT', label: 'CUIT/DNI/Pasaporte del Pagador', type: 'text' },
             { name: 'payerEmail', label: 'Email del Pagador', type: 'email' },
             { name: 'payerPhone', label: 'Teléfono del Pagador', type: 'tel' },
             // Detalle del Pago
-            { name: 'receiptNumber', label: 'Número de Recibo', type: 'number', required: true },
+            { name: 'receiptNumber', label: 'Número de Recibo', type: 'text', required: true, readonly: true },
             { name: 'receiptDate', label: 'Fecha', type: 'date', required: true },
-            { name: 'concept', label: 'Concepto (ej: Cancelación Factura Nº)', type: 'textarea', required: true },
-            { name: 'amount', label: 'Importe en Números', type: 'number', required: true },
-            { name: 'amountInLetters', label: 'Importe en Letras', type: 'text', required: true },
-            { name: 'paymentMethod', label: 'Medio de Pago', type: 'select', required: true, options: ['Efectivo', 'Transferencia Bancaria', 'Cheque', 'Tarjeta de Crédito', 'Tarjeta de Débito', 'Billetera Virtual', 'Otro'] }
+            { name: 'concept', label: 'Concepto (ej: Pago parcial viaje a Europa)', type: 'textarea', required: true },
+            { name: 'currency', label: 'Moneda', type: 'select', required: true, options: ['ARS', 'USD', 'EUR'], defaultValue: 'USD' },
+            { name: 'amount', label: 'Importe', type: 'number', required: true },
+            { name: 'amountInLetters', label: 'Importe en Letras (ej: Cuatro mil novecientos sesenta)', type: 'text', required: true },
+            { name: 'paymentMethod', label: 'Medio de Pago', type: 'select', required: true, options: ['Efectivo', 'Transferencia Bancaria', 'Cheque', 'Tarjeta de Crédito', 'Tarjeta de Débito', 'Billetera Virtual', 'Otro'] },
+            { name: 'paymentReference', label: 'Referencia de Pago (nº transferencia, cheque, etc.)', type: 'text' }
         ],
         hasItems: false
     },
@@ -526,7 +527,7 @@ function renderTab(tabName) {
                             <label>${field.label}${field.required ? '<span class="required">*</span>' : ''}</label>
                             <select name="${field.name}" ${field.required ? 'required' : ''}>
                                 <option value="">Seleccionar...</option>
-                                ${field.options.map(opt => `<option value="${opt}">${opt}</option>`).join('')}
+                                ${field.options.map(opt => `<option value="${opt}" ${field.defaultValue === opt ? 'selected' : ''}>${opt}</option>`).join('')}
                             </select>
                         </div>
                     `;

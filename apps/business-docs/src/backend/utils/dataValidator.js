@@ -69,7 +69,6 @@ class DataValidator {
     sanitized.paymentMethod = sanitized.paymentMethod || '';
     sanitized.concept = sanitized.concept || '';
     sanitized.amountInLetters = sanitized.amountInLetters || '';
-
     return sanitized;
   }
 }
