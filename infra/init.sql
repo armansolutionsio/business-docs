@@ -345,6 +345,33 @@ CREATE TRIGGER trg_contacto_codigo
   BEFORE INSERT ON contactos
   FOR EACH ROW EXECUTE FUNCTION generate_contacto_codigo();
 
+-- 15. CONVERSACION ARCHIVOS (WhatsApp files, Drive files, etc)
+CREATE TABLE IF NOT EXISTS conversacion_archivos (
+    id                SERIAL PRIMARY KEY,
+    conversacion_id   INTEGER REFERENCES conversaciones(id),
+    contacto_id       INTEGER NOT NULL REFERENCES contactos(id),
+    nombre_archivo    TEXT,
+    tipo_archivo      VARCHAR(50) DEFAULT 'otro', -- imagen, pdf, audio, video, otro
+    url_drive         TEXT,
+    url_local         TEXT,
+    tamano_bytes      BIGINT,
+    created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_conv_arch_contacto ON conversacion_archivos (contacto_id);
+CREATE INDEX IF NOT EXISTS idx_conv_arch_conv ON conversacion_archivos (conversacion_id);
+
+-- 16. WHATSAPP SYNC LOG
+CREATE TABLE IF NOT EXISTS whatsapp_sync_log (
+    id                    SERIAL PRIMARY KEY,
+    source                VARCHAR(50) DEFAULT 'google_sheets',
+    registros_procesados  INTEGER DEFAULT 0,
+    contactos_creados     INTEGER DEFAULT 0,
+    mensajes_importados   INTEGER DEFAULT 0,
+    errores               INTEGER DEFAULT 0,
+    detalle               TEXT,
+    created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- ============================================================================
 -- LEGACY: keep beta_contactos for backward compat (seed still uses it)
 -- ============================================================================

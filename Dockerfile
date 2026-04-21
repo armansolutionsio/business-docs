@@ -61,9 +61,9 @@ COPY --from=crm-build /build/apps/crm-ui/dist/ ./apps/crm-ui/dist/
 COPY apps/business-docs/ ./apps/business-docs/
 
 ENV NODE_ENV=production
-ENV PORT=3001
+ENV PORT=3000
 
-EXPOSE 3001
+EXPOSE 3000
 
 WORKDIR /app/apps/business-docs
 

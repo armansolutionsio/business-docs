@@ -159,13 +159,72 @@ const CATEGORY_DETAIL_CONFIG = {
         title: 'Detalle del Pack Turístico',
         icon: '🎒',
         multiInstance: true,
-        subItemLabel: 'Pack',
-        subItemFields: [
-            { name: 'packName', label: 'Nombre del Pack', type: 'text', placeholder: 'Ej: Europa Clásica' },
-            { name: 'destinations', label: 'Destinos Incluidos', type: 'textarea', placeholder: 'Ej: Madrid, Barcelona, París, Roma...' },
-            { name: 'duration', label: 'Duración', type: 'text', placeholder: 'Ej: 7 noches / 8 días' },
-            { name: 'included', label: '¿Qué Incluye?', type: 'textarea', placeholder: 'Detallar servicios incluidos en el pack...' },
-        ]
+        subItemLabel: 'Servicio',
+        isPackContainer: true,
+        topFields: [
+            { name: 'packName', label: 'Nombre del Pack', type: 'text', placeholder: 'Ej: Europa Clásica 15 días' },
+            { name: 'destinations', label: 'Destinos Incluidos', type: 'text', placeholder: 'Ej: Madrid, Barcelona, París, Roma' },
+            { name: 'duration', label: 'Duración', type: 'text', placeholder: 'Ej: 14 noches / 15 días' },
+            { name: 'passengers', label: 'Cantidad de Pasajeros', type: 'number', placeholder: '1' },
+        ],
+        serviceTypes: {
+            vuelo: {
+                label: 'Vuelo', icon: '✈️',
+                fields: [
+                    { name: 'passengerName', label: 'Pasajero', type: 'text', placeholder: 'Nombre del pasajero' },
+                    { name: 'airline', label: 'Aerolínea', type: 'text', placeholder: 'Ej: Aerolíneas Argentinas' },
+                    { name: 'flightNumber', label: 'Nro. de Vuelo', type: 'text', placeholder: 'Ej: AR1234' },
+                    { name: 'departureAirport', label: 'Aeropuerto Salida', type: 'airport', placeholder: 'Buscar...' },
+                    { name: 'arrivalAirport', label: 'Aeropuerto Llegada', type: 'airport', placeholder: 'Buscar...' },
+                    { name: 'departureDate', label: 'Fecha Salida', type: 'date' },
+                    { name: 'departureTime', label: 'Hora Salida', type: 'time' },
+                    { name: 'arrivalDate', label: 'Fecha Llegada', type: 'date' },
+                    { name: 'arrivalTime', label: 'Hora Llegada', type: 'time' },
+                ]
+            },
+            hotel: {
+                label: 'Hotel', icon: '🏨',
+                fields: [
+                    { name: 'hotelName', label: 'Hotel', type: 'text', placeholder: 'Nombre del hotel' },
+                    { name: 'hotelLocation', label: 'Ubicación', type: 'text', placeholder: 'Ciudad / zona' },
+                    { name: 'checkInDate', label: 'Check-in', type: 'date' },
+                    { name: 'checkOutDate', label: 'Check-out', type: 'date' },
+                    { name: 'numberOfNights', label: 'Noches', type: 'number', readonly: true, computed: 'nights' },
+                    { name: 'roomType', label: 'Habitación', type: 'select', options: ['Standard', 'Superior', 'Suite', 'Deluxe', 'Junior Suite', 'Family Room'] },
+                    { name: 'mealPlan', label: 'Régimen', type: 'select', options: ['Solo alojamiento', 'Desayuno incluido', 'Media pensión', 'Pensión completa', 'All Inclusive'] },
+                ]
+            },
+            traslado: {
+                label: 'Traslado', icon: '🚐',
+                fields: [
+                    { name: 'pickupPoint', label: 'Origen', type: 'airport', placeholder: 'Buscar aeropuerto o escribir dirección...' },
+                    { name: 'dropoffPoint', label: 'Destino', type: 'text', placeholder: 'Hotel, aeropuerto, etc.' },
+                    { name: 'vehicleType', label: 'Vehículo', type: 'select', options: ['Sedan', 'Van', 'Minibus', 'Bus', 'SUV'] },
+                    { name: 'transferDate', label: 'Fecha', type: 'date' },
+                    { name: 'transferTime', label: 'Hora', type: 'time' },
+                ]
+            },
+            tour: {
+                label: 'Tour', icon: '🗺️',
+                fields: [
+                    { name: 'tourName', label: 'Tour', type: 'text', placeholder: 'Nombre del tour' },
+                    { name: 'tourLocation', label: 'Ubicación', type: 'text', placeholder: 'Ciudad / zona' },
+                    { name: 'tourDate', label: 'Fecha', type: 'date' },
+                    { name: 'tourDuration', label: 'Duración', type: 'text', placeholder: 'Ej: 4 horas' },
+                    { name: 'tourIncludes', label: '¿Qué Incluye?', type: 'textarea', placeholder: 'Actividades incluidas...' },
+                ]
+            },
+            seguro: {
+                label: 'Seguro', icon: '🛡️',
+                fields: [
+                    { name: 'insuranceCompany', label: 'Compañía', type: 'text', placeholder: 'Ej: Assist Card' },
+                    { name: 'coverageType', label: 'Cobertura', type: 'select', options: ['Básico', 'Standard', 'Premium', 'Cobertura Total'] },
+                    { name: 'insuranceStartDate', label: 'Desde', type: 'date' },
+                    { name: 'insuranceEndDate', label: 'Hasta', type: 'date' },
+                    { name: 'coverageDetails', label: 'Detalle', type: 'textarea', placeholder: 'Coberturas incluidas...' },
+                ]
+            }
+        }
     },
     'VIP/Premium': {
         slug: 'vip',
@@ -247,7 +306,7 @@ const companyData = {
     companyStartDate: '2025-12-01',
     companyGrossIncome: '30719189845',
     companyEmail: 'info@armansolutions.com',
-    companyPhone: '+54 11 XXXX-XXXX'
+    companyPhone: '+54 9 11 5698-9263'
 };
 
 // Configuración de documentos
@@ -285,17 +344,23 @@ const documentConfig = {
             // Datos del Emisor
             { name: 'companyName', label: 'Nombre o Razón Social', type: 'text', required: true },
             { name: 'companyCUIT', label: 'CUIT', type: 'text', required: true, placeholder: 'XX-XXXXXXXX-X' },
-            { name: 'companyAddress', label: 'Domicilio', type: 'textarea', required: true },
+            { name: 'companyAddress', label: 'Domicilio', type: 'text', required: true },
+            { name: 'companyEmail', label: 'Email', type: 'email' },
+            { name: 'companyPhone', label: 'Teléfono', type: 'tel' },
             // Datos del Pagador
             { name: 'payerName', label: 'Nombre/Razón Social del Pagador', type: 'text', required: true },
-            { name: 'payerCUIT', label: 'CUIT/DNI del Pagador', type: 'text', required: true },
+            { name: 'payerCUIT', label: 'CUIT/DNI/Pasaporte del Pagador', type: 'text' },
+            { name: 'payerEmail', label: 'Email del Pagador', type: 'email' },
+            { name: 'payerPhone', label: 'Teléfono del Pagador', type: 'tel' },
             // Detalle del Pago
-            { name: 'receiptNumber', label: 'Número de Recibo', type: 'number', required: true },
+            { name: 'receiptNumber', label: 'Número de Recibo', type: 'text', required: true, readonly: true },
             { name: 'receiptDate', label: 'Fecha', type: 'date', required: true },
-            { name: 'concept', label: 'Concepto (ej: Cancelación Factura Nº)', type: 'textarea', required: true },
-            { name: 'amount', label: 'Importe en Números', type: 'number', required: true },
-            { name: 'amountInLetters', label: 'Importe en Letras', type: 'text', required: true },
-            { name: 'paymentMethod', label: 'Medio de Pago', type: 'select', required: true, options: ['Efectivo', 'Transferencia Bancaria', 'Cheque', 'Tarjeta de Crédito', 'Tarjeta de Débito', 'Billetera Virtual', 'Otro'] }
+            { name: 'concept', label: 'Concepto (ej: Pago parcial viaje a Europa)', type: 'textarea', required: true },
+            { name: 'currency', label: 'Moneda', type: 'select', required: true, options: ['ARS', 'USD', 'EUR'], defaultValue: 'USD' },
+            { name: 'amount', label: 'Importe', type: 'number', required: true },
+            { name: 'amountInLetters', label: 'Importe en Letras (ej: Cuatro mil novecientos sesenta)', type: 'text', required: true },
+            { name: 'paymentMethod', label: 'Medio de Pago', type: 'select', required: true, options: ['Efectivo', 'Transferencia Bancaria', 'Cheque', 'Tarjeta de Crédito', 'Tarjeta de Débito', 'Billetera Virtual', 'Otro'] },
+            { name: 'paymentReference', label: 'Referencia de Pago (nº transferencia, cheque, etc.)', type: 'text' }
         ],
         hasItems: false
     },
@@ -305,21 +370,25 @@ const documentConfig = {
             // Datos del Emisor
             { name: 'companyName', label: 'Nombre o Razón Social', type: 'text', required: true },
             { name: 'companyCUIT', label: 'CUIT', type: 'text', required: true, placeholder: 'XX-XXXXXXXX-X' },
-            { name: 'companyAddress', label: 'Domicilio', type: 'textarea', required: true },
+            { name: 'companyAddress', label: 'Domicilio', type: 'text', required: true },
             { name: 'companyEmail', label: 'Email', type: 'email', required: true },
             { name: 'companyPhone', label: 'Teléfono', type: 'tel', required: true },
             // Datos del Cliente
-            { name: 'clientName', label: 'Nombre/Empresa del Cliente', type: 'text', required: true },
-            { name: 'clientCUIT', label: 'CUIT/DNI (opcional)', type: 'text' },
-            { name: 'clientEmail', label: 'Email del Cliente', type: 'email' },
-            { name: 'clientPhone', label: 'Teléfono del Cliente', type: 'tel' },
+            { name: 'clientName', label: 'Nombre/Empresa', type: 'text' },
+            { name: 'clientCUIT', label: 'CUIT/DNI', type: 'text' },
+            { name: 'clientEmail', label: 'Email', type: 'email' },
+            { name: 'clientPhone', label: 'Teléfono', type: 'tel' },
+            { name: 'clientDomicilio', label: 'Domicilio', type: 'text', placeholder: 'Calle, número, piso, depto.' },
+            { name: 'clientLocalidad', label: 'Localidad', type: 'text' },
+            { name: 'clientProvincia', label: 'Provincia', type: 'text' },
+            { name: 'clientCodigoPostal', label: 'Código Postal', type: 'text' },
             // Comprobante
             { name: 'quoteNumber', label: 'Número de Cotización', type: 'text', required: false, defaultValue: '', readonly: true },
             { name: 'quoteDate', label: 'Fecha', type: 'date', required: true },
             // Condiciones
             { name: 'validity', label: 'Validez de la Oferta (días)', type: 'number', required: true, placeholder: '3', defaultValue: 3 },
             { name: 'paymentTerms', label: 'Forma de Pago (selecciona las que aceptas)', type: 'multiselect', required: true, options: ['Efectivo', 'Transferencia Bancaria', 'Cheque', 'Tarjeta de Crédito', 'Tarjeta de Débito', 'Billetera Virtual', 'Criptomonedas'] },
-            { name: 'deliveryTerm', label: 'Plazo de Entrega', type: 'text', required: true, placeholder: 'a coordinar', defaultValue: 'a coordinar' }
+            { name: 'deliveryTerm', label: 'Plazo de Entrega', type: 'text', required: true, placeholder: 'A confirmar', defaultValue: 'A confirmar' }
         ],
         hasItems: true
     }
@@ -337,6 +406,10 @@ function prefillFromUrlParams() {
         clientCUIT: params.get('clientCUIT'),
         clientEmail: params.get('clientEmail'),
         clientPhone: params.get('clientPhone'),
+        clientDomicilio: params.get('clientDomicilio'),
+        clientLocalidad: params.get('clientLocalidad'),
+        clientProvincia: params.get('clientProvincia'),
+        clientCodigoPostal: params.get('clientCodigoPostal'),
     };
     Object.entries(mapping).forEach(([field, value]) => {
         if (!value) return;
@@ -457,7 +530,7 @@ function renderTab(tabName) {
                             <label>${field.label}${field.required ? '<span class="required">*</span>' : ''}</label>
                             <select name="${field.name}" ${field.required ? 'required' : ''}>
                                 <option value="">Seleccionar...</option>
-                                ${field.options.map(opt => `<option value="${opt}">${opt}</option>`).join('')}
+                                ${field.options.map(opt => `<option value="${opt}" ${field.defaultValue === opt ? 'selected' : ''}>${opt}</option>`).join('')}
                             </select>
                         </div>
                     `;
@@ -516,7 +589,14 @@ function renderTab(tabName) {
                         <input type="text" id="itemDesc" placeholder="O escribir descripción personalizada...">
                     </div>
                     <input type="number" id="itemQuantity" placeholder="Cantidad" step="0.01" min="0">
-                    <input type="number" id="itemPrice" placeholder="Precio unitario" step="0.01" min="0">
+                    <div style="display: flex; gap: 6px; align-items: center;">
+                        <select id="itemCurrency" style="padding: 8px 6px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 13px; font-weight: 700; color: #7B2CBF; background: white; cursor: pointer; width: 70px;">
+                            <option value="USD">USD</option>
+                            <option value="ARS">$</option>
+                            <option value="EUR">EUR</option>
+                        </select>
+                        <input type="number" id="itemPrice" placeholder="Precio" step="0.01" min="0" style="flex: 1;">
+                    </div>
                     <button type="button" class="btn-add-item" onclick="addItem()">+ Agregar Item</button>
                 </div>
                 <div id="itemsList"></div>
@@ -535,7 +615,7 @@ function renderTab(tabName) {
             <div>
                 <span>Total del Documento:</span>
             </div>
-            <div class="total-value">$<span id="totalAmount">0.00</span></div>
+            <div class="total-value"><span id="totalCurrency">USD</span> <span id="totalAmount">0.00</span></div>
         </div>
     `;
 
@@ -577,6 +657,11 @@ function renderTab(tabName) {
 
     // Set default dates for date inputs
     setDefaultDate();
+
+    // Auto-fill receipt number
+    if (tabName === 'receipt') {
+        fetchNextReceiptNumber();
+    }
 
     // Renderizar secciones de detalle según items existentes
     updateCategoryDetailSections();
@@ -657,24 +742,31 @@ function addItem() {
     }
 
     const qty = parseFloat(quantity.value) || 1;
+    const currencySelect = document.getElementById('itemCurrency');
     const item = {
         id: Date.now(),
         description: description,
         category: category.value || null,
         quantity: qty,
-        price: parseFloat(price.value) || 0
+        price: parseFloat(price.value) || 0,
+        currency: currencySelect ? currencySelect.value : 'USD'
     };
 
     appState.items.push(item);
 
     // Inicializar sub-items en el estado basado en la cantidad
-    if (catConfig && catConfig.subItemFields) {
+    if (catConfig) {
         const sectionKey = catConfig.slug + '_' + item.id;
-        const subItems = [];
-        for (let i = 0; i < qty; i++) {
-            subItems.push({});
+        if (catConfig.isPackContainer) {
+            // Packs arrancan vacíos, el usuario agrega servicios
+            appState.categoryDetails[sectionKey] = { subItems: [] };
+        } else if (catConfig.subItemFields) {
+            const subItems = [];
+            for (let i = 0; i < qty; i++) {
+                subItems.push({});
+            }
+            appState.categoryDetails[sectionKey] = { subItems: subItems };
         }
-        appState.categoryDetails[sectionKey] = { subItems: subItems };
     }
 
     renderItems();
@@ -708,6 +800,48 @@ function handleLogoUpload(event) {
 }
 
 // Cargar imagen con vista previa
+// Múltiples imágenes para packs
+function handleMultiImageUpload(event, sectionKey) {
+    const files = event.target.files;
+    if (!files || !files.length) return;
+    if (!appState.images) appState.images = {};
+    const multiKey = sectionKey + '_multi';
+    if (!appState.images[multiKey]) appState.images[multiKey] = [];
+
+    const sizeSelect = document.getElementById(`${sectionKey}Size`);
+    const size = sizeSelect ? sizeSelect.value : 'medium';
+
+    Array.from(files).forEach(file => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            appState.images[multiKey].push({ data: e.target.result, name: file.name, size: size });
+            // Refresh preview
+            const previewContainer = document.getElementById(`${sectionKey}Preview`);
+            if (previewContainer) {
+                const imgs = appState.images[multiKey];
+                previewContainer.innerHTML = imgs.map((img, i) =>
+                    `<div class="image-preview" style="position: relative; max-width: 200px;"><img src="${img.data}" style="max-width: 100%; max-height: 150px; border-radius: 4px; border: 1px solid #ddd;"><button type="button" class="remove-preview-btn" onclick="removeMultiImage('${sectionKey}', ${i})">✕</button></div>`
+                ).join('');
+            }
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+function removeMultiImage(sectionKey, index) {
+    const multiKey = sectionKey + '_multi';
+    if (appState.images && appState.images[multiKey]) {
+        appState.images[multiKey].splice(index, 1);
+        const previewContainer = document.getElementById(`${sectionKey}Preview`);
+        if (previewContainer) {
+            const imgs = appState.images[multiKey];
+            previewContainer.innerHTML = imgs.map((img, i) =>
+                `<div class="image-preview" style="position: relative; max-width: 200px;"><img src="${img.data}" style="max-width: 100%; max-height: 150px; border-radius: 4px; border: 1px solid #ddd;"><button type="button" class="remove-preview-btn" onclick="removeMultiImage('${sectionKey}', ${i})">✕</button></div>`
+            ).join('');
+        }
+    }
+}
+
 function handleImageUpload(event, type) {
     const file = event.target.files[0];
     if (!file) return;
@@ -825,14 +959,13 @@ function renderItems() {
     appState.items.forEach(item => {
         const qty = parseFloat(item.quantity) || 1;
         const price = parseFloat(item.price) || 0;
-        const isCategorized = item.category && CATEGORY_DETAIL_CONFIG[item.category];
-        const subtotal = isCategorized ? price : (qty * price);
+        const subtotal = qty * price;
         html += `
             <div class="item-row">
                 <span style="font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(item.description)}</span>
                 <span style="text-align: center; font-weight: 600;">${qty}</span>
-                <span style="text-align: right;">$${formatCurrency(price)}</span>
-                <span style="text-align: right; font-weight: 700; color: #1e293b;">$${formatCurrency(subtotal)}</span>
+                <span style="text-align: right;">${item.currency || 'USD'} ${formatCurrency(price)}</span>
+                <span style="text-align: right; font-weight: 700; color: #1e293b;">${item.currency || 'USD'} ${formatCurrency(subtotal)}</span>
                 <button type="button" class="remove-item" onclick="removeItem(${item.id})">X</button>
             </div>
         `;
@@ -857,8 +990,7 @@ function updateTotal() {
         total = appState.items.reduce((sum, item) => {
             const qty = parseFloat(item.quantity) || 1;
             const price = parseFloat(item.price) || 0;
-            const isCategorized = item.category && CATEGORY_DETAIL_CONFIG[item.category];
-            return sum + (isCategorized ? price : (qty * price));
+            return sum + (qty * price);
         }, 0);
     } else {
         // Si es recibo, usar el campo amount
@@ -869,6 +1001,12 @@ function updateTotal() {
     }
 
     document.getElementById('totalAmount').textContent = formatCurrency(total);
+    // Mostrar moneda del primer item o del selector
+    const currencyEl = document.getElementById('totalCurrency');
+    if (currencyEl) {
+        const firstCurrency = appState.items.length > 0 ? (appState.items[0].currency || 'USD') : (document.getElementById('itemCurrency') ? document.getElementById('itemCurrency').value : 'USD');
+        currencyEl.textContent = firstCurrency;
+    }
     appState.formData.total = total;
 }
 
@@ -909,6 +1047,20 @@ function setDefaultDate() {
             input.value = today;
         }
     });
+}
+
+// Obtener próximo número de recibo (auto-asignado, no editable)
+async function fetchNextReceiptNumber() {
+    try {
+        const res = await fetch('/api/recibos/next-number');
+        const data = await res.json();
+        const input = document.querySelector('input[name="receiptNumber"]');
+        if (input) {
+            input.value = data.numero;
+        }
+    } catch (e) {
+        console.error('Error obteniendo número de recibo:', e);
+    }
 }
 
 // Mostrar mensaje
@@ -1053,7 +1205,20 @@ function renderCategorySection(categoryName, sectionKey, item, instanceIndex) {
     }
 
     // Sub-items container
-    if (config.subItemFields) {
+    if (config.isPackContainer) {
+        // Pack container: multi-type sub-items
+        html += `<div class="sub-items-container" id="sub-items-${sectionKey}">`;
+        subItems.forEach((subItemData, idx) => {
+            html += renderSubItemForm(config, sectionKey, idx, subItemData, subItems.length);
+        });
+        html += `</div>`;
+        // Botones para agregar cada tipo de servicio
+        html += `<div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px;">`;
+        Object.entries(config.serviceTypes).forEach(([typeKey, typeConf]) => {
+            html += `<button type="button" class="btn-add-subitem" style="width: auto; flex: none; padding: 8px 14px; font-size: 12px;" onclick="addSubItem('${sectionKey}', '${categoryName}', '${typeKey}')">+ ${typeConf.icon} ${typeConf.label}</button>`;
+        });
+        html += `</div>`;
+    } else if (config.subItemFields) {
         html += `<div class="sub-items-container" id="sub-items-${sectionKey}">`;
         subItems.forEach((subItemData, idx) => {
             html += renderSubItemForm(config, sectionKey, idx, subItemData, subItems.length);
@@ -1062,9 +1227,31 @@ function renderCategorySection(categoryName, sectionKey, item, instanceIndex) {
         html += `<button type="button" class="btn-add-subitem" onclick="addSubItem('${sectionKey}', '${categoryName}')">+ Agregar ${config.subItemLabel || 'Item'}</button>`;
     }
 
-    // Imagen upload + descripción (siempre presente)
-    const hasImage = appState.images && appState.images[sectionKey];
-    html += `
+    // Imágenes + descripción
+    if (config.isPackContainer) {
+        // Packs: múltiples imágenes
+        const packImages = (appState.images && appState.images[sectionKey + '_multi']) || [];
+        html += `
+        <div class="image-upload-card" style="margin-top: 16px;">
+            <div class="image-upload-header">
+                <label style="margin: 0; font-size: 14px;">Imágenes / Capturas</label>
+                <select id="${sectionKey}Size" class="image-size-select" onchange="handleImageSizeChange('${sectionKey}', this.value)">
+                    <option value="medium">Tamaño: Mediano</option>
+                    <option value="small">Tamaño: Pequeño</option>
+                    <option value="large">Tamaño: Grande</option>
+                </select>
+            </div>
+            <input type="file" id="${sectionKey}Image" accept="image/*" multiple onchange="handleMultiImageUpload(event, '${sectionKey}')" style="margin-bottom: 10px;">
+            <div id="${sectionKey}Preview" style="display: flex; flex-wrap: wrap; gap: 10px;">
+                ${packImages.map((img, i) => `<div class="image-preview" style="position: relative; max-width: 200px;"><img src="${img.data}" style="max-width: 100%; max-height: 150px; border-radius: 4px; border: 1px solid #ddd;"><button type="button" class="remove-preview-btn" onclick="removeMultiImage('${sectionKey}', ${i})">✕</button></div>`).join('')}
+            </div>
+            <textarea id="detail-${sectionKey}-description" placeholder="Descripción adicional (opcional)" rows="2" style="margin-top: 10px;">${savedData.description || ''}</textarea>
+        </div>
+        `;
+    } else {
+        // Otros: imagen única
+        const hasImage = appState.images && appState.images[sectionKey];
+        html += `
         <div class="image-upload-card" style="margin-top: 16px;">
             <div class="image-upload-header">
                 <label style="margin: 0; font-size: 14px;">Imagen / Captura</label>
@@ -1078,7 +1265,8 @@ function renderCategorySection(categoryName, sectionKey, item, instanceIndex) {
             <div id="${sectionKey}Preview" class="image-preview-container">${hasImage ? `<div class="image-preview"><img src="${appState.images[sectionKey].data}" alt="Vista previa"><button type="button" class="remove-preview-btn" onclick="removeImage('${sectionKey}')">✕ Eliminar</button></div>` : ''}</div>
             <textarea id="detail-${sectionKey}-description" placeholder="Descripción adicional (opcional)" rows="2" style="margin-top: 10px;">${savedData.description || ''}</textarea>
         </div>
-    `;
+        `;
+    }
 
     html += `</div>`;
     return html;
@@ -1086,21 +1274,39 @@ function renderCategorySection(categoryName, sectionKey, item, instanceIndex) {
 
 // Renderizar formulario de un sub-item individual
 function renderSubItemForm(config, sectionKey, index, subItemData, totalSubItems) {
-    const label = config.subItemLabel || 'Item';
-    let html = `<div class="sub-item-form" data-sub-index="${index}" id="sub-item-${sectionKey}-${index}">`;
+    // Determinar campos y label según tipo de servicio (para packs) o config estándar
+    let fields = config.subItemFields || [];
+    let label = config.subItemLabel || 'Item';
+    if (config.isPackContainer && subItemData._serviceType) {
+        const svcType = config.serviceTypes[subItemData._serviceType];
+        if (svcType) {
+            fields = svcType.fields;
+            label = svcType.icon + ' ' + svcType.label;
+        }
+    }
+
+    const canRemove = config.isPackContainer ? true : (totalSubItems > 1);
+    const serviceTypeValue = (config.isPackContainer && subItemData._serviceType) ? subItemData._serviceType : '';
+    let html = `<div class="sub-item-form" data-sub-index="${index}" data-service-type="${serviceTypeValue}" id="sub-item-${sectionKey}-${index}">`;
+    if (serviceTypeValue) {
+        html += `<input type="hidden" id="detail-${sectionKey}-sub-${index}-_serviceType" value="${serviceTypeValue}">`;
+    }
     html += `<div class="sub-item-header">`;
-    html += `<span class="sub-item-title">${label} ${index + 1}</span>`;
+    html += `<span class="sub-item-title">${label} ${config.isPackContainer ? '' : (index + 1)}</span>`;
     // Price field for each sub-item
     html += `<div class="sub-item-price-group">`;
     html += `<label>Precio:</label>`;
     html += `<input type="number" class="sub-item-price" id="sub-price-${sectionKey}-${index}" value="${subItemData._price || ''}" placeholder="0.00" step="0.01" min="0" onchange="updateItemPriceFromSubItems('${sectionKey}')">`;
     html += `</div>`;
-    if (totalSubItems > 1) {
+    if (config.isPackContainer) {
+        html += `<button type="button" style="background: #7B2CBF; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; font-size: 12px; cursor: pointer; flex-shrink: 0;" onclick="duplicateSubItem('${sectionKey}', ${index}, '${config.slug}')" title="Duplicar">⧉</button>`;
+    }
+    if (canRemove) {
         html += `<button type="button" class="remove-subitem-btn" onclick="removeSubItem('${sectionKey}', ${index}, '${config.slug}')">✕</button>`;
     }
     html += `</div>`;
     html += `<div class="form-grid">`;
-    config.subItemFields.forEach(field => {
+    fields.forEach(field => {
         const fieldId = `detail-${sectionKey}-sub-${index}-${field.name}`;
         const value = subItemData[field.name] || '';
         const readonlyAttr = field.readonly ? 'readonly' : '';
@@ -1144,17 +1350,18 @@ function renderSubItemForm(config, sectionKey, index, subItemData, totalSubItems
 }
 
 // Agregar un sub-item a una sección
-function addSubItem(sectionKey, categoryName) {
+function addSubItem(sectionKey, categoryName, serviceType) {
     const config = CATEGORY_DETAIL_CONFIG[categoryName];
     if (!config) return;
 
     // Guardar estado actual antes de modificar
     saveCategoryDetailToState(sectionKey, config);
 
-    // Agregar sub-item vacío
+    // Agregar sub-item (con tipo de servicio para packs)
     if (!appState.categoryDetails[sectionKey]) appState.categoryDetails[sectionKey] = {};
     if (!appState.categoryDetails[sectionKey].subItems) appState.categoryDetails[sectionKey].subItems = [];
-    appState.categoryDetails[sectionKey].subItems.push({});
+    const newSubItem = serviceType ? { _serviceType: serviceType } : {};
+    appState.categoryDetails[sectionKey].subItems.push(newSubItem);
 
     // Re-renderizar la sección de sub-items
     const container = document.getElementById(`sub-items-${sectionKey}`);
@@ -1170,6 +1377,36 @@ function addSubItem(sectionKey, categoryName) {
 }
 
 // Eliminar un sub-item de una sección
+// Duplicar un sub-item (copia todos los datos excepto pasajero)
+function duplicateSubItem(sectionKey, index, slug) {
+    let config = null;
+    for (const [name, cfg] of Object.entries(CATEGORY_DETAIL_CONFIG)) {
+        if (cfg.slug === slug) { config = cfg; break; }
+    }
+    if (!config) return;
+
+    saveCategoryDetailToState(sectionKey, config);
+    const detail = appState.categoryDetails[sectionKey];
+    if (!detail || !detail.subItems || !detail.subItems[index]) return;
+
+    // Clonar el sub-item, limpiar el nombre del pasajero para que el usuario lo cambie
+    const original = detail.subItems[index];
+    const clone = { ...original };
+    if (clone.passengerName) clone.passengerName = '';
+    detail.subItems.splice(index + 1, 0, clone);
+
+    // Re-renderizar
+    const container = document.getElementById(`sub-items-${sectionKey}`);
+    if (container) {
+        container.innerHTML = '';
+        detail.subItems.forEach((subData, idx) => {
+            container.innerHTML += renderSubItemForm(config, sectionKey, idx, subData, detail.subItems.length);
+        });
+        setupSubItemListeners(sectionKey, config);
+    }
+    updateItemPriceFromSubItems(sectionKey);
+}
+
 function removeSubItem(sectionKey, index, slug) {
     // Find the category config from slug
     let config = null;
@@ -1183,7 +1420,9 @@ function removeSubItem(sectionKey, index, slug) {
     saveCategoryDetailToState(sectionKey, config);
 
     const detail = appState.categoryDetails[sectionKey];
-    if (!detail || !detail.subItems || detail.subItems.length <= 1) return;
+    if (!detail || !detail.subItems) return;
+    // Para packs se puede eliminar cualquiera; para otros, debe quedar al menos 1
+    if (!config.isPackContainer && detail.subItems.length <= 1) return;
 
     detail.subItems.splice(index, 1);
 
@@ -1216,7 +1455,11 @@ function updateItemPriceFromSubItems(sectionKey) {
     }
     if (!foundItem) return;
 
-    // Sum all sub-item prices from DOM
+    // Para packs: el precio se pone al agregar el item, no se auto-suma
+    const itemConfig = CATEGORY_DETAIL_CONFIG[foundItem.category];
+    if (itemConfig && itemConfig.isPackContainer) return;
+
+    // Para otros: sumar precios de sub-items
     const detail = appState.categoryDetails[sectionKey];
     const subItems = detail ? detail.subItems : [];
     let total = 0;
@@ -1321,21 +1564,30 @@ function setupCategorySectionListeners(sectionKey, config) {
 
 // Configurar listeners para sub-items (aeropuertos autocomplete, hotel nights calc, etc.)
 function setupSubItemListeners(sectionKey, config) {
-    if (!config.subItemFields) return;
+    if (!config.subItemFields && !config.isPackContainer) return;
     const detail = appState.categoryDetails[sectionKey] || {};
     const subItems = detail.subItems || [{}];
 
-    subItems.forEach((_, idx) => {
+    subItems.forEach((subItemData, idx) => {
+        // Determinar campos según tipo
+        let fields = config.subItemFields || [];
+        if (config.isPackContainer && subItemData._serviceType) {
+            const svcType = config.serviceTypes[subItemData._serviceType];
+            if (svcType) fields = svcType.fields;
+        }
+
         // Airport autocomplete
-        config.subItemFields.forEach(field => {
+        fields.forEach(field => {
             if (field.type === 'airport') {
                 const input = document.getElementById(`detail-${sectionKey}-sub-${idx}-${field.name}`);
                 if (input) setupAirportAutocomplete(input);
             }
         });
 
-        // Hotel nights auto-calculation
-        if (config.slug === 'hoteles') {
+        // Hotel nights auto-calculation (para hoteles standalone o dentro de pack)
+        const isHotelType = (config.slug === 'hoteles') ||
+                           (config.isPackContainer && subItemData._serviceType === 'hotel');
+        if (isHotelType) {
             const checkIn = document.getElementById(`detail-${sectionKey}-sub-${idx}-checkInDate`);
             const checkOut = document.getElementById(`detail-${sectionKey}-sub-${idx}-checkOutDate`);
             const nights = document.getElementById(`detail-${sectionKey}-sub-${idx}-numberOfNights`);
@@ -1453,18 +1705,29 @@ function saveCategoryDetailToState(sectionKey, config) {
     }
 
     // Sub-items
-    if (config.subItemFields) {
+    if (config.subItemFields || config.isPackContainer) {
         const container = document.getElementById(`sub-items-${sectionKey}`);
         if (container) {
             const subItemForms = container.querySelectorAll('.sub-item-form');
             const subItems = [];
             subItemForms.forEach((form, idx) => {
                 const subData = {};
-                config.subItemFields.forEach(field => {
+
+                // Leer _serviceType directo del DOM (hidden input o data-attribute)
+                let fields = config.subItemFields || [];
+                if (config.isPackContainer) {
+                    const typeEl = document.getElementById(`detail-${sectionKey}-sub-${idx}-_serviceType`);
+                    const svcTypeKey = typeEl ? typeEl.value : (form.dataset.serviceType || '');
+                    if (svcTypeKey && config.serviceTypes[svcTypeKey]) {
+                        subData._serviceType = svcTypeKey;
+                        fields = config.serviceTypes[svcTypeKey].fields;
+                    }
+                }
+
+                fields.forEach(field => {
                     const el = document.getElementById(`detail-${sectionKey}-sub-${idx}-${field.name}`);
                     if (el) subData[field.name] = el.value;
                 });
-                // Price
                 const priceEl = document.getElementById(`sub-price-${sectionKey}-${idx}`);
                 if (priceEl) subData._price = priceEl.value;
                 subItems.push(subData);
@@ -1512,6 +1775,10 @@ function collectFormData() {
     // Agregar items
     data.items = appState.items;
     data.total = appState.formData.total || 0;
+    // Moneda del documento: respetar el campo del form (recibo) o tomar del primer item (cotización/factura)
+    if (!data.currency) {
+        data.currency = appState.items.length > 0 ? (appState.items[0].currency || 'USD') : 'USD';
+    }
 
     // Recopilar datos de secciones de detalle por categoría
     saveAllCategoryDetails();
@@ -1527,12 +1794,23 @@ function collectFormData() {
             const entries = [];
             items.forEach(item => {
                 const sectionKey = slug + '_' + item.id;
-                if (appState.categoryDetails[sectionKey]) {
-                    entries.push({
-                        ...appState.categoryDetails[sectionKey],
-                        _itemDescription: item.description
-                    });
-                }
+                const detail = appState.categoryDetails[sectionKey];
+                if (!detail) return;
+
+                const hasSubItems = Array.isArray(detail.subItems) && detail.subItems.some(si => {
+                    if (!si) return false;
+                    return Object.entries(si).some(([k, v]) => k !== '_serviceType' && v !== '' && v != null);
+                });
+                const hasOwnFields = Object.entries(detail).some(([k, v]) => {
+                    if (k === 'subItems' || k === '_itemDescription') return false;
+                    return v !== '' && v != null;
+                });
+                if (!hasSubItems && !hasOwnFields) return;
+
+                entries.push({
+                    ...detail,
+                    _itemDescription: item.description
+                });
             });
             if (entries.length > 0) {
                 data.categoryDetails[slug] = entries;
@@ -1545,6 +1823,54 @@ function collectFormData() {
     });
 
     return data;
+}
+
+// Construir el payload de imágenes (logo, firma, QR, foto suelta, imágenes por categoría)
+function buildAssetsPayload() {
+    const assets = {};
+    const categoryImages = {};
+    if (!appState.images) return { assets, categoryImages };
+
+    if (appState.images.logo) assets.logo = appState.images.logo.data;
+    if (appState.images.signature) assets.signature = appState.images.signature.data;
+    if (appState.images.qr) assets.qr = appState.images.qr.data;
+    if (appState.images.photo) assets.photo = appState.images.photo.data;
+
+    const activeCategories = getActiveCategories();
+    activeCategories.forEach(categoryName => {
+        const config = CATEGORY_DETAIL_CONFIG[categoryName];
+        if (!config) return;
+        const slug = config.slug;
+
+        if (config.multiInstance) {
+            const items = appState.items.filter(i => i.category === categoryName);
+            items.forEach((item, idx) => {
+                const imgKey = slug + '_' + item.id;
+                if (appState.images[imgKey]) {
+                    categoryImages[slug + '_' + idx] = {
+                        data: appState.images[imgKey].data,
+                        size: appState.images[imgKey].size || 'medium'
+                    };
+                }
+                const multiKey = imgKey + '_multi';
+                if (appState.images[multiKey] && appState.images[multiKey].length > 0) {
+                    appState.images[multiKey].forEach((img, imgIdx) => {
+                        categoryImages[slug + '_' + idx + '_img_' + imgIdx] = {
+                            data: img.data,
+                            size: img.size || 'medium'
+                        };
+                    });
+                }
+            });
+        } else if (appState.images[slug]) {
+            categoryImages[slug] = {
+                data: appState.images[slug].data,
+                size: appState.images[slug].size || 'medium'
+            };
+        }
+    });
+
+    return { assets, categoryImages };
 }
 
 // Ensure we have a contacto ID — find or create from form data
@@ -1587,7 +1913,7 @@ async function confirmAndDownloadQuote() {
             return;
         }
 
-        // 1. Save cotizacion in DB
+        // 1. Save cotizacion in DB (persistimos categoryDetails + snapshot del cliente para poder reconstruir la cotización completa luego)
         const cotRes = await fetch(`/api/contactos/${contactoId}/cotizaciones`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1596,6 +1922,17 @@ async function confirmAndDownloadQuote() {
                 moneda: data.currency || 'ARS',
                 validez_dias: data.validityDays || 15,
                 notas: data.notes || null,
+                categoryDetails: data.categoryDetails || {},
+                cliente_snapshot: {
+                    nombre: data.clientName || '',
+                    cuit: data.clientCUIT || '',
+                    email: data.clientEmail || '',
+                    telefono: data.clientPhone || '',
+                    domicilio: data.clientDomicilio || '',
+                    localidad: data.clientLocalidad || '',
+                    provincia: data.clientProvincia || '',
+                    codigo_postal: data.clientCodigoPostal || '',
+                },
                 created_by: 'cotizador',
             })
         });
@@ -1617,15 +1954,11 @@ async function confirmAndDownloadQuote() {
         data._skipDbRegistration = true;
 
         // 4. Generate PDF
-        const payload = { type: 'quote', data: data, assets: {} };
-
-        // Process images
-        if (appState.images) {
-            if (appState.images.logo) payload.assets.logo = appState.images.logo.data;
-            if (appState.images.signature) payload.assets.signature = appState.images.signature.data;
-            if (appState.images.qr) payload.assets.qr = appState.images.qr.data;
-            if (appState.images.photo) payload.assets.photo = appState.images.photo.data;
+        const { assets, categoryImages } = buildAssetsPayload();
+        if (Object.keys(categoryImages).length > 0) {
+            data.categoryImages = categoryImages;
         }
+        const payload = { type: 'quote', data: data, assets };
 
         const pdfRes = await fetch('/api/documents/generate-pdf', {
             method: 'POST',
@@ -1678,58 +2011,15 @@ async function downloadDocument(format) {
             data._contactoId = appState._selectedContactoId;
         }
 
+        const { assets, categoryImages } = buildAssetsPayload();
+        if (Object.keys(categoryImages).length > 0) {
+            data.categoryImages = categoryImages;
+        }
         const payload = {
             type: appState.currentTab,
             data: data,
-            assets: {}
+            assets
         };
-
-        // Procesar imágenes si existen
-        if (appState.images) {
-            // Para logo
-            if (appState.images.logo) {
-                payload.assets.logo = appState.images.logo.data;
-            }
-            // Para firma
-            if (appState.images.signature) {
-                payload.assets.signature = appState.images.signature.data;
-            }
-            // Para código QR
-            if (appState.images.qr) {
-                payload.assets.qr = appState.images.qr.data;
-            }
-            // Para imágenes de categorías dinámicas
-            const activeCategories = getActiveCategories();
-            const categoryImagesPayload = {};
-            activeCategories.forEach(categoryName => {
-                const config = CATEGORY_DETAIL_CONFIG[categoryName];
-                const slug = config.slug;
-
-                if (config.multiInstance) {
-                    // Collect images indexed by position (aereos_0, aereos_1, etc.)
-                    const items = appState.items.filter(i => i.category === categoryName);
-                    items.forEach((item, idx) => {
-                        const imgKey = slug + '_' + item.id;
-                        if (appState.images[imgKey]) {
-                            categoryImagesPayload[slug + '_' + idx] = {
-                                data: appState.images[imgKey].data,
-                                size: appState.images[imgKey].size || 'medium'
-                            };
-                        }
-                    });
-                } else {
-                    if (appState.images[slug]) {
-                        categoryImagesPayload[slug] = {
-                            data: appState.images[slug].data,
-                            size: appState.images[slug].size || 'medium'
-                        };
-                    }
-                }
-            });
-            if (Object.keys(categoryImagesPayload).length > 0) {
-                payload.data.categoryImages = categoryImagesPayload;
-            }
-        }
 
         const response = await fetch(`/api/documents/generate-${format}`, {
             method: 'POST',
@@ -1826,6 +2116,12 @@ function loadCompanyData() {
     const saved = localStorage.getItem('companyData');
     if (saved) {
         Object.assign(companyData, JSON.parse(saved));
+    }
+    // Migración: teléfonos legacy → nuevo oficial
+    const legacyPhones = ['+541151327320', '+54 11 1234-5678', ''];
+    if (legacyPhones.includes((companyData.companyPhone || '').trim())) {
+        companyData.companyPhone = '+54 9 11 5698-9263';
+        localStorage.setItem('companyData', JSON.stringify(companyData));
     }
 }
 
@@ -2075,6 +2371,8 @@ async function useClient(clientId) {
         const payerMapping = {
             payerName: mapping.clientName,
             payerCUIT: mapping.clientCUIT,
+            payerEmail: mapping.clientEmail,
+            payerPhone: mapping.clientPhone,
         };
 
         const allMappings = { ...mapping, ...payerMapping };

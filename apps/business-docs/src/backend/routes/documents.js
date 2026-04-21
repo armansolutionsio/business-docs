@@ -7,6 +7,7 @@ const log = require('../utils/logger');
 const { branding } = require('@arman/sdk');
 const db = require('../utils/db');
 const { logAudit } = require('../utils/auditLog');
+const { allocateNextNumber } = require('../utils/docNumbering');
 
 function computeTotals(data) {
   const items = Array.isArray(data.items) ? data.items : [];
@@ -31,6 +32,12 @@ function computeTotals(data) {
 }
 
 function injectBranding(data) {
+  const normalized = { ...data };
+  // Normalizar "A confirmar" (el usuario puede escribirlo en minúscula)
+  const dt = (normalized.deliveryTerm || '').trim();
+  if (!dt || /^a\s*confirmar$/i.test(dt)) {
+    normalized.deliveryTerm = 'A confirmar';
+  }
   return {
     companyName: data.companyName || branding.company.name,
     companyCUIT: data.companyCUIT || branding.company.cuit,
@@ -40,7 +47,7 @@ function injectBranding(data) {
     companyIVACondition: data.companyIVACondition || branding.company.ivaCondition,
     brandPrimary: branding.colors.primary,
     brandPrimaryDark: branding.colors.primaryDark,
-    ...data,
+    ...normalized,
   };
 }
 
@@ -56,6 +63,14 @@ async function registerInDB({ type, data, totals, req }) {
     const clientName = data.clientName || data.payerName || null;
     let contactoId = data._contactoId ? parseInt(data._contactoId) : null;
 
+    // Structured address fields from cotizador
+    const addr = {
+      domicilio: data.clientDomicilio || data.payerAddress || '',
+      localidad: data.clientLocalidad || '',
+      provincia: data.clientProvincia || '',
+      codigo_postal: data.clientCodigoPostal || '',
+    };
+
     // Verify the provided contactoId exists
     if (contactoId) {
       const check = await db.query('SELECT id FROM contactos WHERE id = $1', [contactoId]);
@@ -67,10 +82,12 @@ async function registerInDB({ type, data, totals, req }) {
       if (existing.rows.length) {
         contactoId = existing.rows[0].id;
       } else if (clientName) {
+        const docField = docNum.replace(/\D/g,'').length === 11 ? 'cuit' : 'dni';
         const ins = await db.query(
-          `INSERT INTO contactos (nombre, ${docNum.replace(/\D/g,'').length === 11 ? 'cuit' : 'dni'}, email, telefono, rol_actual, estado, origen)
-           VALUES ($1, $2, $3, $4, 'lead', 'nuevo', 'cotizador') RETURNING id`,
-          [clientName, docNum, data.clientEmail || data.payerEmail || '', data.clientPhone || data.payerPhone || '']
+          `INSERT INTO contactos (nombre, ${docField}, email, telefono, domicilio, localidad, provincia, codigo_postal, rol_actual, estado, origen)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'lead', 'cotizado', 'cotizador') RETURNING id`,
+          [clientName, docNum, data.clientEmail || data.payerEmail || '', data.clientPhone || data.payerPhone || '',
+           addr.domicilio, addr.localidad, addr.provincia, addr.codigo_postal]
         );
         contactoId = ins.rows[0].id;
       }
@@ -83,8 +100,10 @@ async function registerInDB({ type, data, totals, req }) {
       }
       if (!contactoId) {
         const ins = await db.query(
-          `INSERT INTO contactos (nombre, email, telefono, rol_actual, estado, origen) VALUES ($1, $2, $3, 'lead', 'nuevo', 'cotizador') RETURNING id`,
-          [clientName, data.clientEmail || '', data.clientPhone || '']
+          `INSERT INTO contactos (nombre, email, telefono, domicilio, localidad, provincia, codigo_postal, rol_actual, estado, origen)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, 'lead', 'cotizado', 'cotizador') RETURNING id`,
+          [clientName, data.clientEmail || '', data.clientPhone || '',
+           addr.domicilio, addr.localidad, addr.provincia, addr.codigo_postal]
         );
         contactoId = ins.rows[0].id;
       }
@@ -93,85 +112,101 @@ async function registerInDB({ type, data, totals, req }) {
     refs.contactoId = contactoId;
     if (!contactoId) return refs;
 
-    // Update last interaction
-    await db.query('UPDATE contactos SET fecha_ultima_interaccion = NOW(), updated_at = NOW() WHERE id = $1', [contactoId]);
+    // Update contact with latest data (address fields, interaction timestamp)
+    const updateParts = ['fecha_ultima_interaccion = NOW()', 'updated_at = NOW()'];
+    const updateParams = [contactoId];
+    let paramIdx = 2;
+    if (addr.domicilio)      { updateParts.push(`domicilio = COALESCE(NULLIF($${paramIdx}, ''), domicilio)`);      updateParams.push(addr.domicilio);      paramIdx++; }
+    if (addr.localidad)      { updateParts.push(`localidad = COALESCE(NULLIF($${paramIdx}, ''), localidad)`);      updateParams.push(addr.localidad);      paramIdx++; }
+    if (addr.provincia)      { updateParts.push(`provincia = COALESCE(NULLIF($${paramIdx}, ''), provincia)`);      updateParams.push(addr.provincia);      paramIdx++; }
+    if (addr.codigo_postal)  { updateParts.push(`codigo_postal = COALESCE(NULLIF($${paramIdx}, ''), codigo_postal)`); updateParams.push(addr.codigo_postal); paramIdx++; }
+    await db.query(`UPDATE contactos SET ${updateParts.join(', ')} WHERE id = $1`, updateParams);
 
     // 2. Register document
     const items = Array.isArray(data.items) ? data.items : [];
     const moneda = data.currency || 'ARS';
     const createdBy = data._user || 'cotizador';
 
+    const clienteSnapshot = {
+      nombre: data.clientName || data.payerName || '',
+      cuit: data.clientCUIT || data.payerCUIT || '',
+      email: data.clientEmail || data.payerEmail || '',
+      telefono: data.clientPhone || data.payerPhone || '',
+      domicilio: addr.domicilio,
+      localidad: addr.localidad,
+      provincia: addr.provincia,
+      codigo_postal: addr.codigo_postal,
+    };
+
     if (type === 'quote') {
-      // Generate correlative number per contact: COT-{contactoId}-{seq}
-      const countRes = await db.query('SELECT COUNT(*) FROM cotizaciones WHERE contacto_id = $1', [contactoId]);
-      const seq = parseInt(countRes.rows[0].count, 10) + 1;
-      const numero = `COT-${String(contactoId).padStart(4, '0')}-${String(seq).padStart(2, '0')}`;
-
-      const cot = await db.query(
-        `INSERT INTO cotizaciones (contacto_id, numero, fecha, validez_dias, moneda, subtotal, impuestos, total, estado, notas, created_by)
-         VALUES ($1,$2,CURRENT_DATE,$3,$4,$5,$6,$7,'enviada',$8,$9) RETURNING *`,
-        [contactoId, numero, data.validityDays || 15, moneda, totals.subtotal, totals.iva, totals.total, data.notes || null, createdBy]
-      );
-      refs.cotizacionId = cot.rows[0].id;
-      refs.docNumber = numero;
-
-      for (const item of items) {
-        await db.query(
-          `INSERT INTO cotizacion_items (cotizacion_id, descripcion, cantidad, precio_unitario, subtotal)
-           VALUES ($1, $2, $3, $4, $5)`,
-          [refs.cotizacionId, item.description || '', item.quantity || 1, item.price || 0,
-           (parseFloat(item.quantity || 1) * parseFloat(item.price || 0))]
+      const inserted = await allocateNextNumber('cotizaciones', async (client, numero) => {
+        const cot = await client.query(
+          `INSERT INTO cotizaciones (contacto_id, numero, fecha, validez_dias, moneda, subtotal, impuestos, total, estado, notas, detalle_categorias, cliente_snapshot, created_by)
+           VALUES ($1,$2,CURRENT_DATE,$3,$4,$5,$6,$7,'enviada',$8,$9,$10,$11) RETURNING *`,
+          [contactoId, numero, data.validityDays || 15, moneda, totals.subtotal, totals.iva, totals.total,
+           data.notes || null,
+           data.categoryDetails ? JSON.stringify(data.categoryDetails) : null,
+           JSON.stringify(clienteSnapshot),
+           createdBy]
         );
-      }
+        for (const item of items) {
+          await client.query(
+            `INSERT INTO cotizacion_items (cotizacion_id, descripcion, cantidad, precio_unitario, subtotal)
+             VALUES ($1, $2, $3, $4, $5)`,
+            [cot.rows[0].id, item.description || '', item.quantity || 1, item.price || 0,
+             (parseFloat(item.quantity || 1) * parseFloat(item.price || 0))]
+          );
+        }
+        return { id: cot.rows[0].id, numero };
+      });
+      refs.cotizacionId = inserted.id;
+      refs.docNumber = inserted.numero;
 
-      // Only advance estado if it's in an early stage — don't override if already further in the funnel
-      await db.query(`UPDATE contactos SET estado = CASE WHEN estado IN ('nuevo') THEN 'contactado' ELSE estado END, fecha_ultima_interaccion = NOW(), updated_at = NOW() WHERE id = $1`, [contactoId]);
+      // Advance estado to 'cotizado' if still in early funnel stages
+      await db.query(`UPDATE contactos SET estado = CASE WHEN estado IN ('nuevo', 'contactado', 'calificado') THEN 'cotizado' ELSE estado END, fecha_ultima_interaccion = NOW(), updated_at = NOW() WHERE id = $1`, [contactoId]);
       await logAudit({ tabla: 'cotizaciones', registro_id: refs.cotizacionId, accion: 'INSERT', usuario: createdBy });
 
     } else if (type === 'invoice') {
-      const countRes = await db.query('SELECT COUNT(*) FROM facturas');
-      const num = parseInt(countRes.rows[0].count, 10) + 1;
-      const numero = `FAC-${String(num).padStart(4, '0')}`;
-
-      const fac = await db.query(
-        `INSERT INTO facturas (contacto_id, numero, tipo, fecha, moneda, subtotal, iva, total, estado, created_by)
-         VALUES ($1,$2,$3,CURRENT_DATE,$4,$5,$6,$7,'emitida',$8) RETURNING *`,
-        [contactoId, numero, data.invoiceLetter || 'B', moneda, totals.subtotal, totals.iva, totals.total, createdBy]
-      );
-      refs.facturaId = fac.rows[0].id;
-      refs.docNumber = numero;
-
-      for (const item of items) {
-        await db.query(
-          `INSERT INTO factura_items (factura_id, descripcion, cantidad, precio_unitario, subtotal)
-           VALUES ($1, $2, $3, $4, $5)`,
-          [refs.facturaId, item.description || '', item.quantity || 1, item.price || 0,
-           (parseFloat(item.quantity || 1) * parseFloat(item.price || 0))]
+      const inserted = await allocateNextNumber('facturas', async (client, numero) => {
+        const fac = await client.query(
+          `INSERT INTO facturas (contacto_id, numero, tipo, fecha, moneda, subtotal, iva, total, estado, created_by)
+           VALUES ($1,$2,$3,CURRENT_DATE,$4,$5,$6,$7,'emitida',$8) RETURNING *`,
+          [contactoId, numero, data.invoiceLetter || 'B', moneda, totals.subtotal, totals.iva, totals.total, createdBy]
         );
-      }
+        for (const item of items) {
+          await client.query(
+            `INSERT INTO factura_items (factura_id, descripcion, cantidad, precio_unitario, subtotal)
+             VALUES ($1, $2, $3, $4, $5)`,
+            [fac.rows[0].id, item.description || '', item.quantity || 1, item.price || 0,
+             (parseFloat(item.quantity || 1) * parseFloat(item.price || 0))]
+          );
+        }
+        return { id: fac.rows[0].id, numero };
+      });
+      refs.facturaId = inserted.id;
+      refs.docNumber = inserted.numero;
 
       await db.query(`UPDATE contactos SET rol_actual = 'cliente', estado = 'ganado', updated_at = NOW() WHERE id = $1 AND rol_actual IN ('lead','contacto')`, [contactoId]);
       await logAudit({ tabla: 'facturas', registro_id: refs.facturaId, accion: 'INSERT', usuario: createdBy });
 
     } else if (type === 'receipt') {
-      const countRes = await db.query('SELECT COUNT(*) FROM recibos');
-      const num = parseInt(countRes.rows[0].count, 10) + 1;
-      const numero = `REC-${String(num).padStart(4, '0')}`;
-
-      const rec = await db.query(
-        `INSERT INTO recibos (contacto_id, numero, fecha, monto, medio_pago, notas, created_by)
-         VALUES ($1,$2,CURRENT_DATE,$3,$4,$5,$6) RETURNING *`,
-        [contactoId, numero, totals.total, data.paymentMethod || null, data.concept || null, createdBy]
-      );
-      refs.reciboId = rec.rows[0].id;
-      refs.docNumber = numero;
-
-      // Register payment
-      await db.query(
-        `INSERT INTO pagos (contacto_id, monto, fecha, medio, referencia, created_by)
-         VALUES ($1,$2,CURRENT_DATE,$3,$4,$5)`,
-        [contactoId, totals.total, data.paymentMethod || null, numero, createdBy]
-      );
+      const montoRecibo = parseFloat(data.amount || totals.total || 0);
+      const inserted = await allocateNextNumber('recibos', async (client, numero) => {
+        const rec = await client.query(
+          `INSERT INTO recibos (contacto_id, numero, fecha, monto, medio_pago, notas, moneda, concepto, cliente_snapshot, created_by)
+           VALUES ($1,$2,CURRENT_DATE,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+          [contactoId, numero, montoRecibo, data.paymentMethod || null, data.concept || null,
+           moneda, data.concept || null, JSON.stringify(clienteSnapshot), createdBy]
+        );
+        await client.query(
+          `INSERT INTO pagos (contacto_id, monto, fecha, medio, referencia, created_by)
+           VALUES ($1,$2,CURRENT_DATE,$3,$4,$5)`,
+          [contactoId, montoRecibo, data.paymentMethod || null, numero, createdBy]
+        );
+        return { id: rec.rows[0].id, numero };
+      });
+      refs.reciboId = inserted.id;
+      refs.docNumber = inserted.numero;
 
       await logAudit({ tabla: 'recibos', registro_id: refs.reciboId, accion: 'INSERT', usuario: createdBy });
     }
@@ -202,6 +237,15 @@ router.post('/generate-pdf', async (req, res) => {
     const data = injectBranding(rawData);
     const totals = computeTotals(data);
 
+    // DEBUG: log pack data to find rendering issue
+    if (data.categoryDetails && data.categoryDetails.packs) {
+      console.log('[PDF Debug] Packs received:', JSON.stringify(data.categoryDetails.packs.map(p => ({
+        name: p.packName,
+        subItemCount: (p.subItems || []).length,
+        subItemTypes: (p.subItems || []).map(s => s._serviceType || 'NO_TYPE'),
+      })), null, 2));
+    }
+
     const clientName = data.clientName || data.payerName || 'Sin nombre';
     const docNumber = data.invoiceNumber || data.receiptNumber || data.quoteNumber || 'Sin número';
 
@@ -213,6 +257,11 @@ router.post('/generate-pdf', async (req, res) => {
     // Register in our DB (non-fatal) — skip if already confirmed from frontend
     const dbRefs = data._skipDbRegistration ? {} : await registerInDB({ type, data, totals, req });
 
+    // Currency symbol for template
+    const currencyMap = { USD: 'USD', ARS: '$', EUR: 'EUR' };
+    const currencyCode = data.currency || 'USD';
+    const currencySymbol = currencyMap[currencyCode] || currencyCode;
+
     const enrichedData = {
       ...data,
       subtotal: totals.subtotal,
@@ -222,6 +271,7 @@ router.post('/generate-pdf', async (req, res) => {
       ivaRate: totals.ivaRate,
       otherTaxes: totals.otherTaxes,
       total: totals.total,
+      currencySymbol,
     };
 
     // Override doc number with our DB number

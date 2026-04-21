@@ -78,17 +78,17 @@ COPY apps/business-docs/ ./apps/business-docs/
 
 # Variables de entorno
 ENV NODE_ENV=production
-ENV PORT=3001
+ENV PORT=3000
 
 # Exponer puerto
-EXPOSE 3001
+EXPOSE 3000
 
 # Cambiar al directorio de la app
 WORKDIR /app/apps/business-docs
 
 # Healthcheck real
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3001/health', r => { if (r.statusCode !== 200) process.exit(1) })"
+  CMD node -e "require('http').get('http://localhost:3000/health', r => { if (r.statusCode !== 200) process.exit(1) })"
 
 # Iniciar aplicación
 CMD ["npm", "start"]

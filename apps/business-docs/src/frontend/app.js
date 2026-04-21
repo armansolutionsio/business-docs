@@ -159,13 +159,72 @@ const CATEGORY_DETAIL_CONFIG = {
         title: 'Detalle del Pack Turístico',
         icon: '🎒',
         multiInstance: true,
-        subItemLabel: 'Pack',
-        subItemFields: [
-            { name: 'packName', label: 'Nombre del Pack', type: 'text', placeholder: 'Ej: Europa Clásica' },
-            { name: 'destinations', label: 'Destinos Incluidos', type: 'textarea', placeholder: 'Ej: Madrid, Barcelona, París, Roma...' },
-            { name: 'duration', label: 'Duración', type: 'text', placeholder: 'Ej: 7 noches / 8 días' },
-            { name: 'included', label: '¿Qué Incluye?', type: 'textarea', placeholder: 'Detallar servicios incluidos en el pack...' },
-        ]
+        subItemLabel: 'Servicio',
+        isPackContainer: true,
+        topFields: [
+            { name: 'packName', label: 'Nombre del Pack', type: 'text', placeholder: 'Ej: Europa Clásica 15 días' },
+            { name: 'destinations', label: 'Destinos Incluidos', type: 'text', placeholder: 'Ej: Madrid, Barcelona, París, Roma' },
+            { name: 'duration', label: 'Duración', type: 'text', placeholder: 'Ej: 14 noches / 15 días' },
+            { name: 'passengers', label: 'Cantidad de Pasajeros', type: 'number', placeholder: '1' },
+        ],
+        serviceTypes: {
+            vuelo: {
+                label: 'Vuelo', icon: '✈️',
+                fields: [
+                    { name: 'passengerName', label: 'Pasajero', type: 'text', placeholder: 'Nombre del pasajero' },
+                    { name: 'airline', label: 'Aerolínea', type: 'text', placeholder: 'Ej: Aerolíneas Argentinas' },
+                    { name: 'flightNumber', label: 'Nro. de Vuelo', type: 'text', placeholder: 'Ej: AR1234' },
+                    { name: 'departureAirport', label: 'Aeropuerto Salida', type: 'airport', placeholder: 'Buscar...' },
+                    { name: 'arrivalAirport', label: 'Aeropuerto Llegada', type: 'airport', placeholder: 'Buscar...' },
+                    { name: 'departureDate', label: 'Fecha Salida', type: 'date' },
+                    { name: 'departureTime', label: 'Hora Salida', type: 'time' },
+                    { name: 'arrivalDate', label: 'Fecha Llegada', type: 'date' },
+                    { name: 'arrivalTime', label: 'Hora Llegada', type: 'time' },
+                ]
+            },
+            hotel: {
+                label: 'Hotel', icon: '🏨',
+                fields: [
+                    { name: 'hotelName', label: 'Hotel', type: 'text', placeholder: 'Nombre del hotel' },
+                    { name: 'hotelLocation', label: 'Ubicación', type: 'text', placeholder: 'Ciudad / zona' },
+                    { name: 'checkInDate', label: 'Check-in', type: 'date' },
+                    { name: 'checkOutDate', label: 'Check-out', type: 'date' },
+                    { name: 'numberOfNights', label: 'Noches', type: 'number', readonly: true, computed: 'nights' },
+                    { name: 'roomType', label: 'Habitación', type: 'select', options: ['Standard', 'Superior', 'Suite', 'Deluxe', 'Junior Suite', 'Family Room'] },
+                    { name: 'mealPlan', label: 'Régimen', type: 'select', options: ['Solo alojamiento', 'Desayuno incluido', 'Media pensión', 'Pensión completa', 'All Inclusive'] },
+                ]
+            },
+            traslado: {
+                label: 'Traslado', icon: '🚐',
+                fields: [
+                    { name: 'pickupPoint', label: 'Origen', type: 'airport', placeholder: 'Buscar aeropuerto o escribir dirección...' },
+                    { name: 'dropoffPoint', label: 'Destino', type: 'text', placeholder: 'Hotel, aeropuerto, etc.' },
+                    { name: 'vehicleType', label: 'Vehículo', type: 'select', options: ['Sedan', 'Van', 'Minibus', 'Bus', 'SUV'] },
+                    { name: 'transferDate', label: 'Fecha', type: 'date' },
+                    { name: 'transferTime', label: 'Hora', type: 'time' },
+                ]
+            },
+            tour: {
+                label: 'Tour', icon: '🗺️',
+                fields: [
+                    { name: 'tourName', label: 'Tour', type: 'text', placeholder: 'Nombre del tour' },
+                    { name: 'tourLocation', label: 'Ubicación', type: 'text', placeholder: 'Ciudad / zona' },
+                    { name: 'tourDate', label: 'Fecha', type: 'date' },
+                    { name: 'tourDuration', label: 'Duración', type: 'text', placeholder: 'Ej: 4 horas' },
+                    { name: 'tourIncludes', label: '¿Qué Incluye?', type: 'textarea', placeholder: 'Actividades incluidas...' },
+                ]
+            },
+            seguro: {
+                label: 'Seguro', icon: '🛡️',
+                fields: [
+                    { name: 'insuranceCompany', label: 'Compañía', type: 'text', placeholder: 'Ej: Assist Card' },
+                    { name: 'coverageType', label: 'Cobertura', type: 'select', options: ['Básico', 'Standard', 'Premium', 'Cobertura Total'] },
+                    { name: 'insuranceStartDate', label: 'Desde', type: 'date' },
+                    { name: 'insuranceEndDate', label: 'Hasta', type: 'date' },
+                    { name: 'coverageDetails', label: 'Detalle', type: 'textarea', placeholder: 'Coberturas incluidas...' },
+                ]
+            }
+        }
     },
     'VIP/Premium': {
         slug: 'vip',
@@ -247,7 +306,7 @@ const companyData = {
     companyStartDate: '2025-12-01',
     companyGrossIncome: '30719189845',
     companyEmail: 'info@armansolutions.com',
-    companyPhone: '+54 11 XXXX-XXXX'
+    companyPhone: '+54 9 11 5698-9263'
 };
 
 // Configuración de documentos
@@ -285,17 +344,23 @@ const documentConfig = {
             // Datos del Emisor
             { name: 'companyName', label: 'Nombre o Razón Social', type: 'text', required: true },
             { name: 'companyCUIT', label: 'CUIT', type: 'text', required: true, placeholder: 'XX-XXXXXXXX-X' },
-            { name: 'companyAddress', label: 'Domicilio', type: 'textarea', required: true },
+            { name: 'companyAddress', label: 'Domicilio', type: 'text', required: true },
+            { name: 'companyEmail', label: 'Email', type: 'email' },
+            { name: 'companyPhone', label: 'Teléfono', type: 'tel' },
             // Datos del Pagador
             { name: 'payerName', label: 'Nombre/Razón Social del Pagador', type: 'text', required: true },
-            { name: 'payerCUIT', label: 'CUIT/DNI del Pagador', type: 'text', required: true },
+            { name: 'payerCUIT', label: 'CUIT/DNI/Pasaporte del Pagador', type: 'text' },
+            { name: 'payerEmail', label: 'Email del Pagador', type: 'email' },
+            { name: 'payerPhone', label: 'Teléfono del Pagador', type: 'tel' },
             // Detalle del Pago
-            { name: 'receiptNumber', label: 'Número de Recibo', type: 'number', required: true },
+            { name: 'receiptNumber', label: 'Número de Recibo', type: 'text', required: true, readonly: true },
             { name: 'receiptDate', label: 'Fecha', type: 'date', required: true },
-            { name: 'concept', label: 'Concepto (ej: Cancelación Factura Nº)', type: 'textarea', required: true },
-            { name: 'amount', label: 'Importe en Números', type: 'number', required: true },
-            { name: 'amountInLetters', label: 'Importe en Letras', type: 'text', required: true },
-            { name: 'paymentMethod', label: 'Medio de Pago', type: 'select', required: true, options: ['Efectivo', 'Transferencia Bancaria', 'Cheque', 'Tarjeta de Crédito', 'Tarjeta de Débito', 'Billetera Virtual', 'Otro'] }
+            { name: 'concept', label: 'Concepto (ej: Pago parcial viaje a Europa)', type: 'textarea', required: true },
+            { name: 'currency', label: 'Moneda', type: 'select', required: true, options: ['ARS', 'USD', 'EUR'], defaultValue: 'USD' },
+            { name: 'amount', label: 'Importe', type: 'number', required: true },
+            { name: 'amountInLetters', label: 'Importe en Letras (ej: Cuatro mil novecientos sesenta)', type: 'text', required: true },
+            { name: 'paymentMethod', label: 'Medio de Pago', type: 'select', required: true, options: ['Efectivo', 'Transferencia Bancaria', 'Cheque', 'Tarjeta de Crédito', 'Tarjeta de Débito', 'Billetera Virtual', 'Otro'] },
+            { name: 'paymentReference', label: 'Referencia de Pago (nº transferencia, cheque, etc.)', type: 'text' }
         ],
         hasItems: false
     },
@@ -305,21 +370,25 @@ const documentConfig = {
             // Datos del Emisor
             { name: 'companyName', label: 'Nombre o Razón Social', type: 'text', required: true },
             { name: 'companyCUIT', label: 'CUIT', type: 'text', required: true, placeholder: 'XX-XXXXXXXX-X' },
-            { name: 'companyAddress', label: 'Domicilio', type: 'textarea', required: true },
+            { name: 'companyAddress', label: 'Domicilio', type: 'text', required: true },
             { name: 'companyEmail', label: 'Email', type: 'email', required: true },
             { name: 'companyPhone', label: 'Teléfono', type: 'tel', required: true },
             // Datos del Cliente
-            { name: 'clientName', label: 'Nombre/Empresa del Cliente', type: 'text', required: true },
-            { name: 'clientCUIT', label: 'CUIT/DNI (opcional)', type: 'text' },
-            { name: 'clientEmail', label: 'Email del Cliente', type: 'email' },
-            { name: 'clientPhone', label: 'Teléfono del Cliente', type: 'tel' },
+            { name: 'clientName', label: 'Nombre/Empresa', type: 'text' },
+            { name: 'clientCUIT', label: 'CUIT/DNI', type: 'text' },
+            { name: 'clientEmail', label: 'Email', type: 'email' },
+            { name: 'clientPhone', label: 'Teléfono', type: 'tel' },
+            { name: 'clientDomicilio', label: 'Domicilio', type: 'text', placeholder: 'Calle, número, piso, depto.' },
+            { name: 'clientLocalidad', label: 'Localidad', type: 'text' },
+            { name: 'clientProvincia', label: 'Provincia', type: 'text' },
+            { name: 'clientCodigoPostal', label: 'Código Postal', type: 'text' },
             // Comprobante
             { name: 'quoteNumber', label: 'Número de Cotización', type: 'text', required: true },
             { name: 'quoteDate', label: 'Fecha', type: 'date', required: true },
             // Condiciones
             { name: 'validity', label: 'Validez de la Oferta (días)', type: 'number', required: true, placeholder: '3', defaultValue: 3 },
             { name: 'paymentTerms', label: 'Forma de Pago (selecciona las que aceptas)', type: 'multiselect', required: true, options: ['Efectivo', 'Transferencia Bancaria', 'Cheque', 'Tarjeta de Crédito', 'Tarjeta de Débito', 'Billetera Virtual', 'Criptomonedas'] },
-            { name: 'deliveryTerm', label: 'Plazo de Entrega', type: 'text', required: true, placeholder: 'a coordinar', defaultValue: 'a coordinar' }
+            { name: 'deliveryTerm', label: 'Plazo de Entrega', type: 'text', required: true, placeholder: 'A confirmar', defaultValue: 'A confirmar' }
         ],
         hasItems: true
     }
@@ -333,6 +402,10 @@ function prefillFromUrlParams() {
         clientCUIT: params.get('clientCUIT'),
         clientEmail: params.get('clientEmail'),
         clientPhone: params.get('clientPhone'),
+        clientDomicilio: params.get('clientDomicilio'),
+        clientLocalidad: params.get('clientLocalidad'),
+        clientProvincia: params.get('clientProvincia'),
+        clientCodigoPostal: params.get('clientCodigoPostal'),
     };
     Object.entries(mapping).forEach(([field, value]) => {
         if (!value) return;
@@ -454,7 +527,7 @@ function renderTab(tabName) {
                             <label>${field.label}${field.required ? '<span class="required">*</span>' : ''}</label>
                             <select name="${field.name}" ${field.required ? 'required' : ''}>
                                 <option value="">Seleccionar...</option>
-                                ${field.options.map(opt => `<option value="${opt}">${opt}</option>`).join('')}
+                                ${field.options.map(opt => `<option value="${opt}" ${field.defaultValue === opt ? 'selected' : ''}>${opt}</option>`).join('')}
                             </select>
                         </div>
                     `;
@@ -655,13 +728,17 @@ function addItem() {
     appState.items.push(item);
 
     // Inicializar sub-items en el estado basado en la cantidad
-    if (catConfig && catConfig.subItemFields) {
+    if (catConfig) {
         const sectionKey = catConfig.slug + '_' + item.id;
-        const subItems = [];
-        for (let i = 0; i < qty; i++) {
-            subItems.push({});
+        if (catConfig.isPackContainer) {
+            appState.categoryDetails[sectionKey] = { subItems: [] };
+        } else if (catConfig.subItemFields) {
+            const subItems = [];
+            for (let i = 0; i < qty; i++) {
+                subItems.push({});
+            }
+            appState.categoryDetails[sectionKey] = { subItems: subItems };
         }
-        appState.categoryDetails[sectionKey] = { subItems: subItems };
     }
 
     renderItems();
@@ -796,10 +873,8 @@ function renderItems() {
 
     let html = '';
     appState.items.forEach(item => {
-        // Para items con categoría: subtotal = price (el precio ya es la suma de sub-items)
-        // Para items sin categoría: subtotal = quantity * price
+        const subtotal = item.quantity * item.price;
         const isCategorized = item.category && CATEGORY_DETAIL_CONFIG[item.category];
-        const subtotal = isCategorized ? item.price : (item.quantity * item.price);
         const qtyLabel = isCategorized ? item.quantity + ' (' + (CATEGORY_DETAIL_CONFIG[item.category].subItemLabel || 'sub') + (item.quantity > 1 ? 's' : '') + ')' : item.quantity;
         html += `
             <div class="item-row">
@@ -829,8 +904,7 @@ function updateTotal() {
 
     if (appState.items.length > 0) {
         total = appState.items.reduce((sum, item) => {
-            const isCategorized = item.category && CATEGORY_DETAIL_CONFIG[item.category];
-            return sum + (isCategorized ? item.price : (item.quantity * item.price));
+            return sum + (item.quantity * item.price);
         }, 0);
     } else {
         // Si es recibo, usar el campo amount
@@ -1025,7 +1099,18 @@ function renderCategorySection(categoryName, sectionKey, item, instanceIndex) {
     }
 
     // Sub-items container
-    if (config.subItemFields) {
+    if (config.isPackContainer) {
+        html += `<div class="sub-items-container" id="sub-items-${sectionKey}">`;
+        subItems.forEach((subItemData, idx) => {
+            html += renderSubItemForm(config, sectionKey, idx, subItemData, subItems.length);
+        });
+        html += `</div>`;
+        html += `<div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px;">`;
+        Object.entries(config.serviceTypes).forEach(([typeKey, typeConf]) => {
+            html += `<button type="button" class="btn-add-subitem" style="width: auto; flex: none; padding: 8px 14px; font-size: 12px;" onclick="addSubItem('${sectionKey}', '${categoryName}', '${typeKey}')">+ ${typeConf.icon} ${typeConf.label}</button>`;
+        });
+        html += `</div>`;
+    } else if (config.subItemFields) {
         html += `<div class="sub-items-container" id="sub-items-${sectionKey}">`;
         subItems.forEach((subItemData, idx) => {
             html += renderSubItemForm(config, sectionKey, idx, subItemData, subItems.length);
@@ -1058,21 +1143,30 @@ function renderCategorySection(categoryName, sectionKey, item, instanceIndex) {
 
 // Renderizar formulario de un sub-item individual
 function renderSubItemForm(config, sectionKey, index, subItemData, totalSubItems) {
-    const label = config.subItemLabel || 'Item';
+    let fields = config.subItemFields || [];
+    let label = config.subItemLabel || 'Item';
+    if (config.isPackContainer && subItemData._serviceType) {
+        const svcType = config.serviceTypes[subItemData._serviceType];
+        if (svcType) {
+            fields = svcType.fields;
+            label = svcType.icon + ' ' + svcType.label;
+        }
+    }
+
+    const canRemove = config.isPackContainer ? true : (totalSubItems > 1);
     let html = `<div class="sub-item-form" data-sub-index="${index}" id="sub-item-${sectionKey}-${index}">`;
     html += `<div class="sub-item-header">`;
-    html += `<span class="sub-item-title">${label} ${index + 1}</span>`;
-    // Price field for each sub-item
+    html += `<span class="sub-item-title">${label} ${config.isPackContainer ? '' : (index + 1)}</span>`;
     html += `<div class="sub-item-price-group">`;
     html += `<label>Precio:</label>`;
     html += `<input type="number" class="sub-item-price" id="sub-price-${sectionKey}-${index}" value="${subItemData._price || ''}" placeholder="0.00" step="0.01" min="0" onchange="updateItemPriceFromSubItems('${sectionKey}')">`;
     html += `</div>`;
-    if (totalSubItems > 1) {
+    if (canRemove) {
         html += `<button type="button" class="remove-subitem-btn" onclick="removeSubItem('${sectionKey}', ${index}, '${config.slug}')">✕</button>`;
     }
     html += `</div>`;
     html += `<div class="form-grid">`;
-    config.subItemFields.forEach(field => {
+    fields.forEach(field => {
         const fieldId = `detail-${sectionKey}-sub-${index}-${field.name}`;
         const value = subItemData[field.name] || '';
         const readonlyAttr = field.readonly ? 'readonly' : '';
@@ -1116,17 +1210,18 @@ function renderSubItemForm(config, sectionKey, index, subItemData, totalSubItems
 }
 
 // Agregar un sub-item a una sección
-function addSubItem(sectionKey, categoryName) {
+function addSubItem(sectionKey, categoryName, serviceType) {
     const config = CATEGORY_DETAIL_CONFIG[categoryName];
     if (!config) return;
 
     // Guardar estado actual antes de modificar
     saveCategoryDetailToState(sectionKey, config);
 
-    // Agregar sub-item vacío
+    // Agregar sub-item (con tipo de servicio para packs)
     if (!appState.categoryDetails[sectionKey]) appState.categoryDetails[sectionKey] = {};
     if (!appState.categoryDetails[sectionKey].subItems) appState.categoryDetails[sectionKey].subItems = [];
-    appState.categoryDetails[sectionKey].subItems.push({});
+    const newSubItem = serviceType ? { _serviceType: serviceType } : {};
+    appState.categoryDetails[sectionKey].subItems.push(newSubItem);
 
     // Re-renderizar la sección de sub-items
     const container = document.getElementById(`sub-items-${sectionKey}`);
@@ -1155,7 +1250,8 @@ function removeSubItem(sectionKey, index, slug) {
     saveCategoryDetailToState(sectionKey, config);
 
     const detail = appState.categoryDetails[sectionKey];
-    if (!detail || !detail.subItems || detail.subItems.length <= 1) return;
+    if (!detail || !detail.subItems) return;
+    if (!config.isPackContainer && detail.subItems.length <= 1) return;
 
     detail.subItems.splice(index, 1);
 
@@ -1293,21 +1389,27 @@ function setupCategorySectionListeners(sectionKey, config) {
 
 // Configurar listeners para sub-items (aeropuertos autocomplete, hotel nights calc, etc.)
 function setupSubItemListeners(sectionKey, config) {
-    if (!config.subItemFields) return;
+    if (!config.subItemFields && !config.isPackContainer) return;
     const detail = appState.categoryDetails[sectionKey] || {};
     const subItems = detail.subItems || [{}];
 
-    subItems.forEach((_, idx) => {
-        // Airport autocomplete
-        config.subItemFields.forEach(field => {
+    subItems.forEach((subItemData, idx) => {
+        let fields = config.subItemFields || [];
+        if (config.isPackContainer && subItemData._serviceType) {
+            const svcType = config.serviceTypes[subItemData._serviceType];
+            if (svcType) fields = svcType.fields;
+        }
+
+        fields.forEach(field => {
             if (field.type === 'airport') {
                 const input = document.getElementById(`detail-${sectionKey}-sub-${idx}-${field.name}`);
                 if (input) setupAirportAutocomplete(input);
             }
         });
 
-        // Hotel nights auto-calculation
-        if (config.slug === 'hoteles') {
+        const isHotelType = (config.slug === 'hoteles') ||
+                           (config.isPackContainer && subItemData._serviceType === 'hotel');
+        if (isHotelType) {
             const checkIn = document.getElementById(`detail-${sectionKey}-sub-${idx}-checkInDate`);
             const checkOut = document.getElementById(`detail-${sectionKey}-sub-${idx}-checkOutDate`);
             const nights = document.getElementById(`detail-${sectionKey}-sub-${idx}-numberOfNights`);
@@ -1425,18 +1527,27 @@ function saveCategoryDetailToState(sectionKey, config) {
     }
 
     // Sub-items
-    if (config.subItemFields) {
+    if (config.subItemFields || config.isPackContainer) {
         const container = document.getElementById(`sub-items-${sectionKey}`);
         if (container) {
             const subItemForms = container.querySelectorAll('.sub-item-form');
+            const existingSubItems = data.subItems || [];
             const subItems = [];
             subItemForms.forEach((form, idx) => {
                 const subData = {};
-                config.subItemFields.forEach(field => {
+                const existingSub = existingSubItems[idx] || {};
+
+                let fields = config.subItemFields || [];
+                if (config.isPackContainer && existingSub._serviceType) {
+                    subData._serviceType = existingSub._serviceType;
+                    const svcType = config.serviceTypes[existingSub._serviceType];
+                    if (svcType) fields = svcType.fields;
+                }
+
+                fields.forEach(field => {
                     const el = document.getElementById(`detail-${sectionKey}-sub-${idx}-${field.name}`);
                     if (el) subData[field.name] = el.value;
                 });
-                // Price
                 const priceEl = document.getElementById(`sub-price-${sectionKey}-${idx}`);
                 if (priceEl) subData._price = priceEl.value;
                 subItems.push(subData);

@@ -50,6 +50,15 @@ export const listCotizaciones = (id) => req('GET', `${BASE}/${id}/cotizaciones`)
 export const listVentas = (id) => req('GET', `${BASE}/${id}/ventas`);
 export const listFacturas = (id) => req('GET', `${BASE}/${id}/facturas`);
 export const listPagos = (id) => req('GET', `${BASE}/${id}/pagos`);
+export const listRecibos = (id) => req('GET', `${BASE}/${id}/recibos`);
+
+// Anulación
+export const anularCotizacion = (cotId, body) => req('PATCH', `/api/cotizaciones/${cotId}/anular`, body);
+export const anularRecibo = (recId, body) => req('PATCH', `/api/recibos/${recId}/anular`, body);
+
+// Borrado por error (soft-delete con historial — preserva correlatividad)
+export const borrarCotizacion = (cotId, body) => req('POST', `/api/cotizaciones/${cotId}/borrar`, body);
+export const borrarRecibo = (recId, body) => req('POST', `/api/recibos/${recId}/borrar`, body);
 
 // Campañas de mail
 export const listCampanias = (id) => req('GET', `${BASE}/${id}/campanias`);

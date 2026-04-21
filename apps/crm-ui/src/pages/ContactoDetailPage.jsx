@@ -96,7 +96,7 @@ export default function ContactoDetailPage() {
           <button className="btn btn-primary btn-sm" onClick={() => setShowMailModal(true)} disabled={!contacto.email}>
             Enviar Mail
           </button>
-          <a href={`/?clientName=${encodeURIComponent(displayName)}&clientCUIT=${encodeURIComponent(contacto.cuit || contacto.dni || '')}&clientEmail=${encodeURIComponent(contacto.email || '')}&clientPhone=${encodeURIComponent(contacto.telefono || '')}`}
+          <a href={`/?clientName=${encodeURIComponent(displayName)}&clientCUIT=${encodeURIComponent(contacto.cuit || contacto.dni || '')}&clientEmail=${encodeURIComponent(contacto.email || '')}&clientPhone=${encodeURIComponent(contacto.telefono || '')}&clientDomicilio=${encodeURIComponent(contacto.domicilio || '')}&clientLocalidad=${encodeURIComponent(contacto.localidad || '')}&clientProvincia=${encodeURIComponent(contacto.provincia || '')}&clientCodigoPostal=${encodeURIComponent(contacto.codigo_postal || '')}`}
             className="btn btn-primary btn-sm" style={{ textDecoration: 'none' }} target="_blank">
             Cotizar
           </a>
