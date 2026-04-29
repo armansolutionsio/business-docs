@@ -64,6 +64,7 @@ const mailRoutes           = require('./routes/mail');
 const dashboardRoutes      = require('./routes/dashboard');
 const whatsappSyncRoutes   = require('./routes/whatsappSync');
 const whatsappLeadsRoutes  = require('./routes/whatsappLeads');
+const adminIaRoutes        = require('./routes/adminIa');
 
 // Quick cotizacion estado update (used by cotizador frontend)
 const dbPool = require('./utils/db');
@@ -208,6 +209,7 @@ app.use('/api/proveedores', proveedoresRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/whatsapp-sync', whatsappSyncRoutes);
 app.use('/api/whatsapp-leads', whatsappLeadsRoutes);
+app.use('/api/admin-ia', adminIaRoutes);
 
 // ── WA Import — receives file as base64 or rows as JSON ──────────────────────
 app.post('/api/wa-import', async (req, res, next) => {

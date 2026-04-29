@@ -31,6 +31,34 @@ function computeTotals(data) {
   };
 }
 
+// Totales para Cotizador (tech): respeta los importes ya pre-calculados desde el frontend
+// (subtotal por rubro, contingencia, margen, descuento, IVA, otros) y los expone con la
+// misma forma que computeTotals, sumando los detalles para el template.
+function computeTechTotals(data) {
+  const t = (data.techDetails && data.techDetails.totals) || {};
+  const round2 = (n) => Math.round((parseFloat(n) || 0) * 100) / 100;
+  return {
+    subtotal: round2(t.subtotal),
+    sumHours: round2(t.sumHours),
+    sumInfra: round2(t.sumInfra),
+    sumLicenses: round2(t.sumLicenses),
+    sumCredentials: round2(t.sumCredentials),
+    sumOthers: round2(t.sumOthers),
+    contingencyAmt: round2(t.contingencyAmt),
+    contingencyPct: round2(t.contingencyPct),
+    marginAmt: round2(t.marginAmt),
+    marginPct: round2(t.marginPct),
+    discount: round2(t.discountAmt),
+    discountPct: round2(t.discountPct),
+    taxableBase: round2(t.taxableBase),
+    iva: round2(t.ivaAmt),
+    ivaRate: round2(t.ivaPct),
+    otherTaxes: round2(t.otherTaxesAmt),
+    otherTaxesPct: round2(t.otherTaxesPct),
+    total: round2(t.grand),
+  };
+}
+
 function injectBranding(data) {
   const normalized = { ...data };
   // Normalizar "A confirmar" (el usuario puede escribirlo en minúscula)
@@ -138,14 +166,18 @@ async function registerInDB({ type, data, totals, req }) {
       codigo_postal: addr.codigo_postal,
     };
 
-    if (type === 'quote') {
+    if (type === 'quote' || type === 'quote-tech') {
+      const detalleExtra = type === 'quote-tech'
+        ? { kind: 'tech', tech: data.techDetails || null }
+        : (data.categoryDetails || null);
+
       const inserted = await allocateNextNumber('cotizaciones', async (client, numero) => {
         const cot = await client.query(
           `INSERT INTO cotizaciones (contacto_id, numero, fecha, validez_dias, moneda, subtotal, impuestos, total, estado, notas, detalle_categorias, cliente_snapshot, created_by)
            VALUES ($1,$2,CURRENT_DATE,$3,$4,$5,$6,$7,'enviada',$8,$9,$10,$11) RETURNING *`,
-          [contactoId, numero, data.validityDays || 15, moneda, totals.subtotal, totals.iva, totals.total,
+          [contactoId, numero, data.validityDays || data.validity || 15, moneda, totals.subtotal, totals.iva, totals.total,
            data.notes || null,
-           data.categoryDetails ? JSON.stringify(data.categoryDetails) : null,
+           detalleExtra ? JSON.stringify(detalleExtra) : null,
            JSON.stringify(clienteSnapshot),
            createdBy]
         );
@@ -235,7 +267,7 @@ router.post('/generate-pdf', async (req, res) => {
     }
 
     const data = injectBranding(rawData);
-    const totals = computeTotals(data);
+    const totals = type === 'quote-tech' ? computeTechTotals(data) : computeTotals(data);
 
     // DEBUG: log pack data to find rendering issue
     if (data.categoryDetails && data.categoryDetails.packs) {
@@ -272,13 +304,29 @@ router.post('/generate-pdf', async (req, res) => {
       otherTaxes: totals.otherTaxes,
       total: totals.total,
       currencySymbol,
+      // Campos extra para quote-tech (no rompen otros tipos)
+      sumHours: totals.sumHours || 0,
+      sumInfra: totals.sumInfra || 0,
+      sumLicenses: totals.sumLicenses || 0,
+      sumCredentials: totals.sumCredentials || 0,
+      sumOthers: totals.sumOthers || 0,
+      contingencyAmt: totals.contingencyAmt || 0,
+      contingencyPct: totals.contingencyPct || 0,
+      marginAmt: totals.marginAmt || 0,
+      marginPct: totals.marginPct || 0,
+      discountPct: totals.discountPct || 0,
+      otherTaxesPct: totals.otherTaxesPct || 0,
     };
 
-    // Override doc number with our DB number
+    // Override doc number with our DB number (excepto quote-tech, que usa numeración local)
     if (dbRefs.docNumber) {
       if (type === 'quote') enrichedData.quoteNumber = dbRefs.docNumber;
       else if (type === 'invoice') enrichedData.invoiceNumber = dbRefs.docNumber;
       else if (type === 'receipt') enrichedData.receiptNumber = dbRefs.docNumber;
+    }
+    // Para cotizador tech preservamos el número del frontend y guardamos el DB-alloc en metadata
+    if (type === 'quote-tech') {
+      enrichedData._dbDocNumber = dbRefs.docNumber || null;
     }
 
     let processAssets = { ...assets };

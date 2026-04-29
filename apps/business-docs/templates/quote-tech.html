@@ -1,0 +1,369 @@
+<style>
+    /* Branding Solutions — independiente del color global del paquete */
+    :root {
+        --tech-primary: #7048B0;
+        --tech-primary-dark: #4F2D91;
+        --tech-soft: #efe6ff;
+        --tech-line: #e4d8f5;
+    }
+    .tech-doc * { box-sizing: border-box; }
+    .tech-section {
+        background: #f7f4fc;
+        padding: 14px 16px;
+        border-radius: 6px;
+        margin-bottom: 16px;
+        page-break-inside: avoid;
+    }
+    .tech-section-title {
+        font-size: 11pt;
+        font-weight: 700;
+        color: white;
+        background: var(--tech-primary);
+        padding: 8px 12px;
+        margin: -14px -16px 12px -16px;
+        border-radius: 6px 6px 0 0;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+    }
+    .tech-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .tech-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    .tech-field-label { font-size: 7.5pt; font-weight: 700; text-transform: uppercase; color: #7d7d7d; letter-spacing: 0.3px; }
+    .tech-field-value { font-size: 10pt; color: #2c3e50; font-weight: 500; margin-top: 1px; }
+    .tech-field-value strong { color: var(--tech-primary); }
+    .tech-table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+    .tech-table thead { background: var(--tech-primary); color: white; }
+    .tech-table th { padding: 9px 8px; font-size: 9pt; font-weight: 700; text-align: left; border: 1px solid #ddd; }
+    .tech-table td { padding: 8px; font-size: 9.5pt; border: 1px solid #e3e3e3; vertical-align: top; }
+    .tech-table tr:nth-child(even) td { background: #faf7ff; }
+    .num { font-family: 'Courier New', monospace; text-align: right; }
+    .legal-text { font-size: 8.5pt; color: #333; line-height: 1.55; white-space: pre-wrap; text-align: justify; }
+    .totals-box {
+        width: 380px;
+        margin-left: auto;
+        border: 2px solid var(--tech-primary);
+        border-radius: 6px;
+        overflow: hidden;
+    }
+    .totals-row { display: flex; justify-content: space-between; padding: 8px 14px; border-bottom: 1px solid #ececec; font-size: 9.5pt; background: white; }
+    .totals-row.subtotal { background: #faf7ff; font-weight: 700; }
+    .totals-row.grand { background: var(--tech-primary); color: white; font-weight: 700; padding: 12px 14px; font-size: 12pt; border-bottom: none; }
+    .totals-row .num { font-weight: 600; }
+    .signature-row { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 38px; page-break-inside: avoid; }
+    .signature-box { border-top: 1.2px solid #777; padding-top: 6px; text-align: center; font-size: 9pt; color: #555; }
+    .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 7.5pt; font-weight: 700; text-transform: uppercase; }
+    .pill-primary { background: var(--tech-soft); color: var(--tech-primary); }
+</style>
+
+<div class="tech-doc">
+
+<!-- HEADER -->
+<div style="display: flex; align-items: flex-start; gap: 16px; padding-bottom: 14px; margin-bottom: 22px; page-break-inside: avoid;">
+    <div style="flex-shrink: 0;">
+        {{#if logo}}
+        <img src="{{logo.dataUrl}}" alt="Logo" style="max-width: 88px; max-height: 88px; object-fit: contain;">
+        {{else}}
+        <svg width="88" height="88" viewBox="0 0 88 88">
+            <rect width="88" height="88" fill="#7048B0" rx="8"/>
+            <text x="44" y="56" font-size="40" font-weight="bold" fill="white" text-anchor="middle" font-family="Arial">A</text>
+        </svg>
+        {{/if}}
+    </div>
+    <div style="flex: 1;">
+        <h1 style="font-size: 18pt; font-weight: 700; color: #7048B0; margin: 0 0 3px 0;">{{companyName}}</h1>
+        <p style="font-size: 9pt; color: #666; margin: 1px 0;">CUIT: {{companyCUIT}}{{#if companyIVACondition}} · {{companyIVACondition}}{{/if}}</p>
+        <p style="font-size: 9pt; color: #666; margin: 1px 0;">{{companyAddress}}</p>
+        <p style="font-size: 9pt; color: #666; margin: 1px 0;">{{companyEmail}}{{#if companyPhone}} · {{companyPhone}}{{/if}}{{#if companyWebsite}} · {{companyWebsite}}{{/if}}</p>
+    </div>
+    <div style="text-align: right; padding: 12px 16px; background: linear-gradient(135deg, #7048B0 0%, #4F2D91 100%); border-radius: 8px; color: white; min-width: 220px;">
+        <div style="font-size: 11pt; font-weight: 700; margin-bottom: 4px; opacity: 0.95;">COTIZACIÓN</div>
+        <div style="font-size: 8pt; opacity: 0.85; margin-bottom: 8px;">PROYECTO TECNOLÓGICO</div>
+        <div style="font-size: 18pt; font-weight: 700;">N° {{quoteNumber}}</div>
+        <div style="font-size: 8.5pt; margin-top: 6px;">Fecha: {{dateFormat quoteDate}}</div>
+        {{#if techDetails.quoteValidUntil}}
+        <div style="font-size: 8.5pt;">Válida hasta: {{dateFormat techDetails.quoteValidUntil}}</div>
+        {{/if}}
+    </div>
+</div>
+
+<!-- EMISOR & CLIENTE -->
+<div class="tech-grid-2" style="margin-bottom: 16px;">
+    <div class="tech-section" style="margin-bottom: 0;">
+        <div class="tech-section-title">Emisor</div>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+            <div><div class="tech-field-label">Razón Social</div><div class="tech-field-value">{{companyName}}</div></div>
+            <div><div class="tech-field-label">CUIT</div><div class="tech-field-value">{{companyCUIT}}</div></div>
+            {{#if companyIVACondition}}<div><div class="tech-field-label">Condición IVA</div><div class="tech-field-value">{{companyIVACondition}}</div></div>{{/if}}
+            {{#if companyGrossIncome}}<div><div class="tech-field-label">Ingresos Brutos</div><div class="tech-field-value">{{companyGrossIncome}}</div></div>{{/if}}
+            <div><div class="tech-field-label">Domicilio</div><div class="tech-field-value">{{companyAddress}}</div></div>
+            <div><div class="tech-field-label">Email</div><div class="tech-field-value">{{companyEmail}}</div></div>
+            {{#if companyPhone}}<div><div class="tech-field-label">Teléfono</div><div class="tech-field-value">{{companyPhone}}</div></div>{{/if}}
+            {{#if companyStartDate}}<div><div class="tech-field-label">Inicio de Actividades</div><div class="tech-field-value">{{dateFormat companyStartDate}}</div></div>{{/if}}
+        </div>
+    </div>
+
+    <div class="tech-section" style="margin-bottom: 0;">
+        <div class="tech-section-title">Cliente</div>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+            {{#if clientName}}<div><div class="tech-field-label">Nombre / Razón Social</div><div class="tech-field-value">{{clientName}}</div></div>{{/if}}
+            {{#if clientCUIT}}<div><div class="tech-field-label">CUIT / DNI</div><div class="tech-field-value">{{clientCUIT}}</div></div>{{/if}}
+            {{#if techDetails.clientIVACondition}}<div><div class="tech-field-label">Condición IVA</div><div class="tech-field-value">{{techDetails.clientIVACondition}}</div></div>{{/if}}
+            {{#if techDetails.clientContactPerson}}<div><div class="tech-field-label">Persona de Contacto</div><div class="tech-field-value">{{techDetails.clientContactPerson}}</div></div>{{/if}}
+            {{#if clientEmail}}<div><div class="tech-field-label">Email</div><div class="tech-field-value">{{clientEmail}}</div></div>{{/if}}
+            {{#if clientPhone}}<div><div class="tech-field-label">Teléfono</div><div class="tech-field-value">{{clientPhone}}</div></div>{{/if}}
+            {{#if clientDomicilio}}<div><div class="tech-field-label">Domicilio</div><div class="tech-field-value">{{clientDomicilio}}{{#if clientLocalidad}}, {{clientLocalidad}}{{/if}}{{#if clientProvincia}}, {{clientProvincia}}{{/if}}{{#if clientCodigoPostal}} ({{clientCodigoPostal}}){{/if}}</div></div>{{/if}}
+        </div>
+    </div>
+</div>
+
+<!-- PROYECTO -->
+{{#if techDetails.projectName}}
+<div class="tech-section">
+    <div class="tech-section-title">Información del Proyecto</div>
+    <div class="tech-grid-3" style="margin-bottom: 10px;">
+        <div style="grid-column: 1 / -1;"><div class="tech-field-label">Proyecto</div><div class="tech-field-value" style="font-size: 12pt; font-weight: 700; color: var(--tech-primary);">{{techDetails.projectName}}</div></div>
+        {{#if techDetails.projectType}}<div><div class="tech-field-label">Tipo</div><div class="tech-field-value">{{techDetails.projectType}}</div></div>{{/if}}
+        {{#if techDetails.projectMethodology}}<div><div class="tech-field-label">Metodología</div><div class="tech-field-value">{{techDetails.projectMethodology}}</div></div>{{/if}}
+        {{#if techDetails.projectDurationWeeks}}<div><div class="tech-field-label">Plazo Estimado</div><div class="tech-field-value">{{techDetails.projectDurationWeeks}} semanas</div></div>{{/if}}
+        {{#if techDetails.projectStartDate}}<div><div class="tech-field-label">Inicio Estimado</div><div class="tech-field-value">{{dateFormat techDetails.projectStartDate}}</div></div>{{/if}}
+    </div>
+    {{#if techDetails.projectScope}}
+    <div style="margin-top: 8px;"><div class="tech-field-label">Alcance / Descripción</div>
+        <div style="font-size: 10pt; color: #2c3e50; line-height: 1.55; white-space: pre-wrap; margin-top: 3px;">{{techDetails.projectScope}}</div></div>
+    {{/if}}
+    {{#if techDetails.projectStack}}
+    <div style="margin-top: 8px;"><div class="tech-field-label">Stack Tecnológico</div>
+        <div style="font-size: 10pt; color: #2c3e50; line-height: 1.55; white-space: pre-wrap; margin-top: 3px;">{{techDetails.projectStack}}</div></div>
+    {{/if}}
+    {{#if techDetails.projectDeliverables}}
+    <div style="margin-top: 8px;"><div class="tech-field-label">Entregables</div>
+        <div style="font-size: 10pt; color: #2c3e50; line-height: 1.55; white-space: pre-wrap; margin-top: 3px;">{{techDetails.projectDeliverables}}</div></div>
+    {{/if}}
+    {{#if techDetails.projectExclusions}}
+    <div style="margin-top: 8px;"><div class="tech-field-label">No Incluye (Exclusiones)</div>
+        <div style="font-size: 10pt; color: #2c3e50; line-height: 1.55; white-space: pre-wrap; margin-top: 3px;">{{techDetails.projectExclusions}}</div></div>
+    {{/if}}
+    {{#if techDetails.projectAssumptions}}
+    <div style="margin-top: 8px;"><div class="tech-field-label">Supuestos / Asunciones</div>
+        <div style="font-size: 10pt; color: #2c3e50; line-height: 1.55; white-space: pre-wrap; margin-top: 3px;">{{techDetails.projectAssumptions}}</div></div>
+    {{/if}}
+</div>
+{{/if}}
+
+<!-- HORAS DE DESARROLLO -->
+{{#if techDetails.hours.length}}
+<div class="tech-section">
+    <div class="tech-section-title">💻 Recursos Humanos / Horas de Desarrollo</div>
+    <table class="tech-table">
+        <thead>
+            <tr>
+                <th style="width: 38%;">Rol</th>
+                <th style="width: 20%;">Seniority</th>
+                <th style="width: 12%; text-align: center;">Horas</th>
+                <th style="width: 15%; text-align: right;">USD/Hora</th>
+                <th style="width: 15%; text-align: right;">Subtotal</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{#each techDetails.hours}}
+            <tr>
+                <td>{{this.role}}</td>
+                <td>{{this.seniority}}</td>
+                <td style="text-align: center;">{{this.hours}}</td>
+                <td class="num">{{@root.currencySymbol}} {{formatCurrency this.rate}}</td>
+                <td class="num">{{@root.currencySymbol}} {{formatCurrency (multiply this.hours this.rate)}}</td>
+            </tr>
+            {{/each}}
+        </tbody>
+    </table>
+</div>
+{{/if}}
+
+<!-- INFRAESTRUCTURA -->
+{{#if techDetails.infra.length}}
+<div class="tech-section">
+    <div class="tech-section-title">☁️ Infraestructura / Servicios Cloud</div>
+    <table class="tech-table">
+        <thead>
+            <tr>
+                <th style="width: 45%;">Concepto</th>
+                <th style="width: 15%;">Modelo</th>
+                <th style="width: 12%; text-align: center;">Períodos</th>
+                <th style="width: 14%; text-align: right;">Costo</th>
+                <th style="width: 14%; text-align: right;">Subtotal</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{#each techDetails.infra}}
+            <tr>
+                <td>{{this.concept}}</td>
+                <td>{{this.model}}</td>
+                <td style="text-align: center;">{{this.periods}}</td>
+                <td class="num">{{@root.currencySymbol}} {{formatCurrency this.cost}}</td>
+                <td class="num">{{@root.currencySymbol}} {{formatCurrency (multiply this.periods this.cost)}}</td>
+            </tr>
+            {{/each}}
+        </tbody>
+    </table>
+    <p style="font-size: 8pt; color: #777; margin-top: 6px; font-style: italic;">Costos referenciales. Pueden variar según el proveedor y el consumo efectivo.</p>
+</div>
+{{/if}}
+
+<!-- LICENCIAS Y SUSCRIPCIONES -->
+{{#if techDetails.licenses.length}}
+<div class="tech-section">
+    <div class="tech-section-title">🔑 Licencias y Suscripciones</div>
+    <table class="tech-table">
+        <thead>
+            <tr>
+                <th style="width: 45%;">Servicio</th>
+                <th style="width: 15%;">Modelo</th>
+                <th style="width: 12%; text-align: center;">Períodos</th>
+                <th style="width: 14%; text-align: right;">Costo</th>
+                <th style="width: 14%; text-align: right;">Subtotal</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{#each techDetails.licenses}}
+            <tr>
+                <td>{{this.service}}</td>
+                <td>{{this.model}}</td>
+                <td style="text-align: center;">{{this.periods}}</td>
+                <td class="num">{{@root.currencySymbol}} {{formatCurrency this.cost}}</td>
+                <td class="num">{{@root.currencySymbol}} {{formatCurrency (multiply this.periods this.cost)}}</td>
+            </tr>
+            {{/each}}
+        </tbody>
+    </table>
+</div>
+{{/if}}
+
+<!-- CREDENCIALES / DOMINIOS -->
+{{#if techDetails.credentials.length}}
+<div class="tech-section">
+    <div class="tech-section-title">🪪 Credenciales, Dominios y Certificados</div>
+    <table class="tech-table">
+        <thead>
+            <tr>
+                <th style="width: 80%;">Concepto</th>
+                <th style="width: 20%; text-align: right;">Costo</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{#each techDetails.credentials}}
+            <tr>
+                <td>{{this.concept}}</td>
+                <td class="num">{{@root.currencySymbol}} {{formatCurrency this.cost}}</td>
+            </tr>
+            {{/each}}
+        </tbody>
+    </table>
+</div>
+{{/if}}
+
+<!-- OTROS CONCEPTOS -->
+{{#if techDetails.others.length}}
+<div class="tech-section">
+    <div class="tech-section-title">➕ Otros Conceptos</div>
+    <table class="tech-table">
+        <thead>
+            <tr>
+                <th style="width: 50%;">Descripción</th>
+                <th style="width: 15%; text-align: center;">Cantidad</th>
+                <th style="width: 15%;">Unidad</th>
+                <th style="width: 10%; text-align: right;">Precio</th>
+                <th style="width: 10%; text-align: right;">Subtotal</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{#each techDetails.others}}
+            <tr>
+                <td>{{this.description}}</td>
+                <td style="text-align: center;">{{this.quantity}}</td>
+                <td>{{this.unit}}</td>
+                <td class="num">{{@root.currencySymbol}} {{formatCurrency this.price}}</td>
+                <td class="num">{{@root.currencySymbol}} {{formatCurrency (multiply this.quantity this.price)}}</td>
+            </tr>
+            {{/each}}
+        </tbody>
+    </table>
+</div>
+{{/if}}
+
+<!-- TOTALES -->
+<div style="margin: 18px 0; page-break-inside: avoid;">
+    <div class="totals-box">
+        {{#if_gt sumHours 0}}<div class="totals-row"><span>Recursos Humanos</span><span class="num">{{currencySymbol}} {{formatCurrency sumHours}}</span></div>{{/if_gt}}
+        {{#if_gt sumInfra 0}}<div class="totals-row"><span>Infraestructura</span><span class="num">{{currencySymbol}} {{formatCurrency sumInfra}}</span></div>{{/if_gt}}
+        {{#if_gt sumLicenses 0}}<div class="totals-row"><span>Licencias / Suscripciones</span><span class="num">{{currencySymbol}} {{formatCurrency sumLicenses}}</span></div>{{/if_gt}}
+        {{#if_gt sumCredentials 0}}<div class="totals-row"><span>Credenciales / Dominios</span><span class="num">{{currencySymbol}} {{formatCurrency sumCredentials}}</span></div>{{/if_gt}}
+        {{#if_gt sumOthers 0}}<div class="totals-row"><span>Otros Conceptos</span><span class="num">{{currencySymbol}} {{formatCurrency sumOthers}}</span></div>{{/if_gt}}
+        <div class="totals-row subtotal"><span>Subtotal</span><span class="num">{{currencySymbol}} {{formatCurrency subtotal}}</span></div>
+        {{#if_gt contingencyAmt 0}}<div class="totals-row"><span>+ Contingencia ({{contingencyPct}}%)</span><span class="num">{{currencySymbol}} {{formatCurrency contingencyAmt}}</span></div>{{/if_gt}}
+        {{#if_gt marginAmt 0}}<div class="totals-row"><span>+ Margen ({{marginPct}}%)</span><span class="num">{{currencySymbol}} {{formatCurrency marginAmt}}</span></div>{{/if_gt}}
+        {{#if_gt discount 0}}<div class="totals-row" style="color:#c0392b;"><span>− Descuento ({{discountPct}}%)</span><span class="num">− {{currencySymbol}} {{formatCurrency discount}}</span></div>{{/if_gt}}
+        <div class="totals-row subtotal"><span>Base Imponible</span><span class="num">{{currencySymbol}} {{formatCurrency taxableBase}}</span></div>
+        {{#if_gt iva 0}}<div class="totals-row"><span>IVA ({{ivaRate}}%)</span><span class="num">{{currencySymbol}} {{formatCurrency iva}}</span></div>{{/if_gt}}
+        {{#if_gt otherTaxes 0}}<div class="totals-row"><span>Otros Impuestos ({{otherTaxesPct}}%)</span><span class="num">{{currencySymbol}} {{formatCurrency otherTaxes}}</span></div>{{/if_gt}}
+        <div class="totals-row grand"><span>TOTAL COTIZADO</span><span class="num">{{currencySymbol}} {{formatCurrency total}}</span></div>
+    </div>
+    {{#if techDetails.exchangeRate}}
+    {{#if_gt techDetails.exchangeRate 1}}
+    <p style="text-align: right; font-size: 8.5pt; color: #666; margin-top: 8px;"><em>Tipo de cambio aplicado: {{techDetails.exchangeRate}}</em></p>
+    {{/if_gt}}
+    {{/if}}
+</div>
+
+<!-- CONDICIONES COMERCIALES -->
+<div class="tech-section">
+    <div class="tech-section-title">Condiciones Comerciales</div>
+    <div class="tech-grid-2" style="gap: 10px 24px;">
+        <div><div class="tech-field-label">Validez de la Oferta</div><div class="tech-field-value">{{validity}} días desde la emisión{{#if techDetails.quoteValidUntil}} (hasta {{dateFormat techDetails.quoteValidUntil}}){{/if}}</div></div>
+        <div><div class="tech-field-label">Moneda</div><div class="tech-field-value">{{currency}}</div></div>
+        {{#if techDetails.paymentScheme}}<div><div class="tech-field-label">Esquema de Pago</div><div class="tech-field-value">{{techDetails.paymentScheme}}</div></div>{{/if}}
+        {{#if deliveryTerm}}<div><div class="tech-field-label">Plazo de Entrega</div><div class="tech-field-value">{{deliveryTerm}}</div></div>{{/if}}
+        {{#if paymentTerms}}<div><div class="tech-field-label">Medios de Pago Aceptados</div><div class="tech-field-value">{{paymentTerms}}</div></div>{{/if}}
+        {{#if techDetails.warrantyDays}}<div><div class="tech-field-label">Garantía</div><div class="tech-field-value">{{techDetails.warrantyDays}} días desde la entrega final</div></div>{{/if}}
+        {{#if techDetails.supportDays}}<div><div class="tech-field-label">Soporte Post-Entrega</div><div class="tech-field-value">{{techDetails.supportDays}} días incluidos</div></div>{{/if}}
+    </div>
+    {{#if techDetails.bankDetails}}
+    <div style="margin-top: 12px; padding: 10px; background: white; border: 1px solid var(--tech-line); border-radius: 4px;">
+        <div class="tech-field-label">Datos Bancarios</div>
+        <div style="font-size: 9.5pt; color: #2c3e50; white-space: pre-wrap; margin-top: 3px; line-height: 1.5;">{{techDetails.bankDetails}}</div>
+    </div>
+    {{/if}}
+</div>
+
+<!-- TÉRMINOS Y CONDICIONES LEGALES -->
+{{#if techDetails.legalTerms}}
+<div class="tech-section" style="page-break-before: auto;">
+    <div class="tech-section-title">Términos y Condiciones</div>
+    <div class="legal-text">{{techDetails.legalTerms}}</div>
+</div>
+{{/if}}
+
+{{#if notes}}
+<div class="tech-section">
+    <div class="tech-section-title">Notas y Observaciones</div>
+    <div style="font-size: 9.5pt; color: #2c3e50; line-height: 1.55; white-space: pre-wrap;">{{notes}}</div>
+</div>
+{{/if}}
+
+<!-- FIRMAS / ACEPTACIÓN -->
+<div class="signature-row">
+    <div class="signature-box">
+        Por <strong>{{companyName}}</strong><br>
+        Aclaración / Cargo
+    </div>
+    <div class="signature-box">
+        Por <strong>{{#if clientName}}{{clientName}}{{else}}EL CLIENTE{{/if}}</strong><br>
+        Firma y Aclaración — DNI/CUIT
+    </div>
+</div>
+
+<p style="text-align: center; font-size: 8pt; color: #999; margin-top: 24px; line-height: 1.5;">
+    La aceptación de esta cotización implica el conocimiento y conformidad con la totalidad de los términos y condiciones aquí establecidos.<br>
+    Documento generado electrónicamente por <strong style="color: var(--tech-primary);">{{companyName}}</strong> — {{companyEmail}}{{#if companyWebsite}} — {{companyWebsite}}{{/if}}<br>
+    {{#if quoteNumber}}Ref.: {{quoteNumber}}{{/if}}{{#if _dbDocNumber}} · ID interno: {{_dbDocNumber}}{{/if}}
+</p>
+
+</div>
