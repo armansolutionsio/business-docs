@@ -1,5 +1,9 @@
 'use strict';
 
+const fs = require('fs');
+const path = require('path');
+const db = require('../utils/db');
+
 /**
  * Admin IA — Extracción de comprobantes (factura, nota de crédito, recibo, etc.).
  *
@@ -718,12 +722,105 @@ function merge(a, b) {
   return out;
 }
 
-// ───────────────────────── Endpoint ────────────────────────────────────
+// ─────────────────── Templates: auto-detect + apply ────────────────────
+
+/**
+ * Selecciona el mejor template para un comprobante:
+ *  1) Match por proveedor_cuit (más específico)
+ *  2) Match por fingerprints en el rawText
+ *  Devuelve el template y la razón del match (o null si no calzó ninguno).
+ */
+async function autoDetectTemplate(rawText, emisorCuit) {
+  try {
+    const { rows } = await db.query(
+      `SELECT * FROM admin_ia_templates WHERE is_active = TRUE ORDER BY is_factory ASC, id DESC`
+    );
+    if (!rows.length) return null;
+
+    // 1. Match por CUIT del emisor (los templates de proveedor ganan a los de fábrica).
+    if (emisorCuit) {
+      const cleanCuit = String(emisorCuit).replace(/\D/g, '');
+      const byCuit = rows.find(t => {
+        if (!t.proveedor_cuit) return false;
+        return t.proveedor_cuit.replace(/\D/g, '') === cleanCuit;
+      });
+      if (byCuit) return { template: byCuit, matchedBy: 'cuit' };
+    }
+
+    // 2. Match por fingerprints. Cada fingerprint que aparezca en el rawText suma puntaje;
+    //    el template con más matches gana.
+    if (rawText) {
+      const lower = rawText.toLowerCase();
+      let best = null;
+      for (const t of rows) {
+        const fps = Array.isArray(t.fingerprints) ? t.fingerprints : [];
+        if (!fps.length) continue;
+        let score = 0;
+        const matched = [];
+        for (const fp of fps) {
+          if (!fp) continue;
+          if (lower.includes(String(fp).toLowerCase())) { score++; matched.push(fp); }
+        }
+        if (score > 0 && (!best || score > best.score)) {
+          best = { template: t, score, matched };
+        }
+      }
+      if (best) return { template: best.template, matchedBy: 'fingerprints', matched: best.matched };
+    }
+  } catch (err) {
+    log.warn({}, 'admin_ia_autodetect_error', { error: err.message });
+  }
+  return null;
+}
+
+/**
+ * Aplica un template a un set de campos extraídos:
+ *  - fixed_fields se sobreescriben siempre (datos fijos del proveedor).
+ *  - tipo_doc_default se aplica solo si Tipo está vacío.
+ *  - extractors[k].regex (si existe) reextrae usando ese regex.
+ */
+function applyTemplate(fields, template, rawText) {
+  if (!template) return fields;
+  const out = { ...fields };
+
+  // Fixed fields (overrides duros)
+  if (template.fixed_fields && typeof template.fixed_fields === 'object') {
+    for (const [k, v] of Object.entries(template.fixed_fields)) {
+      if (v !== null && v !== undefined && v !== '') out[k] = v;
+    }
+  }
+
+  // Tipo doc default (solo si no se detectó)
+  if (template.tipo_doc_default && (out.tipo == null || out.tipo === '')) {
+    out.tipo = template.tipo_doc_default;
+  }
+
+  // Regex custom (v2: cada extractor[k].regex se aplica sobre rawText)
+  if (template.extractors && typeof template.extractors === 'object' && rawText) {
+    for (const [k, cfg] of Object.entries(template.extractors)) {
+      if (!cfg || typeof cfg !== 'object') continue;
+      if (typeof cfg.regex !== 'string') continue;
+      try {
+        const flags = cfg.flags || 'i';
+        const re = new RegExp(cfg.regex, flags);
+        const m = rawText.match(re);
+        if (m && m[1] != null) {
+          const v = cfg.type === 'number' ? parseEsNumber(m[1]) : String(m[1]).trim();
+          if (v != null) out[k] = v;
+        }
+      } catch (_) { /* regex inválido: ignoramos */ }
+    }
+  }
+
+  return out;
+}
+
+// ───────────────────────── Endpoints ────────────────────────────────────
 
 router.post('/extract', async (req, res) => {
   const startTime = Date.now();
   try {
-    const { fileName, fileData, mimeType } = req.body || {};
+    const { fileName, fileData, mimeType, templateId, tipoDocOverride } = req.body || {};
     if (!fileData) return res.status(400).json({ error: 'fileData (base64) es requerido' });
 
     const buf = inputToBuffer(fileData);
@@ -744,29 +841,57 @@ router.post('/extract', async (req, res) => {
       sources.push('pdf-text');
       if (qrPayload) sources.push('qr');
     } else {
-      // Imagen
       const qrData = await scanQrFromImage(buf);
       if (qrData) {
         const url = findAfipQrUrl(qrData) || qrData;
         qrPayload = decodeAfipQrUrl(url);
         if (qrPayload) sources.push('qr');
       }
-      // Si no hay QR o no es de AFIP, OCR
       if (!qrPayload) {
         rawText = await ocrImage(buf);
         if (rawText) sources.push('ocr');
       }
     }
 
-    // Combinamos QR (alta confianza) con regex sobre texto (completa lo que falta).
+    // 1. Pipeline genérica: QR + texto regex.
     const qrFields = fromAfipQr(qrPayload);
     const textFields = extractFromText(rawText);
     let fields = merge(qrFields, textFields);
 
-    // Aseguramos todas las keys del schema (null donde no hay dato).
+    // 2. Resolución del template.
+    //    - templateId numérico: lo aplicamos directo
+    //    - templateId 'auto' o ausente: corre auto-detect
+    //    - templateId 'none': no aplica template
+    let appliedTemplate = null;
+    let matchedBy = null;
+    let matchedFingerprints = null;
+    if (templateId && templateId !== 'auto' && templateId !== 'none') {
+      const { rows } = await db.query(
+        `SELECT * FROM admin_ia_templates WHERE id = $1 AND is_active = TRUE`,
+        [parseInt(templateId, 10)]
+      );
+      if (rows.length) { appliedTemplate = rows[0]; matchedBy = 'manual'; }
+    } else if (templateId !== 'none') {
+      const det = await autoDetectTemplate(rawText, fields.nroDocEmisor);
+      if (det) {
+        appliedTemplate = det.template;
+        matchedBy = det.matchedBy;
+        matchedFingerprints = det.matched || null;
+      }
+    }
+
+    // 3. Aplicar template (fixed_fields + tipo default + regex custom).
+    fields = applyTemplate(fields, appliedTemplate, rawText);
+
+    // 4. Override de Tipo de documento (selector manual del usuario).
+    if (tipoDocOverride && typeof tipoDocOverride === 'string') {
+      fields.tipo = tipoDocOverride;
+    }
+
+    // 5. Asegurar todas las keys del schema.
     fields = { ...emptyRecord(), ...fields };
 
-    // Confianza heurística
+    // 6. Confianza heurística.
     let confidence = 'low';
     const filledCount = Object.values(fields).filter(v => v != null && v !== '').length;
     if (qrPayload && filledCount >= 8) confidence = 'high';
@@ -783,11 +908,21 @@ router.post('/extract', async (req, res) => {
       fields,
       qrPayload: qrPayload || null,
       rawTextSnippet: (rawText || '').slice(0, 4000),
+      template: appliedTemplate ? {
+        id: appliedTemplate.id,
+        slug: appliedTemplate.slug,
+        nombre: appliedTemplate.nombre,
+        isFactory: appliedTemplate.is_factory,
+        proveedorCuit: appliedTemplate.proveedor_cuit,
+      } : null,
+      templateMatchedBy: matchedBy,
+      templateMatchedFingerprints: matchedFingerprints,
       ms: Date.now() - startTime,
     };
 
     log.info(req, 'admin_ia_extract', {
       file: fileName, sources, confidence, filled: filledCount, ms: response.ms,
+      template: appliedTemplate?.slug || null, matched_by: matchedBy,
     });
 
     res.json(response);
@@ -797,9 +932,228 @@ router.post('/extract', async (req, res) => {
   }
 });
 
-// Permite que el frontend obtenga el schema sin hacer una extracción
+// Schema (campos del Sheet)
 router.get('/schema', (_req, res) => {
   res.json({ schema: FIELD_SCHEMA });
+});
+
+// ─── Catálogo conceptual ARCA ──────────────────────────────────────────
+router.get('/catalogo-arca', (_req, res) => {
+  try {
+    const file = path.join(__dirname, '..', '..', '..', 'data', 'catalogo-arca.json');
+    if (!fs.existsSync(file)) return res.status(404).json({ error: 'Catálogo no encontrado' });
+    const json = JSON.parse(fs.readFileSync(file, 'utf-8'));
+    res.json(json);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── CRUD de templates ────────────────────────────────────────────────
+router.get('/templates', async (_req, res) => {
+  try {
+    const { rows } = await db.query(
+      `SELECT id, slug, nombre, proveedor_cuit, tipo_doc_default, fingerprints,
+              fixed_fields, extractors, is_factory, is_active, version, notas,
+              created_at, updated_at, created_by, updated_by
+       FROM admin_ia_templates
+       WHERE is_active = TRUE
+       ORDER BY is_factory DESC, nombre ASC`
+    );
+    res.json({ templates: rows });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/templates/:id', async (req, res) => {
+  try {
+    const { rows } = await db.query(
+      `SELECT * FROM admin_ia_templates WHERE id = $1`,
+      [parseInt(req.params.id, 10)]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Template no encontrado' });
+    res.json(rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+function slugify(s) {
+  return String(s || '')
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+    .slice(0, 70);
+}
+
+router.post('/templates', async (req, res) => {
+  try {
+    const b = req.body || {};
+    if (!b.nombre || !String(b.nombre).trim()) return res.status(400).json({ error: 'nombre es requerido' });
+
+    const slug = b.slug ? slugify(b.slug) : slugify(b.nombre + '-' + Date.now());
+    const usuario = b.usuario || 'admin';
+
+    const { rows } = await db.query(
+      `INSERT INTO admin_ia_templates
+         (slug, nombre, proveedor_cuit, tipo_doc_default, fingerprints, fixed_fields, extractors, is_factory, notas, created_by, updated_by)
+       VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb, $7::jsonb, FALSE, $8, $9, $9)
+       RETURNING *`,
+      [
+        slug,
+        String(b.nombre).trim(),
+        b.proveedorCuit || b.proveedor_cuit || null,
+        b.tipoDocDefault || b.tipo_doc_default || null,
+        JSON.stringify(Array.isArray(b.fingerprints) ? b.fingerprints : []),
+        JSON.stringify(b.fixedFields || b.fixed_fields || {}),
+        JSON.stringify(b.extractors || {}),
+        b.notas || null,
+        usuario,
+      ]
+    );
+    res.status(201).json(rows[0]);
+  } catch (err) {
+    if (String(err.message).includes('duplicate key')) {
+      return res.status(409).json({ error: 'Ya existe un template con ese slug' });
+    }
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.put('/templates/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const b = req.body || {};
+    const usuario = b.usuario || 'admin';
+
+    const { rows: cur } = await db.query(`SELECT * FROM admin_ia_templates WHERE id = $1`, [id]);
+    if (!cur.length) return res.status(404).json({ error: 'Template no encontrado' });
+    if (cur[0].is_factory) {
+      return res.status(403).json({ error: 'Los templates de fábrica son de solo lectura. Cloná el template para modificar.' });
+    }
+
+    const { rows } = await db.query(
+      `UPDATE admin_ia_templates SET
+         nombre            = COALESCE($2, nombre),
+         proveedor_cuit    = $3,
+         tipo_doc_default  = $4,
+         fingerprints      = COALESCE($5::jsonb, fingerprints),
+         fixed_fields      = COALESCE($6::jsonb, fixed_fields),
+         extractors        = COALESCE($7::jsonb, extractors),
+         notas             = $8,
+         version           = version + 1,
+         updated_at        = NOW(),
+         updated_by        = $9
+       WHERE id = $1
+       RETURNING *`,
+      [
+        id,
+        b.nombre || null,
+        b.proveedorCuit || b.proveedor_cuit || null,
+        b.tipoDocDefault || b.tipo_doc_default || null,
+        b.fingerprints !== undefined ? JSON.stringify(b.fingerprints || []) : null,
+        b.fixedFields !== undefined || b.fixed_fields !== undefined
+          ? JSON.stringify(b.fixedFields || b.fixed_fields || {}) : null,
+        b.extractors !== undefined ? JSON.stringify(b.extractors || {}) : null,
+        b.notas !== undefined ? b.notas : cur[0].notas,
+        usuario,
+      ]
+    );
+    res.json(rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/templates/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const { rows: cur } = await db.query(`SELECT is_factory FROM admin_ia_templates WHERE id = $1`, [id]);
+    if (!cur.length) return res.status(404).json({ error: 'Template no encontrado' });
+    if (cur[0].is_factory) return res.status(403).json({ error: 'No se pueden borrar templates de fábrica.' });
+    await db.query(`UPDATE admin_ia_templates SET is_active = FALSE, updated_at = NOW() WHERE id = $1`, [id]);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Clonar un template (de fábrica o no) como base para uno propio.
+router.post('/templates/:id/clone', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const { rows: src } = await db.query(`SELECT * FROM admin_ia_templates WHERE id = $1`, [id]);
+    if (!src.length) return res.status(404).json({ error: 'Template no encontrado' });
+    const t = src[0];
+    const newSlug = slugify((t.slug + '-copia-' + Date.now()).slice(0, 70));
+    const usuario = (req.body && req.body.usuario) || 'admin';
+    const { rows } = await db.query(
+      `INSERT INTO admin_ia_templates
+         (slug, nombre, proveedor_cuit, tipo_doc_default, fingerprints, fixed_fields, extractors, is_factory, notas, created_by, updated_by)
+       VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb, $7::jsonb, FALSE, $8, $9, $9)
+       RETURNING *`,
+      [newSlug, t.nombre + ' (copia)', t.proveedor_cuit, t.tipo_doc_default,
+       JSON.stringify(t.fingerprints || []), JSON.stringify(t.fixed_fields || {}),
+       JSON.stringify(t.extractors || {}), t.notas, usuario]
+    );
+    res.status(201).json(rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Learn: aprende un template a partir de un comprobante + ground truth ──
+//
+// Flujo:
+//  1. El usuario sube el comprobante en Admin IA y corrige los campos a mano.
+//  2. Cuando aprieta "Guardar como template del proveedor X" envía:
+//        - rawText (lo que el extractor leyó)
+//        - groundTruth (los campos corregidos)
+//        - meta (nombre del template, tipoDoc default, fingerprints sugeridos)
+//  3. Generamos un template con:
+//        - fixed_fields = los campos string que identifican al emisor
+//          (denominacionEmisor, nroDocEmisor, tipoDocEmisor, etc.)
+//        - tipo_doc_default = groundTruth.tipo (si vino)
+//        - fingerprints = los strings que el usuario marcó (o auto-suggest)
+//
+router.post('/learn', async (req, res) => {
+  try {
+    const { nombre, proveedorCuit, tipoDocDefault, fingerprints, groundTruth, notas, usuario } = req.body || {};
+    if (!nombre || !String(nombre).trim()) return res.status(400).json({ error: 'nombre es requerido' });
+
+    // fixed_fields = el subset de groundTruth que aplica para identificar al emisor.
+    const fixed = {};
+    const FIXED_KEYS = ['tipoDocEmisor', 'nroDocEmisor', 'denominacionEmisor', 'moneda'];
+    if (groundTruth && typeof groundTruth === 'object') {
+      for (const k of FIXED_KEYS) {
+        if (groundTruth[k] != null && groundTruth[k] !== '') fixed[k] = groundTruth[k];
+      }
+    }
+
+    const slug = slugify(nombre + '-' + Date.now());
+    const { rows } = await db.query(
+      `INSERT INTO admin_ia_templates
+         (slug, nombre, proveedor_cuit, tipo_doc_default, fingerprints, fixed_fields, extractors, is_factory, notas, created_by, updated_by)
+       VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb, '{}'::jsonb, FALSE, $7, $8, $8)
+       RETURNING *`,
+      [
+        slug,
+        String(nombre).trim(),
+        proveedorCuit || (groundTruth && groundTruth.nroDocEmisor) || null,
+        tipoDocDefault || (groundTruth && groundTruth.tipo) || null,
+        JSON.stringify(Array.isArray(fingerprints) ? fingerprints : []),
+        JSON.stringify(fixed),
+        notas || null,
+        usuario || 'admin',
+      ]
+    );
+    res.status(201).json(rows[0]);
+  } catch (err) {
+    if (String(err.message).includes('duplicate key')) {
+      return res.status(409).json({ error: 'Ya existe un template con ese slug' });
+    }
+    res.status(500).json({ error: err.message });
+  }
 });
 
 module.exports = router;

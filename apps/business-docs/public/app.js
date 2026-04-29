@@ -3222,6 +3222,10 @@ const adminIaState = {
     fields: null,
     raw: null,
     file: null,
+    templates: [],
+    selectedTemplateId: 'auto',  // 'auto' | 'none' | <number>
+    selectedTipoDoc: '',          // '' = autodetectar
+    catalogo: null,
 };
 
 async function renderAdminIaTab() {
@@ -3230,10 +3234,40 @@ async function renderAdminIaTab() {
         <div class="message" id="message"></div>
 
         <div class="form-section">
+            <h3 class="section-title">Pre-configuración (opcional)</h3>
+            <p style="font-size: 12px; color: #666; margin-bottom: 12px;">
+                Indicá el template del proveedor y el tipo de comprobante para mejorar la extracción.
+                Si dejás "Auto-detectar" en ambos, el sistema intenta identificarlo solo.
+            </p>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Template / Proveedor</label>
+                    <select id="iaTemplateSelect" onchange="adminIaState.selectedTemplateId = this.value;"></select>
+                </div>
+                <div class="form-group">
+                    <label>Tipo de Comprobante</label>
+                    <select id="iaTipoDocSelect" onchange="adminIaState.selectedTipoDoc = this.value;">
+                        <option value="">Auto-detectar</option>
+                    </select>
+                </div>
+            </div>
+            <div style="margin-top: 10px;">
+                <button type="button" class="btn btn-secondary" onclick="adminIaOpenTemplatesManager()" style="font-size: 13px; padding: 8px 14px;">
+                    Gestionar templates
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="adminIaToggleCatalogo()" style="font-size: 13px; padding: 8px 14px; margin-left: 8px;">
+                    Ver catálogo ARCA
+                </button>
+            </div>
+        </div>
+
+        <div id="iaCatalogoBox" style="display:none;"></div>
+
+        <div class="form-section">
             <h3 class="section-title">Cargar Comprobante</h3>
             <div id="iaDropzone" class="ia-dropzone" onclick="document.getElementById('iaFileInput').click()">
                 <div><strong>Arrastrá un comprobante</strong> o hacé click para seleccionarlo</div>
-                <div class="hint">Acepta PDF, JPG, PNG, WEBP — Factura A/B/C/E/M, NC, ND, Recibo, Tique, etc. (máx. 25 MB)</div>
+                <div class="hint">Acepta PDF, JPG, PNG, WEBP - Factura A/B/C/E/M, NC, ND, Recibo, Tique, etc. (máx. 25 MB)</div>
                 <input type="file" id="iaFileInput" accept="application/pdf,image/*" style="display:none;">
             </div>
             <div id="iaSelected" style="margin-top: 10px; font-size: 13px; color: #555;"></div>
@@ -3244,9 +3278,22 @@ async function renderAdminIaTab() {
             </div>
         </div>
 
-        <div id="iaLoading" class="loading"><div class="spinner"></div><p>Procesando comprobante… (QR → texto PDF → OCR)</p></div>
+        <div id="iaLoading" class="loading"><div class="spinner"></div><p>Procesando comprobante (QR -> texto PDF -> OCR)</p></div>
 
         <div id="iaResults" style="display:none;"></div>
+
+        <div id="iaTemplatesModal" class="modal" style="display:none;">
+            <div class="modal-content" style="max-width: 760px;">
+                <div class="modal-header">
+                    <h2>Gestionar Templates</h2>
+                    <button class="modal-close" onclick="adminIaCloseTemplatesManager()">&times;</button>
+                </div>
+                <div class="modal-body" style="max-height: 60vh; overflow-y: auto;" id="iaTemplatesList"></div>
+                <div class="modal-footer">
+                    <button class="btn-cancel" onclick="adminIaCloseTemplatesManager()">Cerrar</button>
+                </div>
+            </div>
+        </div>
     `;
 
     // Wire dropzone
@@ -3267,15 +3314,66 @@ async function renderAdminIaTab() {
         if (f) adminIaSetFile(f);
     });
 
-    // Pre-fetch schema (for dynamic order even if user reloads quickly)
-    if (!adminIaState.schema) {
-        try {
-            const r = await fetch('/api/admin-ia/schema');
-            if (r.ok) {
-                const j = await r.json();
-                adminIaState.schema = j.schema;
-            }
-        } catch (_) { /* el response del extract trae el schema igual */ }
+    // Cargar schema, catálogo y templates en paralelo.
+    await Promise.all([
+        adminIaLoadSchema(),
+        adminIaLoadCatalogo(),
+        adminIaLoadTemplates(),
+    ]);
+}
+
+async function adminIaLoadSchema() {
+    if (adminIaState.schema) return;
+    try {
+        const r = await fetch('/api/admin-ia/schema');
+        if (r.ok) {
+            const j = await r.json();
+            adminIaState.schema = j.schema;
+        }
+    } catch (_) { /* el response del extract trae el schema igual */ }
+}
+
+async function adminIaLoadCatalogo() {
+    try {
+        const r = await fetch('/api/admin-ia/catalogo-arca');
+        if (r.ok) adminIaState.catalogo = await r.json();
+    } catch (_) {}
+    // Pueblar el select de Tipo de Comprobante.
+    const sel = document.getElementById('iaTipoDocSelect');
+    if (sel && adminIaState.catalogo && Array.isArray(adminIaState.catalogo.tiposComprobante)) {
+        const cats = adminIaState.catalogo.tiposComprobante;
+        sel.innerHTML = '<option value="">Auto-detectar</option>' +
+            cats.map(t => `<option value="${escapeHtml(t.nombre)}">${escapeHtml(t.codigo)} - ${escapeHtml(t.nombre)}</option>`).join('');
+        sel.value = adminIaState.selectedTipoDoc || '';
+    }
+}
+
+async function adminIaLoadTemplates() {
+    try {
+        const r = await fetch('/api/admin-ia/templates');
+        if (r.ok) {
+            const j = await r.json();
+            adminIaState.templates = Array.isArray(j.templates) ? j.templates : [];
+        }
+    } catch (_) { adminIaState.templates = []; }
+    const sel = document.getElementById('iaTemplateSelect');
+    if (sel) {
+        const factory = adminIaState.templates.filter(t => t.is_factory);
+        const custom = adminIaState.templates.filter(t => !t.is_factory);
+        let html = '<option value="auto">Auto-detectar</option>';
+        html += '<option value="none">No aplicar template (genérico puro)</option>';
+        if (factory.length) {
+            html += '<optgroup label="Templates de fábrica">';
+            html += factory.map(t => `<option value="${t.id}">${escapeHtml(t.nombre)}</option>`).join('');
+            html += '</optgroup>';
+        }
+        if (custom.length) {
+            html += '<optgroup label="Mis templates">';
+            html += custom.map(t => `<option value="${t.id}">${escapeHtml(t.nombre)}${t.proveedor_cuit ? ' (' + escapeHtml(t.proveedor_cuit) + ')' : ''}</option>`).join('');
+            html += '</optgroup>';
+        }
+        sel.innerHTML = html;
+        sel.value = adminIaState.selectedTemplateId || 'auto';
     }
 }
 
@@ -3321,7 +3419,13 @@ async function adminIaExtract() {
         const resp = await fetch('/api/admin-ia/extract', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fileName: file.name, fileData, mimeType: file.type }),
+            body: JSON.stringify({
+                fileName: file.name,
+                fileData,
+                mimeType: file.type,
+                templateId: adminIaState.selectedTemplateId || 'auto',
+                tipoDocOverride: adminIaState.selectedTipoDoc || null,
+            }),
         });
         if (!resp.ok) {
             const t = await resp.text();
@@ -3389,6 +3493,9 @@ function renderAdminIaResults(data) {
 
     const conf = (data.confidence || 'low').toLowerCase();
     const sources = (data.sources || []).map(s => `<span class="ia-pill src">${escapeHtml(s)}</span>`).join('');
+    const templatePill = data.template
+        ? `<span class="ia-pill src" title="Template aplicado">Template: ${escapeHtml(data.template.nombre)}${data.templateMatchedBy ? ' [' + escapeHtml(data.templateMatchedBy) + ']' : ''}</span>`
+        : '';
 
     const groupHtml = order.map(g => {
         if (!groups[g] || !groups[g].length) return '';
@@ -3400,10 +3507,11 @@ function renderAdminIaResults(data) {
 
     const out = `
         <div class="form-section">
-            <h3 class="section-title" style="display:flex; align-items:center; gap:10px;">
+            <h3 class="section-title" style="display:flex; align-items:center; gap:10px; flex-wrap: wrap;">
                 Datos extraídos
                 <span class="ia-pill ${conf}">Confianza: ${conf}</span>
                 ${sources}
+                ${templatePill}
             </h3>
             ${groupHtml}
 
@@ -3418,9 +3526,10 @@ function renderAdminIaResults(data) {
                 </div>
             </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 14px;">
                 <button type="button" class="btn btn-secondary" onclick="adminIaCopyRow()">Copiar fila (TSV)</button>
                 <button type="button" class="btn btn-primary" onclick="adminIaDownloadCsv()">Descargar CSV (1 fila)</button>
+                <button type="button" class="btn btn-secondary" onclick="adminIaSaveAsTemplate()">Guardar como template del proveedor</button>
             </div>
             <p style="font-size: 11px; color: #888; margin-top: 8px;">
                 Próximamente: enviar a Google Sheets en un click. Por ahora podés copiar la fila o exportar CSV con el orden exacto de columnas del libro IVA.
@@ -3500,6 +3609,209 @@ function adminIaDownloadCsv() {
     a.download = `comprobante_${stamp}.csv`;
     document.body.appendChild(a); a.click(); URL.revokeObjectURL(url); a.remove();
     showMessage('CSV descargado', 'success');
+}
+
+// ─── Guardar como template del proveedor ─────────────────────────────
+async function adminIaSaveAsTemplate() {
+    const f = adminIaState.fields || {};
+    if (!f.nroDocEmisor && !f.denominacionEmisor) {
+        showMessage('Antes de guardar el template, asegurate de tener al menos el CUIT o el nombre del emisor en los campos.', 'error');
+        return;
+    }
+    const nombreSugerido = f.denominacionEmisor
+        ? f.denominacionEmisor + (f.tipo ? ' - ' + f.tipo : '')
+        : 'Proveedor ' + (f.nroDocEmisor || '');
+    const nombre = prompt('Nombre del template:', nombreSugerido);
+    if (!nombre) return;
+
+    // Sugerimos fingerprints a partir del rawText: hasta 3 strings de 12-40 chars
+    // que parezcan únicos del proveedor (encabezados, razón social, domicilio).
+    const raw = (adminIaState.raw && adminIaState.raw.rawTextSnippet) || '';
+    const candidates = [];
+    if (f.denominacionEmisor) candidates.push(f.denominacionEmisor);
+    raw.split(/\r?\n/).slice(0, 30).forEach(ln => {
+        const t = ln.trim();
+        if (t.length < 8 || t.length > 60) return;
+        if (/^\d/.test(t)) return;
+        if (/[:$€]/.test(t)) return;
+        if (/^(fecha|cuit|domicilio|razón|razon|condición|condicion|punto|comp|cae|importe|subtotal)/i.test(t)) return;
+        if (candidates.length < 5 && !candidates.includes(t)) candidates.push(t);
+    });
+
+    const fingerprintsRaw = prompt(
+        'Fingerprints (uno por línea, son los textos que identifican a este proveedor en sus facturas):',
+        candidates.slice(0, 4).join('\n')
+    );
+    if (fingerprintsRaw === null) return;
+    const fingerprints = fingerprintsRaw.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+
+    try {
+        const r = await fetch('/api/admin-ia/learn', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                nombre,
+                proveedorCuit: f.nroDocEmisor || null,
+                tipoDocDefault: f.tipo || null,
+                fingerprints,
+                groundTruth: f,
+                notas: 'Generado desde Admin IA tras corrección manual.',
+            }),
+        });
+        if (!r.ok) {
+            const t = await r.text();
+            throw new Error(t || 'Error desconocido');
+        }
+        const j = await r.json();
+        showMessage(`Template "${j.nombre}" guardado. Se aplicará automáticamente a futuros comprobantes de este proveedor.`, 'success');
+        await adminIaLoadTemplates();
+    } catch (err) {
+        showMessage('Error guardando template: ' + err.message, 'error');
+    }
+}
+
+// ─── Gestor de templates (modal) ─────────────────────────────────────
+async function adminIaOpenTemplatesManager() {
+    const modal = document.getElementById('iaTemplatesModal');
+    if (!modal) return;
+    modal.style.display = 'block';
+    await adminIaLoadTemplates();
+    adminIaRenderTemplatesList();
+}
+
+function adminIaCloseTemplatesManager() {
+    const modal = document.getElementById('iaTemplatesModal');
+    if (modal) modal.style.display = 'none';
+}
+
+function adminIaRenderTemplatesList() {
+    const el = document.getElementById('iaTemplatesList');
+    if (!el) return;
+    if (!adminIaState.templates.length) {
+        el.innerHTML = '<p style="color: #999; text-align: center;">No hay templates cargados.</p>';
+        return;
+    }
+    el.innerHTML = adminIaState.templates.map(t => {
+        const fps = Array.isArray(t.fingerprints) ? t.fingerprints : [];
+        const fixed = t.fixed_fields && typeof t.fixed_fields === 'object' ? t.fixed_fields : {};
+        const fixedKeys = Object.keys(fixed);
+        return `
+            <div style="border: 1px solid #e0e0e0; border-radius: 8px; padding: 14px; margin-bottom: 10px; background: #fafafa;">
+                <div style="display: flex; justify-content: space-between; align-items: start; gap: 12px;">
+                    <div style="flex: 1;">
+                        <div style="font-weight: 700; color: #7B2CBF; font-size: 14px;">${escapeHtml(t.nombre)}</div>
+                        <div style="font-size: 12px; color: #555; margin-top: 2px;">
+                            ${t.is_factory ? '<span class="ia-pill src">Fábrica</span>' : '<span class="ia-pill src">Custom</span>'}
+                            ${t.proveedor_cuit ? '· CUIT ' + escapeHtml(t.proveedor_cuit) : ''}
+                            ${t.tipo_doc_default ? '· ' + escapeHtml(t.tipo_doc_default) : ''}
+                            · v${t.version}
+                        </div>
+                        ${t.notas ? `<div style="font-size: 11px; color: #777; margin-top: 6px; font-style: italic;">${escapeHtml(t.notas)}</div>` : ''}
+                        ${fps.length ? `<div style="font-size: 11px; color: #555; margin-top: 6px;"><strong>Fingerprints:</strong> ${fps.map(f => `<code style="background:#f0e6ff; padding:1px 4px; border-radius:3px;">${escapeHtml(f)}</code>`).join(' ')}</div>` : ''}
+                        ${fixedKeys.length ? `<div style="font-size: 11px; color: #555; margin-top: 4px;"><strong>Fixed:</strong> ${fixedKeys.map(k => k + '=' + JSON.stringify(fixed[k])).join(', ')}</div>` : ''}
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 6px;">
+                        <button class="btn btn-secondary" style="font-size: 11px; padding: 6px 10px;" onclick="adminIaCloneTemplate(${t.id})">Clonar</button>
+                        ${t.is_factory ? '' : `<button class="btn btn-secondary" style="font-size: 11px; padding: 6px 10px; color: #c0392b; border-color: #c0392b;" onclick="adminIaDeleteTemplate(${t.id})">Eliminar</button>`}
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+async function adminIaCloneTemplate(id) {
+    try {
+        const r = await fetch(`/api/admin-ia/templates/${id}/clone`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: '{}' });
+        if (!r.ok) throw new Error(await r.text());
+        showMessage('Template clonado. Editalo desde la lista.', 'success');
+        await adminIaLoadTemplates();
+        adminIaRenderTemplatesList();
+    } catch (err) { showMessage('Error: ' + err.message, 'error'); }
+}
+
+async function adminIaDeleteTemplate(id) {
+    if (!confirm('¿Eliminar este template?')) return;
+    try {
+        const r = await fetch(`/api/admin-ia/templates/${id}`, { method: 'DELETE' });
+        if (!r.ok) throw new Error(await r.text());
+        showMessage('Template eliminado.', 'success');
+        await adminIaLoadTemplates();
+        adminIaRenderTemplatesList();
+    } catch (err) { showMessage('Error: ' + err.message, 'error'); }
+}
+
+// ─── Catálogo ARCA viewer ─────────────────────────────────────────────
+function adminIaToggleCatalogo() {
+    const box = document.getElementById('iaCatalogoBox');
+    if (!box) return;
+    if (box.style.display === 'none' || !box.style.display) {
+        adminIaRenderCatalogo();
+        box.style.display = 'block';
+    } else {
+        box.style.display = 'none';
+    }
+}
+
+function adminIaRenderCatalogo() {
+    const box = document.getElementById('iaCatalogoBox');
+    if (!box) return;
+    const c = adminIaState.catalogo;
+    if (!c) { box.innerHTML = '<p>Catálogo no disponible</p>'; return; }
+
+    const tr = (cells, tag = 'td') => '<tr>' + cells.map(c => `<${tag}>${c}</${tag}>`).join('') + '</tr>';
+    const table = (headers, rows) =>
+        `<table style="width:100%; border-collapse: collapse; font-size: 12px;">
+            <thead style="background: #efe6ff; color: #7B2CBF; text-transform: uppercase; font-size: 11px;">
+                ${tr(headers, 'th')}
+            </thead>
+            <tbody>${rows.map(r => tr(r)).join('')}</tbody>
+        </table>`;
+
+    const tipos = (c.tiposComprobante || []).map(t => [escapeHtml(t.codigo), escapeHtml(t.nombre), escapeHtml(t.emisor || ''), escapeHtml(t.receptor || '')]);
+    const docs  = (c.tiposDocumento || []).map(t => [t.codigo, escapeHtml(t.nombre)]);
+    const mons  = (c.monedas || []).map(m => [escapeHtml(m.codigo), escapeHtml(m.iso || ''), escapeHtml(m.nombre || '')]);
+    const aliq  = (c.alicuotasIVA || []).map(a => [a.codigo, a.porcentaje + '%', escapeHtml(a.nombre || '')]);
+
+    box.innerHTML = `
+        <div class="form-section" style="border-left-color: #2980b9;">
+            <h3 class="section-title" style="color: #2980b9;">
+                Catálogo ARCA
+                <span class="ia-pill src" style="background:#d6eaf8; color:#1a5276;">Versión ${escapeHtml(c.version || '?')}</span>
+            </h3>
+            <p style="font-size: 12px; color: #555;">
+                <strong>Organismo:</strong> ${escapeHtml(c.organismo || '')}<br>
+                <strong>Última revisión:</strong> ${escapeHtml(c.ultimaRevision || c.version || '')}<br>
+                <strong>Fuentes:</strong>
+                <ul style="margin: 6px 0 6px 18px; font-size: 11px;">
+                    ${(c.fuentes || []).map(f => `<li>${escapeHtml(f)}</li>`).join('')}
+                </ul>
+            </p>
+
+            <h4 style="font-size: 13px; color: #7B2CBF; margin-top: 14px;">Tipos de Comprobante</h4>
+            ${table(['Código', 'Nombre', 'Emisor típico', 'Receptor'], tipos)}
+
+            <h4 style="font-size: 13px; color: #7B2CBF; margin-top: 14px;">Tipos de Documento</h4>
+            ${table(['Código', 'Nombre'], docs)}
+
+            <h4 style="font-size: 13px; color: #7B2CBF; margin-top: 14px;">Monedas</h4>
+            ${table(['Cód. ARCA', 'ISO', 'Nombre'], mons)}
+
+            <h4 style="font-size: 13px; color: #7B2CBF; margin-top: 14px;">Alícuotas IVA</h4>
+            ${table(['Código', 'Porcentaje', 'Nombre'], aliq)}
+
+            ${c.notasRegulatorias && c.notasRegulatorias.length ? `
+                <h4 style="font-size: 13px; color: #7B2CBF; margin-top: 14px;">Notas regulatorias</h4>
+                <ul style="font-size: 11px; color: #555; margin-left: 18px;">
+                    ${c.notasRegulatorias.map(n => `<li>${escapeHtml(n)}</li>`).join('')}
+                </ul>
+            ` : ''}
+
+            <p style="font-size: 11px; color: #888; margin-top: 16px; font-style: italic;">
+                Esta información se actualiza manualmente. Si una RG nueva o un cambio fiscal afecta los campos, hay que regenerar este catálogo.
+            </p>
+        </div>
+    `;
 }
 
 // Cerrar modal si se hace clic fuera
