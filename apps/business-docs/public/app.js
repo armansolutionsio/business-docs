@@ -3226,12 +3226,21 @@ const adminIaState = {
     selectedTemplateId: 'auto',  // 'auto' | 'none' | <number>
     selectedTipoDoc: '',          // '' = autodetectar
     catalogo: null,
+    mode: 'qr',                  // 'qr' | 'noqr'
+    confirmed: {},                // { fieldKey: true }  (modo noqr)
+    skipConfirmation: false,
 };
 
 async function renderAdminIaTab() {
     const container = document.getElementById('content');
     container.innerHTML = `
         <div class="message" id="message"></div>
+
+        <div class="ia-mode-switch" role="tablist" aria-label="Modo de extracción">
+            <button id="iaModeQr"   class="${adminIaState.mode === 'qr'   ? 'active' : ''}" onclick="adminIaSetMode('qr')">Con QR (auto)</button>
+            <button id="iaModeNoQr" class="${adminIaState.mode === 'noqr' ? 'active' : ''}" onclick="adminIaSetMode('noqr')">Sin QR (escaneo / foto)</button>
+        </div>
+        <div class="ia-mode-hint" id="iaModeHint">${adminIaModeHint()}</div>
 
         <div class="form-section">
             <h3 class="section-title">Pre-configuración (opcional)</h3>
@@ -3267,8 +3276,8 @@ async function renderAdminIaTab() {
             <h3 class="section-title">Cargar Comprobante</h3>
             <div id="iaDropzone" class="ia-dropzone" onclick="document.getElementById('iaFileInput').click()">
                 <div><strong>Arrastrá un comprobante</strong> o hacé click para seleccionarlo</div>
-                <div class="hint">Acepta PDF, JPG, PNG, WEBP - Factura A/B/C/E/M, NC, ND, Recibo, Tique, etc. (máx. 25 MB)</div>
-                <input type="file" id="iaFileInput" accept="application/pdf,image/*" style="display:none;">
+                <div class="hint" id="iaDropzoneHint">${adminIaDropzoneHint()}</div>
+                <input type="file" id="iaFileInput" accept="${adminIaState.mode === 'noqr' ? 'application/pdf' : 'application/pdf,image/*'}" style="display:none;">
             </div>
             <div id="iaSelected" style="margin-top: 10px; font-size: 13px; color: #555;"></div>
             <div style="margin-top: 14px; display: flex; gap: 10px; align-items: center;">
@@ -3398,9 +3407,40 @@ function adminIaReset() {
     document.getElementById('iaFileInput').value = '';
 }
 
+function adminIaModeHint() {
+    if (adminIaState.mode === 'noqr') {
+        return 'Modo "Sin QR": pensado para PDFs escaneados, talonarios manuales, facturas viejas (pre-2018) o cualquier comprobante donde el QR no esté presente o no se pueda leer. Usa OCR cuando el PDF no tiene texto extraíble. Por ahora solo PDFs; JPG/PNG en próxima iteración. La precisión es inferior al modo con QR, así que se exige confirmar campo por campo antes de exportar.';
+    }
+    return 'Modo "Con QR": flujo automático para facturas electrónicas argentinas con QR válido y para PDFs nativos con texto. Es el que usás siempre que el comprobante tenga QR de ARCA o esté generado digitalmente.';
+}
+
+function adminIaDropzoneHint() {
+    if (adminIaState.mode === 'noqr') {
+        return 'PDF únicamente por ahora (escaneos / facturas sin QR). JPG/PNG en próxima iteración. Máx. 25 MB.';
+    }
+    return 'Acepta PDF, JPG, PNG, WEBP - Factura A/B/C/E/M, NC, ND, Recibo, Tique, etc. (máx. 25 MB)';
+}
+
+function adminIaSetMode(mode) {
+    if (mode !== 'qr' && mode !== 'noqr') return;
+    adminIaState.mode = mode;
+    adminIaState.fields = null;
+    adminIaState.raw = null;
+    adminIaState.confirmed = {};
+    adminIaState.skipConfirmation = false;
+    adminIaReset();
+    // Re-renderizar el tab para reflejar el cambio (segmented + accept del input).
+    renderAdminIaTab();
+}
+
 async function adminIaExtract() {
     const file = adminIaState.file;
     if (!file) { showMessage('Cargá un comprobante primero', 'error'); return; }
+
+    if (adminIaState.mode === 'noqr' && file.type && !file.type.includes('pdf') && !file.name.toLowerCase().endsWith('.pdf')) {
+        showMessage('El modo Sin QR por ahora solo acepta PDFs. Para imágenes, usá el modo Con QR (intentará extraer datos igual aunque no haya QR).', 'error');
+        return;
+    }
 
     const btn = document.getElementById('iaExtractBtn');
     btn.disabled = true;
@@ -3416,7 +3456,8 @@ async function adminIaExtract() {
         });
 
         document.getElementById('iaStatus').textContent = 'Enviando al motor…';
-        const resp = await fetch('/api/admin-ia/extract', {
+        const endpoint = adminIaState.mode === 'noqr' ? '/api/admin-ia/extract-noqr' : '/api/admin-ia/extract';
+        const resp = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -3478,16 +3519,33 @@ function renderAdminIaResults(data) {
         return n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     };
 
+    const requiresConfirm = !!data.requiresConfirmation;
+    if (requiresConfirm) {
+        // Inicializamos el estado de confirmación: todos en false al recibir nuevos datos.
+        adminIaState.confirmed = {};
+        adminIaState.skipConfirmation = false;
+    }
+
     const buildField = (f) => {
         const v = fields[f.key];
         const isNumeric = f.type === 'number';
         const display = isNumeric ? fmtNum(v) : (v == null ? '' : v);
         const empty = (v == null || v === '');
-        const cls = `ia-field ${empty ? 'empty' : ''}`;
+        let cls = `ia-field ${empty ? 'empty' : ''}`;
+        if (requiresConfirm && !empty) {
+            cls += adminIaState.confirmed[f.key] ? ' confirmed' : ' unconfirmed';
+        }
+        const confirmCheckbox = (requiresConfirm && !empty) ? `
+            <label class="confirm-toggle" title="Marcá si el valor es correcto">
+                <input type="checkbox" data-confirm="${f.key}" ${adminIaState.confirmed[f.key] ? 'checked' : ''} onchange="adminIaToggleConfirm('${f.key}', this.checked)">
+                OK
+            </label>
+        ` : '';
         return `
             <div class="${cls}">
                 <span class="lbl">${escapeHtml(f.label)}</span>
                 <input type="text" class="${isNumeric ? 'numeric' : ''}" data-key="${f.key}" data-type="${f.type}" value="${escapeHtml(display)}" placeholder="—">
+                ${confirmCheckbox}
             </div>`;
     };
 
@@ -3505,6 +3563,22 @@ function renderAdminIaResults(data) {
 
     const totalDisplay = fields.impTotal != null ? `${moneda} ${fmtNum(fields.impTotal)}` : '—';
 
+    const confirmBar = requiresConfirm ? `
+        <div class="ia-confirm-bar" id="iaConfirmBar">
+            <div>
+                <strong>Verificación obligatoria:</strong>
+                <span style="color:#666;">marcá "OK" en cada campo si el valor extraído es correcto. Si no, corregilo y después marcá OK.</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 14px;">
+                <span class="progress" id="iaConfirmProgress">0 / 0 confirmados</span>
+                <label>
+                    <input type="checkbox" id="iaSkipConfirm" onchange="adminIaSetSkipConfirm(this.checked)">
+                    Saltar confirmación
+                </label>
+            </div>
+        </div>
+    ` : '';
+
     const out = `
         <div class="form-section">
             <h3 class="section-title" style="display:flex; align-items:center; gap:10px; flex-wrap: wrap;">
@@ -3513,6 +3587,7 @@ function renderAdminIaResults(data) {
                 ${sources}
                 ${templatePill}
             </h3>
+            ${confirmBar}
             ${groupHtml}
 
             <div class="ia-summary-bar">
@@ -3527,9 +3602,9 @@ function renderAdminIaResults(data) {
             </div>
 
             <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 14px;">
-                <button type="button" class="btn btn-secondary" onclick="adminIaCopyRow()">Copiar fila (TSV)</button>
-                <button type="button" class="btn btn-primary" onclick="adminIaDownloadCsv()">Descargar CSV (1 fila)</button>
-                <button type="button" class="btn btn-secondary" onclick="adminIaSaveAsTemplate()">Guardar como template del proveedor</button>
+                <button type="button" class="btn btn-secondary" id="iaBtnCopy"     onclick="adminIaCopyRow()">Copiar fila (TSV)</button>
+                <button type="button" class="btn btn-primary"   id="iaBtnCsv"      onclick="adminIaDownloadCsv()">Descargar CSV (1 fila)</button>
+                <button type="button" class="btn btn-secondary" id="iaBtnTemplate" onclick="adminIaSaveAsTemplate()">Guardar como template del proveedor</button>
             </div>
             <p style="font-size: 11px; color: #888; margin-top: 8px;">
                 Próximamente: enviar a Google Sheets en un click. Por ahora podés copiar la fila o exportar CSV con el orden exacto de columnas del libro IVA.
@@ -3555,7 +3630,8 @@ function renderAdminIaResults(data) {
     wrap.innerHTML = out;
     wrap.style.display = 'block';
 
-    // Permite editar in-place: las correcciones se reflejan en adminIaState.fields
+    // Permite editar in-place: las correcciones se reflejan en adminIaState.fields.
+    // En modo noqr, editar un campo lo des-confirma (porque el valor cambió).
     wrap.querySelectorAll('input[data-key]').forEach(inp => {
         inp.addEventListener('change', () => {
             const k = inp.dataset.key;
@@ -3568,7 +3644,65 @@ function renderAdminIaResults(data) {
                 v = null;
             }
             adminIaState.fields[k] = v;
+
+            // Si está en modo confirmación, des-marcar al editar.
+            if (data.requiresConfirmation) {
+                adminIaState.confirmed[k] = false;
+                const cb = wrap.querySelector(`input[data-confirm="${k}"]`);
+                if (cb) cb.checked = false;
+                const wrapField = inp.closest('.ia-field');
+                if (wrapField) {
+                    wrapField.classList.remove('confirmed');
+                    if (v != null && v !== '') wrapField.classList.add('unconfirmed');
+                }
+                adminIaUpdateConfirmState();
+            }
         });
+    });
+
+    // Estado inicial del gate
+    if (data.requiresConfirmation) adminIaUpdateConfirmState();
+}
+
+// ─── Confirmation gate (modo Sin QR) ─────────────────────────────────
+function adminIaToggleConfirm(key, checked) {
+    adminIaState.confirmed[key] = !!checked;
+    const wrap = document.getElementById('iaResults');
+    if (!wrap) return;
+    const fieldEl = wrap.querySelector(`input[data-key="${key}"]`)?.closest('.ia-field');
+    if (fieldEl) {
+        fieldEl.classList.toggle('confirmed', !!checked);
+        fieldEl.classList.toggle('unconfirmed', !checked);
+    }
+    adminIaUpdateConfirmState();
+}
+
+function adminIaSetSkipConfirm(skip) {
+    adminIaState.skipConfirmation = !!skip;
+    adminIaUpdateConfirmState();
+}
+
+function adminIaUpdateConfirmState() {
+    const schema = adminIaState.schema || [];
+    const f = adminIaState.fields || {};
+    const nonEmpty = schema.filter(s => f[s.key] != null && f[s.key] !== '');
+    const total = nonEmpty.length;
+    const confirmed = nonEmpty.filter(s => adminIaState.confirmed[s.key]).length;
+    const allOk = adminIaState.skipConfirmation || (total > 0 && confirmed === total);
+
+    const bar = document.getElementById('iaConfirmBar');
+    const prog = document.getElementById('iaConfirmProgress');
+    if (prog) prog.textContent = confirmed + ' / ' + total + ' confirmados';
+    if (bar) bar.classList.toggle('complete', allOk);
+
+    ['iaBtnCopy', 'iaBtnCsv', 'iaBtnTemplate'].forEach(id => {
+        const b = document.getElementById(id);
+        if (b) {
+            b.disabled = !allOk;
+            b.style.opacity = allOk ? '1' : '0.5';
+            b.style.cursor = allOk ? 'pointer' : 'not-allowed';
+            b.title = allOk ? '' : 'Confirmá todos los campos antes de exportar';
+        }
     });
 }
 

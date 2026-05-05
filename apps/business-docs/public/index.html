@@ -1191,6 +1191,90 @@
             padding-bottom: 4px;
             border-bottom: 1.5px solid #ece2fa;
         }
+
+        /* Segmented buttons (Con QR / Sin QR) */
+        .ia-mode-switch {
+            display: inline-flex;
+            background: #f0e6ff;
+            border-radius: 8px;
+            padding: 4px;
+            margin-bottom: 16px;
+            border: 1px solid #d4c4f0;
+        }
+        .ia-mode-switch button {
+            padding: 8px 18px;
+            border: none;
+            background: transparent;
+            color: #7B2CBF;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+        }
+        .ia-mode-switch button.active {
+            background: #7B2CBF;
+            color: white;
+            box-shadow: 0 2px 6px rgba(123, 44, 191, 0.25);
+        }
+        .ia-mode-switch button:hover:not(.active) { background: rgba(123, 44, 191, 0.08); }
+        .ia-mode-hint {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 14px;
+            padding: 8px 12px;
+            background: #faf7ff;
+            border-left: 3px solid #c4a0e8;
+            border-radius: 4px;
+        }
+
+        /* Confirmation gate (modo noqr) */
+        .ia-confirm-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #fff8e1;
+            border: 1px solid #ffe082;
+            border-radius: 8px;
+            padding: 10px 14px;
+            margin: 12px 0;
+            font-size: 13px;
+        }
+        .ia-confirm-bar.complete {
+            background: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+        .ia-confirm-bar .progress {
+            font-weight: 700;
+        }
+        .ia-confirm-bar label {
+            font-size: 12px;
+            color: #666;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin: 0;
+        }
+
+        .ia-field.unconfirmed { border-left-color: #ff9800; background: #fff8e1; }
+        .ia-field.confirmed { border-left-color: #4caf50; background: #f1f8e9; }
+        .ia-field .confirm-toggle {
+            position: absolute;
+            top: 6px;
+            right: 8px;
+            font-size: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            color: #888;
+            user-select: none;
+        }
+        .ia-field { position: relative; padding-right: 80px; }
+        .ia-field.empty .confirm-toggle { display: none; }
+        .ia-field .confirm-toggle input { margin: 0; cursor: pointer; }
     </style>
 </head>
 <body>

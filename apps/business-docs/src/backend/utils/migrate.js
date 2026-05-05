@@ -140,6 +140,32 @@ async function runMigrations() {
           pieColumnas: { strategy: 'pes_caret_columns' }
         },
         notas: 'PDF emitido por software de gestión de agencias de viaje (típico de mayoristas/operadores). Discriminación de IVA en el formato "X% sobre N = IVA". Campo "Concepto facturado por cuenta y orden de terceros" identifica DNT/percepciones.'
+      },
+      {
+        slug: 'tique-fiscal-ar',
+        nombre: 'Tique Fiscal AR (impresora fiscal: Hasar/Epson/NCR/Bematech)',
+        proveedor_cuit: null,
+        tipo_doc_default: null,
+        fingerprints: [
+          'TIQUE FACTURA',
+          'ALICUOTA',
+          'IMPORTE TOTAL OTROS TRIBUTOS',
+          'TOT:',
+          'Tasa vial municipal',
+          'Impuesto interno a nivel ítem',
+          'Su Vuelto',
+          'Ley 27743 Transparencia Fiscal',
+          'EPEPAAO',
+          'REGISTRO:'
+        ],
+        fixed_fields: {},
+        extractors: {
+          tipoNumero: { strategy: 'tique_factura_codigo' },
+          ivaDiscriminado: { strategy: 'alicuota_pct_monto' },
+          impTotal: { strategy: 'tot_con_coma_decimal' },
+          ivaDerivado: { strategy: 'derivar_iva_si_solo_alicuota' }
+        },
+        notas: 'Comprobantes emitidos por impresoras fiscales argentinas (Hasar, Epson TM, NCR, Bematech, Neptuno, etc.). Discriminación de IVA en formato "ALICUOTA NN,NN% MONTO". Otros Tributos numerados (10 - Impuesto interno..., 03 - Tasa vial municipal...). Total como "TOT: NNNNN" + valor con coma decimal. CAEA en lugar de CAE. Cuando el OCR de un escaneo comió el monto del IVA y solo hay una alícuota mencionada, el extractor lo deriva por aritmética desde el Total y los Otros Tributos.'
       }
     ];
     for (const t of factory) {

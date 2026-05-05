@@ -176,7 +176,7 @@ function parseEsNumber(raw) {
   return negative ? -n : n;
 }
 
-/** Convierte fecha de varios formatos a ISO yyyy-mm-dd. */
+/** Convierte fecha de varios formatos a ISO yyyy-mm-dd. Tolerante a OCR. */
 function toIsoDate(raw) {
   if (!raw) return null;
   const s = String(raw).trim();
@@ -189,7 +189,10 @@ function toIsoDate(raw) {
   // dd/mm/yyyy o dd-mm-yyyy
   m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
   if (m) {
-    let yyyy = m[3].length === 2 ? '20' + m[3] : m[3];
+    let yyyy = m[3];
+    if (yyyy.length === 2) yyyy = '20' + yyyy;
+    // Tolerancia a OCR: "0026" → 2026 (el OCR a veces lee 2 como 0)
+    else if (yyyy.length === 4 && parseInt(yyyy, 10) < 1900) yyyy = '20' + yyyy.slice(-2);
     return `${yyyy}-${String(m[2]).padStart(2,'0')}-${String(m[1]).padStart(2,'0')}`;
   }
   return null;
@@ -268,8 +271,14 @@ function extractFromText(text) {
     [/recibo\s+a\b/i,                                  'Recibo A'],
     [/recibo\s+b\b/i,                                  'Recibo B'],
     [/recibo\s+c\b/i,                                  'Recibo C'],
-    [/tique[\-\s]?factura\s+a\b/i,                     'Tique Factura A'],
-    [/tique[\-\s]?factura\s+b\b/i,                     'Tique Factura B'],
+    // Tique Factura: tolerantes a errores de OCR (T*UE, espacios o guiones, comilla rota).
+    // Posicionados ANTES de los "factura a/b/c" puros para que ganen cuando ambos calzan.
+    [/\bt[\w]{0,3}ue[\s\-]*factura\s*["']?a\b/i,        'Tique Factura A'],
+    [/\bt[\w]{0,3}ue[\s\-]*factura\s*["']?b\b/i,        'Tique Factura B'],
+    [/\bt[\w]{0,3}ue[\s\-]*factura\s*["']?c\b/i,        'Tique Factura C'],
+    [/c[óo]d\.?\s*[o0]?81\b/i,                          'Tique Factura A'],
+    [/c[óo]d\.?\s*[o0]?82\b/i,                          'Tique Factura B'],
+    [/c[óo]d\.?\s*1?11\b/i,                             'Tique Factura C'],
     [/cod\.?\s*0?1\b/i, 'Factura A'],
     [/cod\.?\s*0?6\b/i, 'Factura B'],
     [/cod\.?\s*1?1\b/i, 'Factura C'],
@@ -297,16 +306,20 @@ function extractFromText(text) {
     r.numeroHasta = r.numeroDesde;
   }
 
-  // Fecha de emisión: priorizamos "fecha emisión" / "fecha:" y descartamos contextos
-  // de vencimiento, salida, llegada, CAE, etc.
-  m = T.match(/fecha\s*(?:de\s*)?emisi[oó]n\s*:?\s*(\d{1,2}\/\d{1,2}\/\d{2,4})/i);
-  if (!m) m = T.match(/(?:^|\n)\s*fecha\s*:?\s*(\d{1,2}\/\d{1,2}\/\d{2,4})/i);
+  // Fecha de emisión: priorizamos "fecha/pecha emisión" o "fecha:" y descartamos contextos
+  // de vencimiento, salida, llegada, CAE, inicio de actividades, hora, etc. La tolerancia
+  // a "pecha" cubre el típico error de OCR donde la F se lee como P en tickets fiscales.
+  m = T.match(/[fp]echa\s*(?:de\s*)?emisi[oó]n\s*:?\s*(\d{1,2}\/\d{1,2}\/\d{2,4})/i);
+  if (!m) m = T.match(/(?:^|\n)\s*[fp]echa\s*:?\s*(\d{1,2}\/\d{1,2}\/\d{2,4})/i);
   if (!m) {
-    const head = T.split(/\r?\n/).slice(0, 12).join('\n');
-    const allDates = [...head.matchAll(/(\d{1,2}\/\d{1,2}\/\d{2,4})/g)];
+    // Buscamos en todo el documento (no solo el header): los tickets fiscales pueden
+    // tener la fecha más adentro.
+    const allDates = [...T.matchAll(/(\d{1,2}\/\d{1,2}\/\d{2,4})/g)];
     for (const d of allDates) {
-      const ctx = head.slice(Math.max(0, d.index - 35), d.index).toLowerCase();
-      if (!/(venc|salida|llegada|cae|cobrar|vto)/i.test(ctx)) { m = d; break; }
+      const ctx = T.slice(Math.max(0, d.index - 40), d.index).toLowerCase();
+      if (!/(venc|salida|llegada|cae|cobrar|vto|inicio|hora|nacimiento|alta)/i.test(ctx)) {
+        m = d; break;
+      }
     }
   }
   if (m) r.fecha = toIsoDate(m[1]);
@@ -456,6 +469,24 @@ function extractFromText(text) {
   if (r.iva5   == null) r.iva5   = numAt(ivaPure('5'));
   if (r.iva25  == null) r.iva25  = numAt(ivaPure('25'));
 
+  // ─── Tique Fiscal AR: "ALICUOTA NN,NN% MONTO" ───────────────────────
+  // Las impresoras fiscales discriminan IVA con la línea
+  //   ALICUOTA 21,00%   9.071,30
+  // donde el monto a la derecha es el IVA (no el neto). Iteramos todas las
+  // alícuotas que aparezcan.
+  const alicuotaRe = /alicuota\s+(\d{1,2}(?:[.,]\d{1,2})?)\s*%\s+([\d.,]+)/gi;
+  let mAl;
+  while ((mAl = alicuotaRe.exec(T)) !== null) {
+    const tasa = parseFloat(String(mAl[1]).replace(',', '.'));
+    const ivaAmt = parseEsNumber(mAl[2]);
+    if (ivaAmt == null) continue;
+    if      (Math.abs(tasa - 21)   < 0.05 && r.iva21  == null) r.iva21  = ivaAmt;
+    else if (Math.abs(tasa - 10.5) < 0.05 && r.iva105 == null) r.iva105 = ivaAmt;
+    else if (Math.abs(tasa - 27)   < 0.05 && r.iva27  == null) r.iva27  = ivaAmt;
+    else if (Math.abs(tasa - 5)    < 0.05 && r.iva5   == null) r.iva5   = ivaAmt;
+    else if (Math.abs(tasa - 2.5)  < 0.05 && r.iva25  == null) r.iva25  = ivaAmt;
+  }
+
   // ─── Otros Tributos / DNT / Percepciones ─────────────────────────────
   // Software de turismo: "Concepto facturado por cta y orden de terceros - DNT - imp. adicionales: PES NNNN"
   let mOt = T.match(/concepto\s+facturado\s+por\s+(?:cta|cuenta)\s+y[\s\S]{0,300}?PES\s+([\d.,]+)/i);
@@ -505,6 +536,28 @@ function extractFromText(text) {
   if (mTot) {
     const v = parseEsNumber(mTot[1]);
     if (v != null && v > 0) r.impTotal = v;  // no aceptamos 0 como total válido
+  }
+
+  // ─── Tique Fiscal AR: "TOT: NNNNNNN" + valor con coma decimal cerca ──
+  // El ticker fiscal escupe el total como dígitos pegados sin separador y luego
+  // (a veces en la línea siguiente) el mismo valor con coma decimal. Preferimos
+  // siempre la versión con coma porque es la que tiene formato confiable.
+  if (r.impTotal == null) {
+    const totIdx = T.search(/(?:^|\n)\s*tot\.?\s*[:\s]\s*\d/i);
+    if (totIdx >= 0) {
+      const tail = T.slice(totIdx, totIdx + 600);
+      // Buscamos primero un valor formateado con coma decimal en este bloque.
+      const mWithComma = tail.match(/([\d]{1,3}(?:[.,]\d{3})*[.,]\d{2})\b/);
+      if (mWithComma) r.impTotal = parseEsNumber(mWithComma[1]);
+      // Si no hay versión con coma, tomamos los dígitos pegados y dividimos por 100.
+      if (r.impTotal == null) {
+        const mDigits = tail.match(/(?:^|\n)\s*tot\.?\s*[:\s]\s*(\d{4,})/i);
+        if (mDigits) {
+          const n = parseInt(mDigits[1], 10);
+          if (!isNaN(n) && n > 0) r.impTotal = n / 100;
+        }
+      }
+    }
   }
 
   // Si no, buscamos un PES suelto cerca de "Son: PES …" (la frase escrita confirma el total).
@@ -619,6 +672,35 @@ function extractFromText(text) {
       if (r.netoNoGravado == null && remaining.length === 1) {
         r.netoNoGravado = remaining[0].v;
       }
+    }
+  }
+
+  // ─── Tique Fiscal: derivar IVA por aritmética si OCR comió el número ─
+  // Caso típico: tenemos Imp. Total y Otros Tributos pero no IVA discriminado
+  // porque el OCR cortó el monto en la línea "ALICUOTA NN%". Si solo hay una
+  // alícuota mencionada en el texto, deducimos IVA y Neto por aritmética.
+  const isTique = r.tipo && /^tique/i.test(r.tipo);
+  if (isTique && r.impTotal != null && r.otrosTributos != null) {
+    const baseGravable = r.impTotal - r.otrosTributos;
+    const has21  = /\balicuota\s*21[.,]?\d*\s*%/i.test(T);
+    const has105 = /\balicuota\s*10[.,]5\s*%/i.test(T);
+    const has27  = /\balicuota\s*27[.,]?\d*\s*%/i.test(T);
+    const onlyOne = [has21, has105, has27].filter(Boolean).length === 1;
+    if (onlyOne) {
+      const round2 = (n) => Math.round(n * 100) / 100;
+      let pct = null;
+      if (has21)  pct = 21;
+      else if (has105) pct = 10.5;
+      else if (has27)  pct = 27;
+      const factor = pct / (100 + pct);
+      const ivaCalc  = round2(baseGravable * factor);
+      const netoCalc = round2(baseGravable - ivaCalc);
+      const setIfMissing = (key, val) => { if (r[key] == null) r[key] = val; };
+      if (pct === 21)   { setIfMissing('iva21',  ivaCalc); setIfMissing('netoGravIva21',  netoCalc); }
+      if (pct === 10.5) { setIfMissing('iva105', ivaCalc); setIfMissing('netoGravIva105', netoCalc); }
+      if (pct === 27)   { setIfMissing('iva27',  ivaCalc); setIfMissing('netoGravIva27',  netoCalc); }
+      if (r.totalIva == null) r.totalIva = ivaCalc;
+      if (r.netoGravadoTotal == null) r.netoGravadoTotal = netoCalc;
     }
   }
 
@@ -1152,6 +1234,161 @@ router.post('/learn', async (req, res) => {
     if (String(err.message).includes('duplicate key')) {
       return res.status(409).json({ error: 'Ya existe un template con ese slug' });
     }
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Pipeline "Sin QR": PDFs sin QR (escaneos / facturas viejas) ────────
+//
+// Camino dedicado al sub-flujo Sin QR. Por ahora solo acepta PDF.
+// Estrategia RAM-friendly:
+//   1. Intenta extraer texto del PDF con pdf-parse (cero costo OCR).
+//   2. Si el texto extraído es escaso (< MIN_TEXT_CHARS), rasteriza una página
+//      por vez con scale 1.5, le pasa OCR (worker singleton de tesseract.js)
+//      y libera el buffer apenas termina.
+//   3. Aplica el extractor regex y el template auto-detectado, igual que /extract.
+//
+// El endpoint /extract original NO se toca: este es independiente.
+const { rasterizePdf } = require('../utils/pdfRasterize');
+const { ocrBuffer } = require('../utils/ocrWorker');
+
+const MIN_TEXT_CHARS_NOQR = 80;   // si el PDF text-extract deja menos que esto, rasterizamos
+const MAX_PAGES_NOQR = 5;
+const RASTER_SCALE = 1.5;
+
+router.post('/extract-noqr', async (req, res) => {
+  const startTime = Date.now();
+  try {
+    const { fileName, fileData, mimeType, templateId, tipoDocOverride } = req.body || {};
+    if (!fileData) return res.status(400).json({ error: 'fileData (base64) es requerido' });
+
+    const buf = inputToBuffer(fileData);
+    if (!buf) return res.status(400).json({ error: 'No se pudo decodificar el archivo' });
+
+    const ext = (fileName || '').toLowerCase().split('.').pop();
+    const mt = (mimeType || '').toLowerCase();
+    const isPdf = mt === 'application/pdf' || ext === 'pdf';
+    if (!isPdf) {
+      return res.status(415).json({
+        error: 'Por ahora extract-noqr solo soporta PDFs. El soporte para JPG/PNG está planeado para la próxima iteración.',
+      });
+    }
+
+    // 1. Intentar texto del PDF (cero OCR si calza).
+    const pdf = await processPdf(buf);
+    let rawText = pdf.rawText || '';
+    let qrPayload = pdf.qrPayload || null;
+    const sources = [];
+    if (rawText) sources.push('pdf-text');
+    if (qrPayload) sources.push('qr');  // si encuentra QR igual lo aprovechamos
+
+    let pagesRastered = 0;
+    let ocrChars = 0;
+
+    // 2. Si el texto es escaso → rasterizar + OCR.
+    if ((rawText || '').trim().length < MIN_TEXT_CHARS_NOQR) {
+      let pages;
+      try {
+        pages = await rasterizePdf(buf, { scale: RASTER_SCALE, maxPages: MAX_PAGES_NOQR });
+      } catch (err) {
+        log.warn(req, 'noqr_rasterize_error', { error: err.message });
+        pages = [];
+      }
+      pagesRastered = pages.length;
+
+      let ocrTextAccum = '';
+      for (const p of pages) {
+        try {
+          const t = await ocrBuffer(p.buffer);
+          if (t) {
+            ocrTextAccum += '\n--- PAGE ' + p.pageNumber + ' ---\n' + t;
+            ocrChars += t.length;
+          }
+        } catch (err) {
+          log.warn(req, 'noqr_ocr_page_error', { error: err.message, page: p.pageNumber });
+        }
+        // Liberar referencia al buffer de la página inmediatamente.
+        p.buffer = null;
+      }
+      if (ocrTextAccum) {
+        rawText = (rawText || '') + '\n' + ocrTextAccum;
+        sources.push('ocr-pdf');
+      }
+    }
+
+    // 3. Pipeline regex (igual que /extract).
+    const qrFields = fromAfipQr(qrPayload);
+    const textFields = extractFromText(rawText);
+    let fields = merge(qrFields, textFields);
+
+    // 4. Auto-detect template (mismo motor; templates valen para ambos modos).
+    let appliedTemplate = null;
+    let matchedBy = null;
+    let matchedFingerprints = null;
+    if (templateId && templateId !== 'auto' && templateId !== 'none') {
+      const { rows } = await db.query(
+        `SELECT * FROM admin_ia_templates WHERE id = $1 AND is_active = TRUE`,
+        [parseInt(templateId, 10)]
+      );
+      if (rows.length) { appliedTemplate = rows[0]; matchedBy = 'manual'; }
+    } else if (templateId !== 'none') {
+      const det = await autoDetectTemplate(rawText, fields.nroDocEmisor);
+      if (det) {
+        appliedTemplate = det.template;
+        matchedBy = det.matchedBy;
+        matchedFingerprints = det.matched || null;
+      }
+    }
+    fields = applyTemplate(fields, appliedTemplate, rawText);
+
+    // 5. Tipo doc override del usuario.
+    if (tipoDocOverride && typeof tipoDocOverride === 'string') {
+      fields.tipo = tipoDocOverride;
+    }
+    fields = { ...emptyRecord(), ...fields };
+
+    // 6. Confianza (penalizada en sin-QR para forzar la confirmación humana).
+    let confidence = 'low';
+    const filledCount = Object.values(fields).filter(v => v != null && v !== '').length;
+    if (sources.includes('pdf-text') && !sources.includes('ocr-pdf') && filledCount >= 12) confidence = 'high';
+    else if (filledCount >= 10) confidence = 'medium';
+    else if (filledCount >= 6)  confidence = 'medium';
+
+    const response = {
+      ok: true,
+      mode: 'noqr',
+      fileName: fileName || null,
+      mimeType: mt || null,
+      sources,
+      confidence,
+      requiresConfirmation: true,    // gate del frontend
+      schema: FIELD_SCHEMA,
+      fields,
+      qrPayload: qrPayload || null,
+      rawTextSnippet: (rawText || '').slice(0, 4000),
+      template: appliedTemplate ? {
+        id: appliedTemplate.id,
+        slug: appliedTemplate.slug,
+        nombre: appliedTemplate.nombre,
+        isFactory: appliedTemplate.is_factory,
+        proveedorCuit: appliedTemplate.proveedor_cuit,
+      } : null,
+      templateMatchedBy: matchedBy,
+      templateMatchedFingerprints: matchedFingerprints,
+      pagesRastered,
+      ocrChars,
+      ms: Date.now() - startTime,
+    };
+
+    log.info(req, 'admin_ia_extract_noqr', {
+      file: fileName, sources, confidence, filled: filledCount,
+      pages_rastered: pagesRastered, ocr_chars: ocrChars,
+      ms: response.ms, template: appliedTemplate?.slug || null,
+    });
+
+    res.json(response);
+  } catch (err) {
+    log.error(req, 'admin_ia_noqr_error', { error: err.message, stack: err.stack });
     res.status(500).json({ error: err.message });
   }
 });
