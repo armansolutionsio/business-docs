@@ -181,6 +181,40 @@ async function runMigrations() {
     }
     console.log('[migrate] admin_ia_templates ready (' + factory.length + ' factory templates seeded)');
 
+    // ─── pgcrypto (necesario para gen_random_uuid; tolerar fallo de permisos) ──
+    try { await db.query(`CREATE EXTENSION IF NOT EXISTS "pgcrypto"`); }
+    catch (e) { console.warn('[migrate] pgcrypto no disponible, customers_global UUID requerira otro mecanismo:', e.message); }
+
+    // ─── Multi-vertical bootstrap (tech / paybridge / admin_core) ─────────
+    try {
+      const { bootstrapVerticalSchemas } = require('./schemas');
+      await bootstrapVerticalSchemas();
+    } catch (e) {
+      console.error('[migrate] bootstrapVerticalSchemas FAILED:', e.message);
+    }
+
+    // ─── Identidad global de cliente cross-vertical ───────────────────────
+    try {
+      await db.query(`ALTER TABLE public.contactos ADD COLUMN IF NOT EXISTS global_customer_id UUID`);
+      await db.query(`CREATE INDEX IF NOT EXISTS idx_public_contactos_global ON public.contactos(global_customer_id)`);
+    } catch (e) { console.warn('[migrate] alter public.contactos:', e.message); }
+
+    // ─── Seed admin inicial si no existe ningun usuario ──────────────────
+    const bcrypt = require('bcryptjs');
+    const { rows: userCount } = await db.query(`SELECT COUNT(*)::int AS n FROM admin_core.users`);
+    if (userCount[0].n === 0) {
+      const email = process.env.SEED_ADMIN_EMAIL || 'admin@arman.local';
+      const password = process.env.SEED_ADMIN_PASSWORD || 'admin123';
+      const hash = await bcrypt.hash(password, 10);
+      await db.query(
+        `INSERT INTO admin_core.users (email, nombre, password_hash, rol, verticales, activo)
+         VALUES ($1, 'Administrador', $2, 'admin', '["tech","travel","paybridge","admin"]'::jsonb, TRUE)
+         ON CONFLICT (email) DO NOTHING`,
+        [email, hash]
+      );
+      console.log(`[migrate] Admin sembrado: ${email} / password en SEED_ADMIN_PASSWORD (cambiar al primer login)`);
+    }
+
   } catch (e) {
     console.error('[migrate] Error (non-fatal):', e.message);
   }

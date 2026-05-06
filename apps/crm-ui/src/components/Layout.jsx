@@ -39,10 +39,10 @@ export default function Layout() {
           </NavLink>
         </nav>
         <div className="topbar-user">
-          <div className="user-avatar">{user?.name?.[0]?.toUpperCase()}</div>
+          <div className="user-avatar">{((user?.nombre || user?.email || '?')[0] || '?').toUpperCase()}</div>
           <div className="user-info">
-            <span className="user-name">{user?.name}</span>
-            <span className="user-role-badge">{user?.role}</span>
+            <span className="user-name">{user?.nombre || user?.email}</span>
+            <span className="user-role-badge">{user?.rol}</span>
           </div>
           <button className="btn btn-topbar-logout btn-sm" onClick={handleLogout}>Salir</button>
         </div>

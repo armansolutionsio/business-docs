@@ -1275,27 +1275,100 @@
         .ia-field { position: relative; padding-right: 80px; }
         .ia-field.empty .confirm-toggle { display: none; }
         .ia-field .confirm-toggle input { margin: 0; cursor: pointer; }
+
+        /* ─── Override estetica Arman (alineada con Tech / hub) ────────────── */
+        body {
+          background: radial-gradient(1200px 600px at 20% 10%, #1f2a44, #0b0f1a 70%) fixed !important;
+        }
+        .container {
+          background: white;
+          border-radius: 14px;
+          margin: 24px auto !important;
+          box-shadow: 0 16px 48px rgba(0,0,0,.5), 0 0 0 1px #1f2a44 !important;
+          overflow: hidden;
+          min-height: calc(100vh - 48px) !important;
+        }
+        .header {
+          background: linear-gradient(135deg, #19233d, #111a2e) !important;
+          border-bottom: 3px solid #5b7bd6 !important;
+        }
+        .header h1 { color: #e8edf5 !important; }
+        .header p  { color: #8ea0c2 !important; opacity: 1 !important; }
+        .header-btn {
+          background: rgba(91,123,214,.12) !important;
+          border-color: rgba(91,123,214,.35) !important;
+          color: #cdd6e8 !important;
+        }
+        .header-btn:hover { background: rgba(91,123,214,.25) !important; color: #fff !important; }
+        .tabs { background: #f7f9fc !important; border-bottom: 1px solid #e3e7ee !important; }
+        .tab-button { color: #6e82a9 !important; }
+        .tab-button:hover { background: #eef2f8 !important; color: #1c2c52 !important; }
+        .tab-button.active { color: #1c2c52 !important; border-bottom-color: #5b7bd6 !important; background: white !important; }
+
+        /* ─── Layout Tech-style: sidebar dark + main column ──────────────── */
+        body { padding: 0 !important; }
+        .arman-app { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+        .arman-side {
+          background: #101727; border-right: 1px solid #1f2a44; padding: 22px 16px;
+          display: flex; flex-direction: column; gap: 6px;
+          font-family: 'Inter', system-ui, sans-serif; color: #a6b6d6;
+        }
+        .arman-side .arman-brand { padding: 4px 8px 18px; border-bottom: 1px solid #1f2a44; margin-bottom: 14px; }
+        .arman-side .arman-brand small { color: #8ea0c2; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; }
+        .arman-side .arman-brand h1 { color: #e8edf5; font-size: 18px; font-weight: 600; margin-top: 4px; letter-spacing: -.3px; }
+        .arman-side a, .arman-side button.arman-tab {
+          display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 8px;
+          color: #a6b6d6; text-decoration: none; font-size: 14px; cursor: pointer;
+          background: transparent; border: 0; text-align: left; width: 100%; font-family: inherit;
+        }
+        .arman-side a:hover, .arman-side button.arman-tab:hover { background: #19223a; color: #fff; }
+        .arman-side a.active, .arman-side button.arman-tab.active { background: #1c2c52; color: #fff; }
+        .arman-side .back {
+          margin-top: auto; padding-top: 16px; border-top: 1px solid #1f2a44;
+        }
+        .arman-side .back-btn {
+          display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 8px;
+          background: #19223a; color: #a6b6d6; text-decoration: none; font-size: 13px;
+          border: 1px solid #2a3656; transition: background .15s, transform .15s;
+        }
+        .arman-side .back-btn:hover { background: #243057; color: #fff; transform: translateX(-2px); }
+        .arman-main { padding: 22px 26px; overflow: auto; min-width: 0; }
+        .arman-main .container {
+          max-width: 100% !important; margin: 0 !important; min-height: 0 !important;
+          border-radius: 14px !important; box-shadow: 0 12px 40px rgba(0,0,0,.4), 0 0 0 1px #1f2a44 !important;
+        }
+        /* Ocultamos las tabs viejas (las reemplaza la sidebar) */
+        .container > #tabs { display: none !important; }
     </style>
 </head>
 <body>
+<div class="arman-app">
+  <aside class="arman-side">
+    <div class="arman-brand">
+      <small>Arman</small>
+      <h1>Travel</h1>
+    </div>
+    <button class="arman-tab active" data-arman-tab="quote">Cotizador Travel</button>
+    <button class="arman-tab" data-arman-tab="receipt">Recibo</button>
+    <button class="arman-tab" disabled style="opacity:.4;cursor:not-allowed">Factura <small style="margin-left:auto;font-size:10px;color:#7d92bd">próx.</small></button>
+    <hr style="border:0;border-top:1px solid #1f2a44;margin:10px 0">
+    <a href="/crm" target="_blank">📋 CRM completo</a>
+    <a href="#" onclick="openClientsModal();return false">👥 Clientes</a>
+    <a href="#" onclick="openCompanyModal();return false">⚙️ Empresa</a>
+    <div class="back">
+      <a href="/" class="back-btn"><span>←</span><span>Volver al hub</span></a>
+    </div>
+  </aside>
+  <main class="arman-main">
     <div class="container">
         <div class="header" id="appHeader">
             <div class="brand">
-                <img id="brandLogo" src="logo-arman-travel.png" alt="Arman Travel" onerror="this.style.display='none'">
+                <img id="brandLogo" src="/logo-arman-travel.png" alt="Arman Travel" onerror="this.style.display='none'">
                 <div>
                     <h1 id="brandTitle">Arman Travel</h1>
                     <p id="brandSubtitle">Sistema de Gestión de Documentos Comerciales</p>
                 </div>
             </div>
-            <a href="/crm" class="header-btn" style="text-decoration:none" title="Abrir CRM">
-                📋 CRM
-            </a>
-            <button class="header-btn" onclick="openClientsModal()" title="Gestionar clientes">
-                👥 Clientes
-            </button>
-            <button class="header-btn" onclick="openCompanyModal()" title="Configurar datos de empresa">
-                ⚙️ Empresa
-            </button>
         </div>
 
         <div class="tabs" id="tabs">
@@ -1303,16 +1376,16 @@
                 FACTURA
                 <span class="coming-soon">Próximamente</span>
             </button>
-            <button class="tab-button" data-tab="admin-ia">ADMIN IA</button>
             <button class="tab-button" data-tab="receipt">RECIBO</button>
             <button class="tab-button active" data-tab="quote">COTIZADOR TRAVEL</button>
-            <button class="tab-button" data-tab="quote-tech">COTIZADOR</button>
         </div>
 
         <div class="content" id="content">
             <!-- El contenido será inyectado por JavaScript -->
         </div>
     </div>
+  </main>
+</div>
 
     <!-- Modal Configuración de Empresa -->
     <div id="companyModal" class="modal">
@@ -1439,6 +1512,35 @@
         </div>
     </div>
 
-    <script src="app.js?v=20260420b"></script>
+    <script src="/_shared/auth.js"></script>
+    <script>ArmanAuth.requireSession({ vertical: 'travel' });</script>
+    <script src="/app.js?v=20260420b"></script>
+    <script>
+      // Bridge entre la sidebar nueva (Tech-style) y los tabs viejos del cotizador.
+      // Click en sidebar tab → click programatico en el .tab-button correspondiente.
+      // Cambio de .tab-button.active → reflejarlo en sidebar.
+      (function () {
+        function syncSidebarFromTabs() {
+          const active = document.querySelector('.tabs .tab-button.active');
+          if (!active) return;
+          const name = active.dataset.tab;
+          document.querySelectorAll('.arman-side .arman-tab').forEach(b => {
+            b.classList.toggle('active', b.dataset.armanTab === name);
+          });
+        }
+        document.querySelectorAll('.arman-side .arman-tab[data-arman-tab]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const name = btn.dataset.armanTab;
+            const real = document.querySelector(`.tabs .tab-button[data-tab="${name}"]`);
+            if (real && !real.disabled) real.click();
+          });
+        });
+        new MutationObserver(syncSidebarFromTabs).observe(
+          document.querySelector('.tabs') || document.body,
+          { subtree: true, attributes: true, attributeFilter: ['class'] }
+        );
+        syncSidebarFromTabs();
+      })();
+    </script>
 </body>
 </html>

@@ -14,7 +14,7 @@ export default function ContactoTareas({ contactoId, user }) {
   async function handleCreate(e) {
     e.preventDefault();
     if (!form.titulo.trim()) return;
-    await createTarea(contactoId, { ...form, created_by: user?.username });
+    await createTarea(contactoId, { ...form, created_by: user?.email });
     setForm({ titulo: '', descripcion: '', fecha_vencimiento: '', prioridad: 'media', asignado_a: '' });
     setShowForm(false);
     await load();

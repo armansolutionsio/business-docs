@@ -23,7 +23,7 @@ export default function ContactoNotas({ contactoId, user }) {
     if (!text.trim()) return;
     setSaving(true);
     try {
-      await createNota(contactoId, { contenido: text.trim(), created_by: user?.username });
+      await createNota(contactoId, { contenido: text.trim(), created_by: user?.email });
       setText('');
       await load();
     } catch (err) { /* toast handled upstream */ }

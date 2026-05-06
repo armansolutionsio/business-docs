@@ -21,9 +21,12 @@
   "description": "",
   "dependencies": {
     "@arman/sdk": "*",
+    "bcryptjs": "^2.4.3",
     "cors": "^2.8.6",
     "dotenv": "^17.2.4",
     "express": "^5.2.1",
+    "express-rate-limit": "^7.4.0",
+    "jsonwebtoken": "^9.0.2",
     "handlebars": "^4.7.7",
     "imap": "^0.8.19",
     "jsqr": "^1.4.0",

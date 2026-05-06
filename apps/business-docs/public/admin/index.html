@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Arman Admin</title>
+  <link rel="stylesheet" href="/_shared.css" />
+  <style>
+    .chat-shell{display:grid;grid-template-columns:240px 1fr;gap:16px;height:calc(100vh - 140px)}
+    .chat-list{background:#141c30;border:1px solid #1f2a44;border-radius:12px;padding:12px;overflow:auto}
+    .chat-list .item{padding:8px 10px;border-radius:8px;cursor:pointer;font-size:13px;color:#a6b6d6}
+    .chat-list .item:hover{background:#19223a;color:#fff}
+    .chat-list .item.active{background:#1c2c52;color:#fff}
+    .chat-main{background:#141c30;border:1px solid #1f2a44;border-radius:12px;display:flex;flex-direction:column}
+    .msgs{flex:1;overflow:auto;padding:18px;display:flex;flex-direction:column;gap:12px}
+    .msg{max-width:80%;padding:10px 14px;border-radius:12px;line-height:1.5}
+    .msg.user{align-self:flex-end;background:#1c2c52;color:#e7ecf5}
+    .msg.assistant{align-self:flex-start;background:#19223a;color:#cad7f0}
+    .msg .role{font-size:10px;text-transform:uppercase;color:#8ea0c2;margin-bottom:4px;letter-spacing:.7px}
+    .composer{border-top:1px solid #1f2a44;padding:12px;display:flex;gap:8px}
+    .composer textarea{flex:1;resize:none;height:42px}
+  </style>
+  <script src="/_shared/auth.js"></script>
+  <script>ArmanAuth.requireSession({ vertical: 'admin' });</script>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand"><small>Arman</small><h1>Admin</h1></div>
+    <a data-tab="dashboard" class="active">Dashboard global</a>
+    <a data-tab="ia">Arman IA</a>
+    <a data-tab="prompts">Prompts</a>
+    <a data-tab="customers">Clientes globales</a>
+    <a href="/admin/lectura.html" style="color:#d985ff">📄 Lectura de comprobantes</a>
+    <a data-tab="users">Usuarios</a>
+    <a data-tab="tenants">Tenants</a>
+    <a data-tab="audit">Audit log</a>
+    <div class="back">
+      <a href="/" class="back-btn"><span class="arrow">←</span><span>Volver al hub</span></a>
+      <div id="who" style="margin-top:10px;font-size:11px;color:#586a91"></div>
+      <button class="btn ghost" id="logout" style="margin-top:6px;width:100%">Salir</button>
+    </div>
+  </aside>
+  <main class="main" id="main"></main>
+</div>
+
+<script>
+const __u = ArmanAuth.getUser();
+if (__u) {
+  document.getElementById('who').textContent = (__u.nombre || __u.email) + ' (' + __u.rol + ')';
+  document.getElementById('logout').addEventListener('click', () => ArmanAuth.logout());
+}
+const API = '/api/admin';
+const $ = (s, p = document) => p.querySelector(s);
+const fmt = (n, c = 'ARS') => new Intl.NumberFormat('es-AR', { style:'currency', currency:c }).format(Number(n||0));
+const fmtDate = (d) => d ? new Date(d).toLocaleString('es-AR') : '—';
+async function api(p, o = {}) {
+  const r = await fetch(API + p, { headers:{'Content-Type':'application/json'}, ...o });
+  if (!r.ok) throw new Error((await r.json()).error || r.statusText);
+  return r.json();
+}
+
+const state = { iaSession: null };
+
+const tabs = {
+  async dashboard() {
+    const d = await api('/dashboard');
+    const card = (titulo, color, m) => `
+      <div class="card" style="border-left:4px solid ${color};flex:1;min-width:280px">
+        <h3 style="margin-bottom:10px">${titulo}</h3>
+        ${Object.entries(m).map(([k,v]) =>
+          `<div class="row" style="justify-content:space-between;padding:6px 0;border-bottom:1px solid #1f2a44">
+             <span style="color:#8ea0c2">${k.replace(/_/g,' ')}</span>
+             <b>${typeof v === 'number' && k.includes('30d') ? fmt(v) : (v ?? '—')}</b>
+           </div>`).join('')}
+      </div>`;
+    return `
+      <div class="head"><h2>Dashboard global</h2></div>
+      <div class="row" style="gap:14px;flex-wrap:wrap;align-items:stretch">
+        ${card('Arman Travel', '#ffb86b', d.travel)}
+        ${card('Arman Tech',   '#6aa9ff', d.tech)}
+        ${card('PayBridge',    '#6affb1', d.paybridge)}
+      </div>`;
+  },
+
+  async ia() {
+    const sessions = await api('/ia/sessions');
+    const list = sessions.map(s => `
+      <div class="item ${state.iaSession===s.id?'active':''}" onclick="ui.openSession(${s.id})">
+        <div style="font-weight:500">${s.titulo}</div>
+        <div style="font-size:11px;color:#6e82a9">${s.msg_count} msgs · ${fmtDate(s.updated_at)}</div>
+      </div>`).join('');
+    setTimeout(() => { if (state.iaSession) ui.loadMessages(state.iaSession); }, 50);
+    return `
+      <div class="head">
+        <h2>Arman IA</h2>
+        <button class="btn" onclick="ui.newSession()">+ Nueva sesión</button>
+      </div>
+      <p style="color:#8ea0c2;margin-bottom:14px;font-size:13px">
+        Asistente operativo cross-vertical (Travel, Tech, PayBridge). Modo mock activo:
+        respuestas de prueba. Para conectar un proveedor real (Anthropic / OpenAI),
+        editar <code>services/iaProvider.js</code>.
+      </p>
+      <div class="chat-shell">
+        <div class="chat-list">${list || '<div class="empty">Sin sesiones</div>'}</div>
+        <div class="chat-main">
+          <div class="msgs" id="msgs"><div class="empty">Seleccioná o creá una sesión.</div></div>
+          <div class="composer">
+            <textarea id="ia-input" placeholder="Escribí algo..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();ui.sendMsg()}"></textarea>
+            <button class="btn" onclick="ui.sendMsg()">Enviar</button>
+          </div>
+        </div>
+      </div>`;
+  },
+
+  async prompts() {
+    const data = await api('/ia/prompts');
+    return `
+      <div class="head"><h2>Biblioteca de prompts</h2></div>
+      <div class="card">
+        <table><thead><tr><th>Slug</th><th>Título</th><th>Categoría</th><th>Vertical</th><th>Preview</th></tr></thead><tbody>
+        ${data.map(p => `<tr><td><code>${p.slug}</code></td><td><b>${p.titulo}</b></td>
+          <td>${p.categoria||'—'}</td><td>${p.vertical||'—'}</td>
+          <td style="color:#8ea0c2;max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.prompt}</td></tr>`).join('')
+          || `<tr><td colspan="5" class="empty">Sin prompts</td></tr>`}
+        </tbody></table>
+      </div>`;
+  },
+
+  async customers() {
+    const q = state.custQ || '';
+    const data = await api('/customers/global' + (q ? '?q=' + encodeURIComponent(q) : ''));
+    return `
+      <div class="head"><h2>Clientes globales</h2><button class="btn" onclick="ui.newCustomer()">+ Nuevo</button></div>
+      <p style="color:#8ea0c2;margin-bottom:14px;font-size:13px">
+        Identidad maestra cross-vertical. Cada contacto en Tech / Travel / PayBridge puede vincularse a un cliente global vía <code>global_customer_id</code>.
+      </p>
+      <div class="card" style="margin-bottom:12px">
+        <div class="row" style="gap:8px">
+          <input id="cg-q" placeholder="Buscar nombre, CUIT, email..." value="${(q||'').replace(/"/g,'&quot;')}" style="flex:1"/>
+          <button class="btn" onclick="ui.searchCust()">Buscar</button>
+        </div>
+      </div>
+      <div class="card">
+        <table><thead><tr><th>Nombre</th><th>CUIT</th><th>Email</th><th>Verticales</th><th>Creado</th><th></th></tr></thead><tbody>
+        ${data.map(c => `<tr><td><b>${(c.nombre||'').replace(/</g,'&lt;')}</b>${c.razon_social?'<br><small style="color:#6e82a9">'+c.razon_social.replace(/</g,'&lt;')+'</small>':''}</td>
+          <td>${c.cuit||'—'}</td><td>${c.email||'—'}</td>
+          <td>${(c.verticales||[]).map(v=>'<span class="tag">'+v+'</span>').join(' ')}</td>
+          <td>${fmtDate(c.created_at)}</td>
+          <td><button class="btn ghost" onclick='ui.editCustomer(${JSON.stringify(c).replace(/'/g,"&#39;")})'>Editar</button></td></tr>`).join('')
+          || `<tr><td colspan="6" class="empty">Sin resultados</td></tr>`}
+        </tbody></table>
+      </div>`;
+  },
+
+  async users() {
+    const data = await api('/users');
+    return `
+      <div class="head"><h2>Usuarios</h2><button class="btn" onclick="ui.newUser()">+ Nuevo</button></div>
+      <div class="card">
+        <table><thead><tr><th>Email</th><th>Nombre</th><th>Rol</th><th>Verticales</th><th>Activo</th><th>Último login</th></tr></thead><tbody>
+        ${data.map(u => `<tr><td>${u.email}</td><td>${u.nombre||'—'}</td>
+          <td><span class="tag">${u.rol}</span></td>
+          <td>${(u.verticales||[]).map(v=>`<span class="tag" style="margin-right:4px">${v}</span>`).join('')}</td>
+          <td>${u.activo?'<span class="tag green">Sí</span>':'<span class="tag red">No</span>'}</td>
+          <td>${fmtDate(u.last_login)}</td></tr>`).join('')
+          || `<tr><td colspan="6" class="empty">Sin usuarios</td></tr>`}
+        </tbody></table>
+      </div>`;
+  },
+
+  async tenants() {
+    const data = await api('/tenants');
+    return `
+      <div class="head"><h2>Tenants / Verticales</h2></div>
+      <div class="card">
+        <table><thead><tr><th>Slug</th><th>Nombre</th><th>Schema</th><th>Activo</th></tr></thead><tbody>
+        ${data.map(t => `<tr><td><b>${t.slug}</b></td><td>${t.nombre}</td>
+          <td><code>${t.schema_name}</code></td>
+          <td>${t.activo?'<span class="tag green">Sí</span>':'<span class="tag red">No</span>'}</td></tr>`).join('')}
+        </tbody></table>
+      </div>`;
+  },
+
+  async audit() {
+    const data = await api('/audit?limit=200');
+    return `
+      <div class="head"><h2>Audit log global</h2></div>
+      <div class="card">
+        <table><thead><tr><th>Fecha</th><th>Vertical</th><th>Usuario</th>
+          <th>Acción</th><th>Recurso</th><th>ID</th></tr></thead><tbody>
+        ${data.map(a => `<tr><td>${fmtDate(a.created_at)}</td>
+          <td><span class="tag">${a.vertical||'—'}</span></td>
+          <td>${a.usuario||'—'}</td><td>${a.accion||'—'}</td>
+          <td>${a.recurso||'—'}</td><td>${a.recurso_id||'—'}</td></tr>`).join('')
+          || `<tr><td colspan="6" class="empty">Sin eventos</td></tr>`}
+        </tbody></table>
+      </div>`;
+  },
+};
+
+const ui = {
+  modal(html) {
+    let bg = $('#mb');
+    if (!bg) { bg = document.createElement('div'); bg.id='mb'; bg.className='modal-bg'; document.body.appendChild(bg); }
+    bg.innerHTML = `<div class="modal">${html}</div>`;
+    bg.classList.add('open');
+    bg.onclick = e => { if (e.target===bg) bg.classList.remove('open'); };
+  },
+  closeModal() { $('#mb').classList.remove('open'); },
+
+  async newSession() {
+    const titulo = prompt('Título de la sesión:', 'Nueva sesión');
+    if (!titulo) return;
+    const s = await api('/ia/sessions', { method:'POST', body: JSON.stringify({ titulo }) });
+    state.iaSession = s.id;
+    render('ia');
+  },
+  async openSession(id) {
+    state.iaSession = id;
+    await this.loadMessages(id);
+    document.querySelectorAll('.chat-list .item').forEach(el => el.classList.remove('active'));
+  },
+  async loadMessages(id) {
+    const msgs = await api(`/ia/sessions/${id}/messages`);
+    const cont = $('#msgs');
+    if (!cont) return;
+    cont.innerHTML = msgs.length ? msgs.map(m => `
+      <div class="msg ${m.rol}">
+        <div class="role">${m.rol}</div>
+        <div>${(m.contenido||'').replace(/</g,'&lt;')}</div>
+      </div>`).join('') : '<div class="empty">Sin mensajes. Escribí algo abajo.</div>';
+    cont.scrollTop = cont.scrollHeight;
+  },
+  async sendMsg() {
+    if (!state.iaSession) { alert('Creá o seleccioná una sesión primero.'); return; }
+    const ta = $('#ia-input');
+    const txt = ta.value.trim();
+    if (!txt) return;
+    ta.value = '';
+    await api(`/ia/sessions/${state.iaSession}/messages`, { method:'POST', body: JSON.stringify({ contenido: txt }) });
+    await this.loadMessages(state.iaSession);
+  },
+
+  newUser() {
+    this.modal(`<h3>Nuevo usuario</h3>
+      <label>Email</label><input id="f-email"/>
+      <label style="margin-top:8px">Nombre</label><input id="f-nom"/>
+      <label style="margin-top:8px">Password (mín. 8)</label><input id="f-pass" type="password"/>
+      <div class="grid2" style="margin-top:8px">
+        <div><label>Rol</label>
+          <select id="f-rol"><option>operador</option><option>admin</option><option>finanzas</option><option>solo_lectura</option></select></div>
+        <div><label>Verticales (coma)</label><input id="f-vs" value="tech,travel,paybridge"/></div>
+      </div>
+      <hr/>
+      <div class="row" style="justify-content:flex-end">
+        <button class="btn ghost" onclick="ui.closeModal()">Cancelar</button>
+        <button class="btn" onclick="ui.saveUser()">Crear</button>
+      </div>`);
+  },
+  async saveUser() {
+    const password = $('#f-pass').value;
+    if (!password || password.length < 8) { alert('Password de al menos 8 caracteres'); return; }
+    try {
+      await api('/users', { method:'POST', body: JSON.stringify({
+        email: $('#f-email').value, nombre: $('#f-nom').value, password,
+        rol: $('#f-rol').value,
+        verticales: $('#f-vs').value.split(',').map(s=>s.trim()).filter(Boolean) })});
+      this.closeModal(); render('users');
+    } catch (e) { alert(e.message); }
+  },
+
+  newCustomer() {
+    this.modal(`<h3>Nuevo cliente global</h3>
+      <label>Nombre*</label><input id="cg-n"/>
+      <label style="margin-top:8px">Razón social</label><input id="cg-rs"/>
+      <div class="grid2" style="margin-top:8px">
+        <div><label>CUIT</label><input id="cg-c"/></div>
+        <div><label>País</label><input id="cg-p"/></div>
+      </div>
+      <div class="grid2" style="margin-top:8px">
+        <div><label>Email</label><input id="cg-e"/></div>
+        <div><label>Teléfono</label><input id="cg-t"/></div>
+      </div>
+      <hr/>
+      <div class="row" style="justify-content:flex-end">
+        <button class="btn ghost" onclick="ui.closeModal()">Cancelar</button>
+        <button class="btn" onclick="ui.saveCustomer()">Crear</button>
+      </div>`);
+    state.editingCust = null;
+  },
+  editCustomer(c) {
+    state.editingCust = c.id;
+    this.modal(`<h3>Editar cliente global</h3>
+      <label>Nombre*</label><input id="cg-n" value="${(c.nombre||'').replace(/"/g,'&quot;')}"/>
+      <label style="margin-top:8px">Razón social</label><input id="cg-rs" value="${(c.razon_social||'').replace(/"/g,'&quot;')}"/>
+      <div class="grid2" style="margin-top:8px">
+        <div><label>CUIT</label><input id="cg-c" value="${(c.cuit||'').replace(/"/g,'&quot;')}"/></div>
+        <div><label>País</label><input id="cg-p" value="${(c.pais||'').replace(/"/g,'&quot;')}"/></div>
+      </div>
+      <div class="grid2" style="margin-top:8px">
+        <div><label>Email</label><input id="cg-e" value="${(c.email||'').replace(/"/g,'&quot;')}"/></div>
+        <div><label>Teléfono</label><input id="cg-t" value="${(c.telefono||'').replace(/"/g,'&quot;')}"/></div>
+      </div>
+      <hr/>
+      <div class="row" style="justify-content:flex-end">
+        <button class="btn ghost" onclick="ui.closeModal()">Cancelar</button>
+        <button class="btn" onclick="ui.saveCustomer()">Guardar</button>
+      </div>`);
+  },
+  async saveCustomer() {
+    const body = {
+      nombre: $('#cg-n').value.trim(),
+      razon_social: $('#cg-rs').value.trim() || null,
+      cuit: $('#cg-c').value.trim() || null,
+      email: $('#cg-e').value.trim() || null,
+      telefono: $('#cg-t').value.trim() || null,
+      pais: $('#cg-p').value.trim() || null,
+    };
+    if (!body.nombre) { alert('Nombre requerido'); return; }
+    try {
+      const id = state.editingCust;
+      const url = id ? '/customers/global/' + id : '/customers/global';
+      await api(url, { method: id ? 'PATCH' : 'POST', body: JSON.stringify(body) });
+      this.closeModal(); render('customers');
+    } catch (e) { alert(e.message); }
+  },
+  searchCust() {
+    state.custQ = $('#cg-q').value.trim();
+    render('customers');
+  },
+};
+
+async function render(n) {
+  document.querySelectorAll('.side a').forEach(a => a.classList.toggle('active', a.dataset.tab === n));
+  try { $('#main').innerHTML = await tabs[n](); }
+  catch (e) { $('#main').innerHTML = `<div class="card"><b style="color:#ff8a8a">Error:</b> ${e.message}</div>`; }
+}
+document.querySelectorAll('.side a[data-tab]').forEach(a => a.addEventListener('click', () => render(a.dataset.tab)));
+render('dashboard');
+</script>
+</body>
+</html>

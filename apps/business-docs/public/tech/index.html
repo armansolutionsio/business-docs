@@ -1,0 +1,582 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Arman Tech — CRM</title>
+  <link rel="stylesheet" href="/_shared.css" />
+  <script src="/_shared/auth.js"></script>
+  <script>ArmanAuth.requireSession({ vertical: 'tech' });</script>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand"><small>Arman</small><h1>Tech</h1></div>
+    <a data-tab="dashboard" class="active">Dashboard</a>
+    <a data-tab="contactos">Contactos</a>
+    <a data-tab="proyectos">Proyectos</a>
+    <a data-tab="cotizaciones">Cotizaciones</a>
+    <a href="/tech/cotizador.html" style="color:#6aa9ff">+ Nuevo cotizador</a>
+    <a data-tab="notas">Notas</a>
+    <a data-tab="tareas">Tareas</a>
+    <a data-tab="oportunidades">Oportunidades</a>
+    <a data-tab="timeline">Timeline</a>
+    <a data-tab="facturas">Facturas</a>
+    <a data-tab="recibos">Recibos</a>
+    <a data-tab="retainers">Retainers</a>
+    <a data-tab="tiempo">Time tracking</a>
+    <div class="back"><a href="/" class="back-btn"><span class="arrow">←</span><span>Volver al hub</span></a></div>
+  </aside>
+  <main class="main" id="main"></main>
+</div>
+
+<script>
+const API = '/api/tech';
+const $ = (s, p = document) => p.querySelector(s);
+const fmt = (n, c = 'USD') => new Intl.NumberFormat('es-AR', { style: 'currency', currency: c }).format(Number(n || 0));
+const fmtDate = (d) => d ? new Date(d).toLocaleDateString('es-AR') : '—';
+async function api(path, opts = {}) {
+  const r = await fetch(API + path, { headers: { 'Content-Type': 'application/json' }, ...opts });
+  if (!r.ok) throw new Error((await r.json()).error || r.statusText);
+  return r.json();
+}
+function tag(estado) {
+  const map = { activo: 'green', autorizada: 'green', pagado: 'green', borrador: '', enviada: 'amber',
+    pendiente: 'amber', anulada: 'red', anulado: 'red', rechazada: 'red' };
+  return `<span class="tag ${map[estado] || ''}">${estado || '—'}</span>`;
+}
+
+const tabs = {
+  async dashboard() {
+    const m = await api('/dashboard');
+    return `
+      <div class="head"><h2>Dashboard</h2></div>
+      <div class="row" style="gap:14px;flex-wrap:wrap">
+        <div class="kpi"><div class="lbl">Contactos</div><div class="val">${m.contactos}</div></div>
+        <div class="kpi"><div class="lbl">Proyectos activos</div><div class="val">${m.proyectos_activos}</div></div>
+        <div class="kpi"><div class="lbl">Cotizaciones pendientes</div><div class="val">${m.cotizaciones_pendientes}</div></div>
+        <div class="kpi"><div class="lbl">Facturas sin CAE</div><div class="val">${m.facturas_sin_cae}</div></div>
+        <div class="kpi"><div class="lbl">Facturado 30d</div><div class="val">${fmt(m.facturado_30d, 'ARS')}</div></div>
+        <div class="kpi"><div class="lbl">Horas 30d</div><div class="val">${Number(m.horas_30d).toFixed(1)}</div></div>
+      </div>`;
+  },
+  async contactos() {
+    const data = await api('/contactos');
+    return `
+      <div class="head"><h2>Contactos</h2><button class="btn" onclick="ui.newContacto()">+ Nuevo</button></div>
+      <div class="card">${tableContactos(data)}</div>`;
+  },
+  async proyectos() {
+    const data = await api('/proyectos');
+    return `
+      <div class="head"><h2>Proyectos</h2><button class="btn" onclick="ui.newProyecto()">+ Nuevo</button></div>
+      <div class="card">
+        <table><thead><tr>
+          <th>Cliente</th><th>Nombre</th><th>Tipo</th><th>Modalidad</th>
+          <th>Estado</th><th>Presupuesto</th><th>Inicio</th></tr></thead><tbody>
+        ${data.map(p => `<tr>
+          <td>${p.cliente_nombre || '—'}</td>
+          <td>${p.nombre}</td><td>${p.tipo}</td><td>${p.modalidad}</td>
+          <td>${tag(p.estado)}</td>
+          <td>${p.presupuesto ? fmt(p.presupuesto, p.moneda) : '—'}</td>
+          <td>${fmtDate(p.fecha_inicio)}</td></tr>`).join('') || `<tr><td colspan="7" class="empty">Sin proyectos</td></tr>`}
+        </tbody></table>
+      </div>`;
+  },
+  async cotizaciones() {
+    const data = await api('/cotizaciones');
+    return `
+      <div class="head"><h2>Cotizaciones</h2><button class="btn" onclick="ui.newCotizacion()">+ Nueva</button></div>
+      <div class="card">
+        <table><thead><tr><th>Número</th><th>Cliente</th><th>Total</th><th>Estado</th><th>Fecha</th></tr></thead><tbody>
+        ${data.map(c => `<tr><td><b>${c.numero}</b></td><td>${c.cliente_nombre || '—'}</td>
+          <td>${fmt(c.total, c.moneda)}</td><td>${tag(c.estado)}</td><td>${fmtDate(c.created_at)}</td></tr>`).join('')
+          || `<tr><td colspan="5" class="empty">Sin cotizaciones</td></tr>`}
+        </tbody></table>
+      </div>`;
+  },
+  async facturas() {
+    const data = await api('/facturas');
+    return `
+      <div class="head"><h2>Facturas</h2><button class="btn" onclick="ui.newFactura()">+ Nueva</button></div>
+      <div class="card">
+        <table><thead><tr><th>Número</th><th>Tipo</th><th>Cliente</th><th>Total</th>
+          <th>CAE</th><th>Vto</th><th>Estado</th><th></th></tr></thead><tbody>
+        ${data.map(f => `<tr>
+          <td>${f.numero || '<i style="color:#6e82a9">borrador</i>'}</td>
+          <td><span class="tag">${f.tipo}</span></td>
+          <td>${f.cliente_nombre || '—'}</td>
+          <td>${fmt(f.total, f.moneda)}</td>
+          <td>${f.cae ? `<code style="font-size:11px">${f.cae}</code>` : '—'}</td>
+          <td>${fmtDate(f.cae_vencimiento)}</td>
+          <td>${tag(f.estado)}</td>
+          <td>${!f.cae ? `<button class="btn ghost" onclick="ui.solicitarCAE(${f.id})">Solicitar CAE</button>` : ''}</td>
+        </tr>`).join('') || `<tr><td colspan="8" class="empty">Sin facturas</td></tr>`}
+        </tbody></table>
+      </div>`;
+  },
+  async recibos() {
+    const data = await api('/recibos');
+    return `
+      <div class="head"><h2>Recibos</h2><button class="btn" onclick="ui.newRecibo()">+ Nuevo</button></div>
+      <div class="card">
+        <table><thead><tr><th>Número</th><th>Cliente</th><th>Monto</th>
+          <th>Método</th><th>Concepto</th><th>Estado</th><th>Fecha</th></tr></thead><tbody>
+        ${data.map(r => `<tr><td><b>${r.numero}</b></td><td>${r.cliente_nombre || '—'}</td>
+          <td>${fmt(r.monto, r.moneda)}</td><td>${r.metodo || '—'}</td>
+          <td>${r.concepto || '—'}</td><td>${tag(r.estado)}</td><td>${fmtDate(r.created_at)}</td></tr>`).join('')
+          || `<tr><td colspan="7" class="empty">Sin recibos</td></tr>`}
+        </tbody></table>
+      </div>`;
+  },
+  async retainers() {
+    const data = await api('/retainers');
+    return `
+      <div class="head"><h2>Retainers</h2><button class="btn" onclick="ui.newRetainer()">+ Nuevo</button></div>
+      <div class="card">
+        <table><thead><tr><th>Cliente</th><th>Nombre</th><th>Horas/mes</th>
+          <th>Monto/mes</th><th>Inicio</th><th>Fin</th><th>Estado</th></tr></thead><tbody>
+        ${data.map(r => `<tr><td>${r.cliente_nombre || '—'}</td><td>${r.nombre || '—'}</td>
+          <td>${r.horas_mes}</td><td>${fmt(r.monto_mes, r.moneda)}</td>
+          <td>${fmtDate(r.inicio)}</td><td>${fmtDate(r.fin)}</td><td>${tag(r.estado)}</td></tr>`).join('')
+          || `<tr><td colspan="7" class="empty">Sin retainers</td></tr>`}
+        </tbody></table>
+      </div>`;
+  },
+  async tiempo() {
+    const proys = await api('/proyectos');
+    return `
+      <div class="head"><h2>Time tracking</h2></div>
+      <div class="card">
+        <p style="color:#8ea0c2;margin-bottom:12px">Cargá horas para un proyecto:</p>
+        <div class="grid3">
+          <div><label>Proyecto</label>
+            <select id="te-proy">${proys.map(p => `<option value="${p.id}">${p.nombre}</option>`).join('')}</select></div>
+          <div><label>Fecha</label><input type="date" id="te-fecha" value="${new Date().toISOString().slice(0,10)}"/></div>
+          <div><label>Horas</label><input type="number" step="0.25" id="te-horas" placeholder="2.5"/></div>
+        </div>
+        <label style="margin-top:8px">Descripción</label>
+        <input type="text" id="te-desc" placeholder="¿En qué trabajaste?"/>
+        <div style="margin-top:10px"><button class="btn" onclick="ui.cargarHora()">Cargar</button></div>
+      </div>`;
+  },
+
+  // ── CRM ──────────────────────────────────────────────────────
+  async notas() {
+    const contactos = await api('/contactos');
+    return `<div class="head"><h2>Notas</h2></div>
+      <div class="card">
+        <p style="color:#8ea0c2;font-size:13px;margin-bottom:10px">Seleccioná un contacto para ver / agregar notas.</p>
+        <select id="nt-cid" onchange="ui.loadNotas(this.value)">
+          <option value="">— Elegir contacto —</option>
+          ${contactos.map(c => `<option value="${c.id}">${(c.nombre||'').replace(/</g,'&lt;')}</option>`).join('')}
+        </select>
+      </div>
+      <div id="nt-box"></div>`;
+  },
+  async tareas() {
+    const items = await api('/crm/tareas');
+    return `<div class="head"><h2>Tareas</h2><button class="btn" onclick="ui.newTarea()">+ Nueva tarea</button></div>
+      <div class="card">
+        <table><thead><tr><th>Título</th><th>Contacto</th><th>Estado</th><th>Prioridad</th><th>Asignado</th><th>Fecha límite</th><th></th></tr></thead><tbody>
+        ${items.map(t => `<tr>
+          <td><b>${(t.titulo||'').replace(/</g,'&lt;')}</b>${t.descripcion?'<br><small style="color:#6e82a9">'+(t.descripcion||'').replace(/</g,'&lt;')+'</small>':''}</td>
+          <td>${t.contacto_nombre||'—'}</td>
+          <td><span class="tag ${t.estado==='completada'?'green':t.estado==='en_progreso'?'amber':''}">${t.estado}</span></td>
+          <td>${t.prioridad||'normal'}</td>
+          <td>${t.asignado_a||'—'}</td>
+          <td>${t.fecha_limite ? fmtDate(t.fecha_limite) : '—'}</td>
+          <td>${t.estado!=='completada'?'<button class="btn ghost" onclick="ui.completarTarea('+t.id+')">Completar</button>':''}</td>
+        </tr>`).join('') || '<tr><td colspan="7" class="empty">Sin tareas</td></tr>'}
+        </tbody></table>
+      </div>`;
+  },
+  async oportunidades() {
+    const items = await api('/crm/oportunidades');
+    return `<div class="head"><h2>Oportunidades</h2><button class="btn" onclick="ui.newOpp()">+ Nueva</button></div>
+      <div class="card">
+        <table><thead><tr><th>Título</th><th>Contacto</th><th>Etapa</th><th>Valor estim.</th><th>Prob.</th><th>Estado</th><th>Cierre</th></tr></thead><tbody>
+        ${items.map(o => `<tr>
+          <td><b>${(o.titulo||'').replace(/</g,'&lt;')}</b></td>
+          <td>${o.contacto_nombre||'—'}</td>
+          <td><span class="tag">${o.etapa}</span></td>
+          <td>${o.valor_estim ? fmt(o.valor_estim, o.moneda||'USD') : '—'}</td>
+          <td>${o.probabilidad||0}%</td>
+          <td><span class="tag ${o.estado_oportunidad==='ganada'?'green':o.estado_oportunidad==='perdida'?'red':''}">${o.estado_oportunidad}</span></td>
+          <td>${o.fecha_cierre ? fmtDate(o.fecha_cierre) : '—'}</td>
+        </tr>`).join('') || '<tr><td colspan="7" class="empty">Sin oportunidades</td></tr>'}
+        </tbody></table>
+      </div>`;
+  },
+  async timeline() {
+    const contactos = await api('/contactos');
+    return `<div class="head"><h2>Timeline</h2></div>
+      <div class="card">
+        <p style="color:#8ea0c2;font-size:13px;margin-bottom:10px">Eventos por contacto.</p>
+        <select id="tl-cid" onchange="ui.loadTimeline(this.value)">
+          <option value="">— Elegir contacto —</option>
+          ${contactos.map(c => `<option value="${c.id}">${(c.nombre||'').replace(/</g,'&lt;')}</option>`).join('')}
+        </select>
+      </div>
+      <div id="tl-box"></div>`;
+  },
+};
+
+function tableContactos(data) {
+  return `<table><thead><tr>
+    <th>Nombre</th><th>Razón social</th><th>Email</th><th>CUIT</th>
+    <th>Estado</th><th>Rol</th></tr></thead><tbody>
+    ${data.map(c => `<tr>
+      <td><b>${c.nombre}</b></td><td>${c.razon_social || '—'}</td>
+      <td>${c.email || '—'}</td><td>${c.cuit || '—'}</td>
+      <td>${tag(c.estado)}</td><td><span class="tag">${c.rol}</span></td>
+    </tr>`).join('') || `<tr><td colspan="6" class="empty">Sin contactos. Agregá el primero.</td></tr>`}
+  </tbody></table>`;
+}
+
+const ui = {
+  modal(html) {
+    let bg = $('#modal-bg');
+    if (!bg) { bg = document.createElement('div'); bg.id = 'modal-bg'; bg.className = 'modal-bg'; document.body.appendChild(bg); }
+    bg.innerHTML = `<div class="modal">${html}</div>`;
+    bg.classList.add('open');
+    bg.onclick = (e) => { if (e.target === bg) bg.classList.remove('open'); };
+  },
+  closeModal() { $('#modal-bg').classList.remove('open'); },
+
+  newContacto() {
+    this.modal(`<h3>Nuevo contacto</h3>
+      <label>Nombre</label><input id="f-nombre" />
+      <div class="grid2" style="margin-top:8px">
+        <div><label>Email</label><input id="f-email" type="email"/></div>
+        <div><label>Teléfono</label><input id="f-tel"/></div>
+      </div>
+      <div class="grid2" style="margin-top:8px">
+        <div><label>CUIT</label><input id="f-cuit"/></div>
+        <div><label>Razón social</label><input id="f-rs"/></div>
+      </div>
+      <hr/>
+      <div class="row" style="justify-content:flex-end">
+        <button class="btn ghost" onclick="ui.closeModal()">Cancelar</button>
+        <button class="btn" onclick="ui.saveContacto()">Guardar</button>
+      </div>`);
+  },
+  async saveContacto() {
+    await api('/contactos', { method:'POST', body: JSON.stringify({
+      nombre: $('#f-nombre').value, email: $('#f-email').value, telefono: $('#f-tel').value,
+      cuit: $('#f-cuit').value, razon_social: $('#f-rs').value })});
+    this.closeModal(); render('contactos');
+  },
+
+  async newProyecto() {
+    const cs = await api('/contactos');
+    this.modal(`<h3>Nuevo proyecto</h3>
+      <label>Cliente</label>
+      <select id="f-cli"><option value="">—</option>${cs.map(c=>`<option value="${c.id}">${c.nombre}</option>`).join('')}</select>
+      <label style="margin-top:8px">Nombre</label><input id="f-nom"/>
+      <div class="grid3" style="margin-top:8px">
+        <div><label>Tipo</label>
+          <select id="f-tipo">
+            <option>desarrollo</option><option>app_movil</option><option>web</option>
+            <option>consultoria</option><option>data</option><option>devops</option><option>integracion</option>
+          </select></div>
+        <div><label>Modalidad</label>
+          <select id="f-mod"><option>fixed_price</option><option>time_materials</option><option>retainer</option></select></div>
+        <div><label>Moneda</label>
+          <select id="f-mon"><option>USD</option><option>ARS</option><option>EUR</option></select></div>
+      </div>
+      <div class="grid2" style="margin-top:8px">
+        <div><label>Hourly rate</label><input id="f-hr" type="number" step="1"/></div>
+        <div><label>Presupuesto</label><input id="f-pres" type="number" step="100"/></div>
+      </div>
+      <div class="grid2" style="margin-top:8px">
+        <div><label>Inicio</label><input id="f-ini" type="date"/></div>
+        <div><label>Fin estimado</label><input id="f-fin" type="date"/></div>
+      </div>
+      <label style="margin-top:8px">Descripción</label><textarea id="f-desc" rows="3"></textarea>
+      <hr/>
+      <div class="row" style="justify-content:flex-end">
+        <button class="btn ghost" onclick="ui.closeModal()">Cancelar</button>
+        <button class="btn" onclick="ui.saveProyecto()">Crear</button>
+      </div>`);
+  },
+  async saveProyecto() {
+    await api('/proyectos', { method:'POST', body: JSON.stringify({
+      contacto_id: $('#f-cli').value || null, nombre: $('#f-nom').value,
+      tipo: $('#f-tipo').value, modalidad: $('#f-mod').value, moneda: $('#f-mon').value,
+      hourly_rate: $('#f-hr').value, presupuesto: $('#f-pres').value,
+      fecha_inicio: $('#f-ini').value || null, fecha_fin_estim: $('#f-fin').value || null,
+      descripcion: $('#f-desc').value })});
+    this.closeModal(); render('proyectos');
+  },
+
+  async newCotizacion() {
+    const cs = await api('/contactos');
+    this.modal(`<h3>Nueva cotización</h3>
+      <label>Cliente</label>
+      <select id="f-cli"><option value="">—</option>${cs.map(c=>`<option value="${c.id}">${c.nombre}</option>`).join('')}</select>
+      <div class="grid2" style="margin-top:8px">
+        <div><label>Moneda</label><select id="f-mon"><option>USD</option><option>ARS</option><option>EUR</option></select></div>
+        <div><label>Validez (días)</label><input id="f-val" type="number" value="15"/></div>
+      </div>
+      <hr/><b>Items</b><div id="items"></div>
+      <button class="btn ghost" onclick="ui.addItem()" style="margin-top:8px">+ Item</button>
+      <hr/>
+      <div class="row" style="justify-content:flex-end">
+        <button class="btn ghost" onclick="ui.closeModal()">Cancelar</button>
+        <button class="btn" onclick="ui.saveCotizacion()">Crear</button>
+      </div>`);
+    this.addItem();
+  },
+  addItem() {
+    const c = $('#items');
+    const i = document.createElement('div');
+    i.className = 'grid3';
+    i.style.marginTop = '6px';
+    i.innerHTML = `
+      <input class="i-desc" placeholder="Descripción"/>
+      <input class="i-cant" type="number" value="1" placeholder="Cant."/>
+      <input class="i-pu" type="number" step="0.01" placeholder="Precio unit."/>`;
+    c.appendChild(i);
+  },
+  async saveCotizacion() {
+    const items = [...document.querySelectorAll('#items > div')].map(d => ({
+      descripcion: d.querySelector('.i-desc').value,
+      cantidad: d.querySelector('.i-cant').value,
+      precio_unitario: d.querySelector('.i-pu').value, iva_pct: 21
+    })).filter(x => x.descripcion);
+    await api('/cotizaciones', { method:'POST', body: JSON.stringify({
+      contacto_id: $('#f-cli').value || null, moneda: $('#f-mon').value,
+      validez_dias: $('#f-val').value, items })});
+    this.closeModal(); render('cotizaciones');
+  },
+
+  async newFactura() {
+    const cs = await api('/contactos');
+    this.modal(`<h3>Nueva factura</h3>
+      <label>Cliente</label>
+      <select id="f-cli"><option value="">—</option>${cs.map(c=>`<option value="${c.id}">${c.nombre}</option>`).join('')}</select>
+      <div class="grid3" style="margin-top:8px">
+        <div><label>Tipo</label>
+          <select id="f-tipo"><option>A</option><option>B</option><option>C</option></select></div>
+        <div><label>Pto Vta</label><input id="f-pv" type="number" value="1"/></div>
+        <div><label>Moneda</label>
+          <select id="f-mon"><option>ARS</option><option>USD</option></select></div>
+      </div>
+      <hr/><b>Items</b><div id="items"></div>
+      <button class="btn ghost" onclick="ui.addItem()" style="margin-top:8px">+ Item</button>
+      <div class="row" style="margin-top:12px">
+        <input id="f-aut" type="checkbox" style="width:auto"/>
+        <label for="f-aut" style="margin:0;cursor:pointer">Solicitar CAE a ARCA inmediatamente</label>
+      </div>
+      <hr/>
+      <div class="row" style="justify-content:flex-end">
+        <button class="btn ghost" onclick="ui.closeModal()">Cancelar</button>
+        <button class="btn" onclick="ui.saveFactura()">Crear</button>
+      </div>`);
+    this.addItem();
+  },
+  async saveFactura() {
+    const items = [...document.querySelectorAll('#items > div')].map(d => ({
+      descripcion: d.querySelector('.i-desc').value,
+      cantidad: d.querySelector('.i-cant').value,
+      precio_unitario: d.querySelector('.i-pu').value, iva_pct: 21
+    })).filter(x => x.descripcion);
+    await api('/facturas', { method:'POST', body: JSON.stringify({
+      contacto_id: $('#f-cli').value || null, tipo: $('#f-tipo').value,
+      punto_venta: $('#f-pv').value, moneda: $('#f-mon').value,
+      autorizar: $('#f-aut').checked, items })});
+    this.closeModal(); render('facturas');
+  },
+  async solicitarCAE(id) {
+    if (!confirm('¿Solicitar CAE a ARCA (mock) para esta factura?')) return;
+    const r = await fetch(`/api/arca/facturas/tech/${id}/cae`, { method:'POST' });
+    const j = await r.json();
+    if (!r.ok) { alert('Error: ' + (j.error || 'desconocido')); return; }
+    alert(`CAE: ${j.cae.cae}\nVto: ${j.cae.cae_vencimiento}\nNº: ${j.factura.numero}`);
+    render('facturas');
+  },
+
+  async newRecibo() {
+    const cs = await api('/contactos');
+    this.modal(`<h3>Nuevo recibo</h3>
+      <label>Cliente</label>
+      <select id="f-cli"><option value="">—</option>${cs.map(c=>`<option value="${c.id}">${c.nombre}</option>`).join('')}</select>
+      <div class="grid3" style="margin-top:8px">
+        <div><label>Monto</label><input id="f-monto" type="number" step="0.01"/></div>
+        <div><label>Moneda</label><select id="f-mon"><option>USD</option><option>ARS</option></select></div>
+        <div><label>Método</label>
+          <select id="f-met"><option>transferencia</option><option>efectivo</option><option>cripto</option><option>tarjeta</option></select></div>
+      </div>
+      <label style="margin-top:8px">Concepto</label><input id="f-conc"/>
+      <hr/>
+      <div class="row" style="justify-content:flex-end">
+        <button class="btn ghost" onclick="ui.closeModal()">Cancelar</button>
+        <button class="btn" onclick="ui.saveRecibo()">Crear</button>
+      </div>`);
+  },
+  async saveRecibo() {
+    await api('/recibos', { method:'POST', body: JSON.stringify({
+      contacto_id: $('#f-cli').value || null, monto: $('#f-monto').value,
+      moneda: $('#f-mon').value, metodo: $('#f-met').value,
+      concepto: $('#f-conc').value })});
+    this.closeModal(); render('recibos');
+  },
+
+  async newRetainer() {
+    const cs = await api('/contactos');
+    this.modal(`<h3>Nuevo retainer</h3>
+      <label>Cliente</label>
+      <select id="f-cli"><option value="">—</option>${cs.map(c=>`<option value="${c.id}">${c.nombre}</option>`).join('')}</select>
+      <label style="margin-top:8px">Nombre</label><input id="f-nom"/>
+      <div class="grid3" style="margin-top:8px">
+        <div><label>Horas/mes</label><input id="f-h" type="number" step="0.5"/></div>
+        <div><label>Monto/mes</label><input id="f-m" type="number"/></div>
+        <div><label>Moneda</label><select id="f-mon"><option>USD</option><option>ARS</option></select></div>
+      </div>
+      <div class="grid2" style="margin-top:8px">
+        <div><label>Inicio</label><input id="f-ini" type="date"/></div>
+        <div><label>Fin</label><input id="f-fin" type="date"/></div>
+      </div>
+      <hr/>
+      <div class="row" style="justify-content:flex-end">
+        <button class="btn ghost" onclick="ui.closeModal()">Cancelar</button>
+        <button class="btn" onclick="ui.saveRetainer()">Crear</button>
+      </div>`);
+  },
+  async saveRetainer() {
+    await api('/retainers', { method:'POST', body: JSON.stringify({
+      contacto_id: $('#f-cli').value || null, nombre: $('#f-nom').value,
+      horas_mes: $('#f-h').value, monto_mes: $('#f-m').value, moneda: $('#f-mon').value,
+      inicio: $('#f-ini').value || null, fin: $('#f-fin').value || null })});
+    this.closeModal(); render('retainers');
+  },
+
+  async cargarHora() {
+    const proy = $('#te-proy').value;
+    await fetch(`${API}/proyectos/${proy}/time`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ fecha: $('#te-fecha').value, horas: $('#te-horas').value, descripcion: $('#te-desc').value })
+    });
+    alert('Hora cargada');
+    $('#te-horas').value = ''; $('#te-desc').value = '';
+  },
+
+  // ── CRM action handlers (los tabs estan en `tabs` arriba) ──────
+  async loadNotas(cid) {
+    if (!cid) { $('#nt-box').innerHTML = ''; return; }
+    const items = await api('/crm/contactos/' + cid + '/notas');
+    $('#nt-box').innerHTML = `
+      <div class="card">
+        <textarea id="nt-text" rows="3" placeholder="Nueva nota..."></textarea>
+        <div style="margin-top:8px"><button class="btn" onclick="ui.addNota(${cid})">Agregar nota</button></div>
+      </div>
+      <div class="card">
+        ${items.map(n => `<div style="padding:10px 0;border-bottom:1px solid #1f2a44">
+          <div style="font-size:11px;color:#6e82a9">${fmtDate(n.created_at)} · ${n.created_by||'—'}</div>
+          <div style="margin-top:4px">${(n.contenido||'').replace(/</g,'&lt;')}</div>
+        </div>`).join('') || '<div class="empty">Sin notas</div>'}
+      </div>`;
+  },
+  async addNota(cid) {
+    const txt = $('#nt-text').value.trim();
+    if (!txt) return;
+    await api('/crm/contactos/' + cid + '/notas', { method:'POST', body: JSON.stringify({ contenido: txt }) });
+    this.loadNotas(cid);
+  },
+
+  newTarea() {
+    api('/contactos').then(cs => {
+      this.modal(`<h3>Nueva tarea</h3>
+        <label>Título</label><input id="t-titulo"/>
+        <label style="margin-top:8px">Descripción</label><textarea id="t-desc" rows="2"></textarea>
+        <div class="grid2" style="margin-top:8px">
+          <div><label>Contacto</label><select id="t-cid"><option value="">—</option>${cs.map(c=>`<option value="${c.id}">${c.nombre}</option>`).join('')}</select></div>
+          <div><label>Prioridad</label><select id="t-prio"><option>baja</option><option selected>normal</option><option>alta</option></select></div>
+        </div>
+        <div class="grid2" style="margin-top:8px">
+          <div><label>Asignado a</label><input id="t-asig"/></div>
+          <div><label>Fecha límite</label><input type="date" id="t-fecha"/></div>
+        </div>
+        <hr/>
+        <div class="row" style="justify-content:flex-end">
+          <button class="btn ghost" onclick="ui.closeModal()">Cancelar</button>
+          <button class="btn" onclick="ui.saveTarea()">Crear</button>
+        </div>`);
+    });
+  },
+  async saveTarea() {
+    try {
+      await api('/crm/tareas', { method:'POST', body: JSON.stringify({
+        titulo: $('#t-titulo').value, descripcion: $('#t-desc').value,
+        contacto_id: $('#t-cid').value || null, prioridad: $('#t-prio').value,
+        asignado_a: $('#t-asig').value || null, fecha_limite: $('#t-fecha').value || null
+      })});
+      this.closeModal(); render('tareas');
+    } catch (e) { alert(e.message); }
+  },
+  async completarTarea(id) {
+    await api('/crm/tareas/' + id, { method:'PATCH', body: JSON.stringify({ estado:'completada' }) });
+    render('tareas');
+  },
+
+  newOpp() {
+    api('/contactos').then(cs => {
+      this.modal(`<h3>Nueva oportunidad</h3>
+        <label>Contacto</label>
+        <select id="o-cid"><option value="">—</option>${cs.map(c=>`<option value="${c.id}">${c.nombre}</option>`).join('')}</select>
+        <label style="margin-top:8px">Título</label><input id="o-titulo"/>
+        <label style="margin-top:8px">Descripción</label><textarea id="o-desc" rows="2"></textarea>
+        <div class="grid3" style="margin-top:8px">
+          <div><label>Valor estim.</label><input type="number" id="o-val" step="0.01"/></div>
+          <div><label>Moneda</label><select id="o-mon"><option>USD</option><option>ARS</option><option>EUR</option></select></div>
+          <div><label>Probabilidad</label><input type="number" id="o-prob" min="0" max="100" value="50"/></div>
+        </div>
+        <div class="grid2" style="margin-top:8px">
+          <div><label>Etapa</label><select id="o-etapa"><option>descubrimiento</option><option>propuesta</option><option>negociacion</option><option>cierre</option></select></div>
+          <div><label>Fecha cierre</label><input type="date" id="o-fecha"/></div>
+        </div>
+        <hr/>
+        <div class="row" style="justify-content:flex-end">
+          <button class="btn ghost" onclick="ui.closeModal()">Cancelar</button>
+          <button class="btn" onclick="ui.saveOpp()">Crear</button>
+        </div>`);
+    });
+  },
+  async saveOpp() {
+    const cid = $('#o-cid').value;
+    if (!cid) { alert('Contacto requerido'); return; }
+    try {
+      await api('/crm/contactos/' + cid + '/oportunidades', { method:'POST', body: JSON.stringify({
+        titulo: $('#o-titulo').value, descripcion: $('#o-desc').value,
+        valor_estim: $('#o-val').value || null, moneda: $('#o-mon').value,
+        probabilidad: $('#o-prob').value, etapa: $('#o-etapa').value,
+        fecha_cierre: $('#o-fecha').value || null
+      })});
+      this.closeModal(); render('oportunidades');
+    } catch (e) { alert(e.message); }
+  },
+
+  async loadTimeline(cid) {
+    if (!cid) { $('#tl-box').innerHTML = ''; return; }
+    const items = await api('/crm/contactos/' + cid + '/timeline');
+    $('#tl-box').innerHTML = `<div class="card">
+      ${items.map(t => `<div style="padding:10px 0;border-bottom:1px solid #1f2a44">
+        <div style="font-size:11px;color:#6e82a9">${fmtDate(t.created_at)} · ${t.tipo}${t.usuario?' · '+t.usuario:''}</div>
+        <div style="margin-top:4px"><b>${(t.titulo||'').replace(/</g,'&lt;')}</b></div>
+        ${t.descripcion?'<div style="color:#a6b6d6;margin-top:2px">'+(t.descripcion||'').replace(/</g,'&lt;')+'</div>':''}
+      </div>`).join('') || '<div class="empty">Sin eventos</div>'}
+    </div>`;
+  },
+};
+
+async function render(name) {
+  document.querySelectorAll('.side a').forEach(a => a.classList.toggle('active', a.dataset.tab === name));
+  try { $('#main').innerHTML = await tabs[name](); }
+  catch (e) { $('#main').innerHTML = `<div class="card"><b style="color:#ff8a8a">Error:</b> ${e.message}</div>`; }
+}
+document.querySelectorAll('.side a[data-tab]').forEach(a => a.addEventListener('click', () => render(a.dataset.tab)));
+render('dashboard');
+</script>
+</body>
+</html>

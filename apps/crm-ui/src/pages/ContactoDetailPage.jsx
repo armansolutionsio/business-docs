@@ -50,7 +50,7 @@ export default function ContactoDetailPage() {
 
   async function handleEstadoChange(newEstado) {
     try {
-      const updated = await updateContacto(id, { estado: newEstado, _user: user?.username });
+      const updated = await updateContacto(id, { estado: newEstado, _user: user?.email });
       setContacto(updated);
       toast('Estado actualizado', 'success');
     } catch (e) { toast(e.message, 'error'); }
@@ -58,7 +58,7 @@ export default function ContactoDetailPage() {
 
   async function handleSaveInfo(data) {
     try {
-      const updated = await updateContacto(id, { ...data, _user: user?.username });
+      const updated = await updateContacto(id, { ...data, _user: user?.email });
       setContacto(updated);
       toast('Contacto actualizado', 'success');
     } catch (e) { toast(e.message, 'error'); }
