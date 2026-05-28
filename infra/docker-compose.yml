@@ -8,7 +8,7 @@ services:
       POSTGRES_PASSWORD: arman123
       POSTGRES_DB: arman
     ports:
-      - "5435:5432"
+      - "5436:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/01-init.sql

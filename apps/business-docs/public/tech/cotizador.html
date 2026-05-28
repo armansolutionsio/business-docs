@@ -53,8 +53,11 @@
         <small>Arman Tech</small>
         <h1>Cotizador</h1>
       </div>
-      <a href="/tech/cotizador.html" class="active">Cotizador Tech</a>
+      <a href="/tech/cotizador.html" class="active">+ Nueva cotización</a>
       <a href="/tech/" style="font-size:13px">CRM Tech</a>
+      <hr style="border:0;border-top:1px solid #1f2a44;margin:10px 0">
+      <div style="font-size:11px;color:#7d92bd;text-transform:uppercase;letter-spacing:1.2px;padding:6px 12px">Mis cotizaciones</div>
+      <div id="cotz-list" style="max-height:50vh;overflow:auto;display:flex;flex-direction:column;gap:2px;font-size:13px"></div>
       <hr style="border:0;border-top:1px solid #1f2a44;margin:10px 0">
       <a href="#" onclick="openClientsModal();return false;">👥 Clientes</a>
       <a href="#" onclick="openCompanyModal();return false;">⚙️ Empresa</a>
@@ -116,11 +119,31 @@
   <script src="/app.js?v=20260420b"></script>
   <script>
     // Forzar render del tab tech (no del default 'quote' travel)
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
       if (typeof renderTab === 'function') {
         appState.currentTab = 'quote-tech';
         renderTab('quote-tech');
       }
+      // Cargar lista "Mis cotizaciones"
+      try {
+        const r = await fetch('/api/tech/cotizaciones');
+        if (!r.ok) return;
+        const items = await r.json();
+        const cur = new URLSearchParams(location.search).get('id');
+        const box = document.getElementById('cotz-list');
+        if (!box) return;
+        if (!items.length) { box.innerHTML = '<div style="color:#586a91;padding:6px 12px;font-size:12px">Sin cotizaciones aún</div>'; return; }
+        box.innerHTML = items.slice(0, 50).map(c => {
+          const name = (c.cliente_nombre || (c.cliente_snapshot && c.cliente_snapshot.nombre) || '—').toString().replace(/</g,'&lt;');
+          const total = Number(c.total || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 });
+          const active = String(c.id) === String(cur);
+          return `<a href="/tech/cotizador.html?id=${c.id}" style="padding:8px 12px;border-radius:6px;color:${active?'#fff':'#a6b6d6'};background:${active?'#1c2c52':'transparent'};text-decoration:none;display:block">
+            <div style="font-weight:600;font-size:12px">${c.numero || ('#'+c.id)}</div>
+            <div style="font-size:11px;color:#7d92bd;margin-top:2px">${name}</div>
+            <div style="font-size:11px;color:#7d92bd">${c.moneda||'USD'} ${total} · ${c.estado||'borrador'}</div>
+          </a>`;
+        }).join('');
+      } catch (e) { console.warn('No se pudo cargar lista de cotizaciones', e); }
     });
   </script>
 </body>

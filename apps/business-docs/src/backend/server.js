@@ -97,6 +97,8 @@ const dashboardRoutes      = require('./routes/dashboard');
 const whatsappSyncRoutes   = require('./routes/whatsappSync');
 const whatsappLeadsRoutes  = require('./routes/whatsappLeads');
 const adminIaRoutes        = require('./routes/adminIa');
+const voucherRoutes        = require('./routes/voucher');
+const comprobantesRoutes   = require('./routes/comprobantes');
 const techRoutes           = require('./routes/tech');
 const paybridgeRoutes      = require('./routes/paybridge');
 const adminCoreRoutes      = require('./routes/adminCore');
@@ -246,6 +248,8 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/whatsapp-sync', whatsappSyncRoutes);
 app.use('/api/whatsapp-leads', whatsappLeadsRoutes);
 app.use('/api/admin-ia', adminIaRoutes);
+app.use('/api/voucher', voucherRoutes);
+app.use('/api/comprobantes', comprobantesRoutes);
 
 // ── Verticales nuevas ─────────────────────────────────────────────────────────
 app.use('/api/tech',      techRoutes);

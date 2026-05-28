@@ -267,6 +267,38 @@ router.post('/generate-pdf', async (req, res) => {
     }
 
     const data = injectBranding(rawData);
+    // Voucher: pasa directo al renderer, sin totales ni registro en DB
+    if (type === 'voucher') {
+      const currencyMap = { USD: 'USD', ARS: '$', EUR: 'EUR', BRL: 'R$' };
+      const currencyCode = data.currency || 'USD';
+      data.currencySymbol = currencyMap[currencyCode] || currencyCode;
+      // Calcular saldo si no vino explicito
+      const t = parseFloat(data.total) || 0;
+      const d = parseFloat(data.deposit) || 0;
+      if (t > 0 && (data.balance === undefined || data.balance === '' || data.balance === null)) {
+        data.balance = Math.max(0, t - d);
+      }
+      // Flags para mostrar secciones cuando hay datos
+      data.hasTripInfo = !!(data.destination || data.tripStart || data.tripEnd || data.duration || data.tripDescription);
+      data.hasPaymentInfo = !!(t || d || data.balance || data.paymentDueDate || data.paymentMethod || data.paymentNotes);
+      // passengerCount: si no vino, usar length
+      if (!data.passengerCount && Array.isArray(data.passengers)) {
+        data.passengerCount = data.passengers.length;
+      }
+      const buffer = await DocumentRenderer.render({
+        type, format: 'pdf', data, assets: assets || {}, landscape: landscape || false,
+      });
+      log.info(req, 'pdf_ok', {
+        doc_type: type,
+        client: data.holderName || 'Sin titular',
+        doc_number: data.voucherNumber,
+        size_kb: parseFloat((buffer.length / 1024).toFixed(2)),
+        ms: Date.now() - startTime,
+      });
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename=voucher_${Date.now()}.pdf`);
+      return res.send(buffer);
+    }
     const totals = type === 'quote-tech' ? computeTechTotals(data) : computeTotals(data);
 
     // DEBUG: log pack data to find rendering issue

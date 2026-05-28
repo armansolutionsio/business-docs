@@ -1350,11 +1350,13 @@
     </div>
     <button class="arman-tab active" data-arman-tab="quote">Cotizador Travel</button>
     <button class="arman-tab" data-arman-tab="receipt">Recibo</button>
+    <button class="arman-tab" data-arman-tab="voucher">Voucher</button>
+    <button class="arman-tab" data-arman-tab="comprobantes">Comprobantes</button>
     <button class="arman-tab" disabled style="opacity:.4;cursor:not-allowed">Factura <small style="margin-left:auto;font-size:10px;color:#7d92bd">próx.</small></button>
     <hr style="border:0;border-top:1px solid #1f2a44;margin:10px 0">
-    <a href="/crm" target="_blank">📋 CRM completo</a>
-    <a href="#" onclick="openClientsModal();return false">👥 Clientes</a>
-    <a href="#" onclick="openCompanyModal();return false">⚙️ Empresa</a>
+    <a href="/crm/">CRM</a>
+    <a href="#" onclick="openClientsModal();return false">Clientes</a>
+    <a href="#" onclick="openCompanyModal();return false">Empresa</a>
     <div class="back">
       <a href="/" class="back-btn"><span>←</span><span>Volver al hub</span></a>
     </div>
@@ -1377,6 +1379,8 @@
                 <span class="coming-soon">Próximamente</span>
             </button>
             <button class="tab-button" data-tab="receipt">RECIBO</button>
+            <button class="tab-button" data-tab="voucher">VOUCHER</button>
+            <button class="tab-button" data-tab="comprobantes">COMPROBANTES</button>
             <button class="tab-button active" data-tab="quote">COTIZADOR TRAVEL</button>
         </div>
 
@@ -1438,7 +1442,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn-save" onclick="saveCompanyData()">💾 Guardar</button>
+                <button class="btn-save" onclick="saveCompanyData()">Guardar</button>
                 <button class="btn-cancel" onclick="closeCompanyModal()">Cancelar</button>
             </div>
         </div>
@@ -1514,7 +1518,7 @@
 
     <script src="/_shared/auth.js"></script>
     <script>ArmanAuth.requireSession({ vertical: 'travel' });</script>
-    <script src="/app.js?v=20260420b"></script>
+    <script src="/app.js?v=20260528c"></script>
     <script>
       // Bridge entre la sidebar nueva (Tech-style) y los tabs viejos del cotizador.
       // Click en sidebar tab → click programatico en el .tab-button correspondiente.

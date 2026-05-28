@@ -115,6 +115,22 @@ router.post('/contactos', validateBody({
   } catch (e) { next(e); }
 });
 
+// Lookup: matchear un contacto por CUIT > email > nombre. Devuelve el primero que matchee.
+router.get('/contactos/lookup', async (req, res, next) => {
+  try {
+    const { cuit, email, nombre } = req.query;
+    const tries = [];
+    if (cuit && String(cuit).trim())   tries.push({ where: 'cuit = $1',                     params: [String(cuit).trim()] });
+    if (email && String(email).trim()) tries.push({ where: 'LOWER(email) = LOWER($1)',      params: [String(email).trim()] });
+    if (nombre && String(nombre).trim()) tries.push({ where: 'LOWER(nombre) = LOWER($1)',   params: [String(nombre).trim()] });
+    for (const t of tries) {
+      const { rows } = await req.tdb.query(`SELECT * FROM contactos WHERE ${t.where} LIMIT 1`, t.params);
+      if (rows.length) return res.json({ match: rows[0], by: t.where.split(' ')[0] });
+    }
+    res.json({ match: null });
+  } catch (e) { next(e); }
+});
+
 router.get('/contactos/:id', async (req, res, next) => {
   try {
     const { rows } = await req.tdb.query(`SELECT * FROM contactos WHERE id = $1`, [req.params.id]);
@@ -288,35 +304,77 @@ router.get('/cotizaciones', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+// Helper: insertar items normalizados desde el array del cliente
+async function insertCotizacionItems(cli, cotId, items) {
+  for (const it of (items || [])) {
+    const it_total = num(it.cantidad, 1) * num(it.precio_unitario, 0) * (1 + num(it.iva_pct, 0) / 100);
+    await cli.query(
+      `INSERT INTO cotizacion_items (cotizacion_id, descripcion, categoria, cantidad, unidad, precio_unitario, iva_pct, total, metadata)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb)`,
+      [cotId, it.descripcion, it.categoria, num(it.cantidad, 1), it.unidad,
+       num(it.precio_unitario, 0), num(it.iva_pct, 0), it_total, JSON.stringify(it.metadata || {})]);
+  }
+}
+
+function computeTotals(items) {
+  const subtotal = (items || []).reduce((s, it) => s + num(it.cantidad, 1) * num(it.precio_unitario, 0), 0);
+  const iva = (items || []).reduce((s, it) => s + num(it.cantidad, 1) * num(it.precio_unitario, 0) * num(it.iva_pct, 0) / 100, 0);
+  return { subtotal, iva, total: subtotal + iva };
+}
+
 router.post('/cotizaciones', async (req, res, next) => {
   try {
     const b = req.body;
     const result = await req.tdb.tx(async (cli) => {
-      const seqRow = await cli.query(`SELECT COALESCE(MAX(seq), 0) + 1 AS seq FROM cotizaciones`);
+      const year = new Date().getFullYear();
+      // Secuencia anual: maxima seq de este anio + 1
+      const seqRow = await cli.query(
+        `SELECT COALESCE(MAX(seq), 0) + 1 AS seq FROM cotizaciones WHERE EXTRACT(YEAR FROM created_at) = $1`,
+        [year]
+      );
       const seq = seqRow.rows[0].seq;
-      const numero = `COT-TECH-${String(seq).padStart(6, '0')}`;
-      const subtotal = (b.items || []).reduce((s, it) => s + num(it.cantidad, 1) * num(it.precio_unitario, 0), 0);
-      const iva = (b.items || []).reduce((s, it) => s + num(it.cantidad, 1) * num(it.precio_unitario, 0) * num(it.iva_pct, 0) / 100, 0);
-      const total = subtotal + iva;
+      const numero = `CTZ-${year}-${String(seq).padStart(4, '0')}`;
+      const t = computeTotals(b.items);
       const cot = await cli.query(
         `INSERT INTO cotizaciones (contacto_id, numero, seq, estado, moneda, subtotal, iva, total,
             validez_dias, detalle_categorias, cliente_snapshot, metadata)
-         VALUES ($1,$2,$3,'borrador',$4,$5,$6,$7,$8,$9::jsonb,$10::jsonb,$11::jsonb)
+         VALUES ($1,$2,$3,COALESCE($4,'borrador'),$5,$6,$7,$8,$9,$10::jsonb,$11::jsonb,$12::jsonb)
          RETURNING *`,
-        [b.contacto_id, numero, seq, b.moneda || 'USD', subtotal, iva, total,
+        [b.contacto_id || null, numero, seq, b.estado, b.moneda || 'USD', t.subtotal, t.iva, t.total,
          num(b.validez_dias, 15), JSON.stringify(b.detalle_categorias || null),
          JSON.stringify(b.cliente_snapshot || {}), JSON.stringify(b.metadata || {})]);
-      for (const it of (b.items || [])) {
-        const it_total = num(it.cantidad, 1) * num(it.precio_unitario, 0) * (1 + num(it.iva_pct, 0) / 100);
-        await cli.query(
-          `INSERT INTO cotizacion_items (cotizacion_id, descripcion, categoria, cantidad, unidad, precio_unitario, iva_pct, total, metadata)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb)`,
-          [cot.rows[0].id, it.descripcion, it.categoria, num(it.cantidad, 1), it.unidad,
-           num(it.precio_unitario, 0), num(it.iva_pct, 0), it_total, JSON.stringify(it.metadata || {})]);
-      }
+      await insertCotizacionItems(cli, cot.rows[0].id, b.items);
       return cot.rows[0];
     });
     res.status(201).json(result);
+  } catch (e) { next(e); }
+});
+
+// PUT: sobrescribir una cotizacion existente (preserva numero + seq)
+router.put('/cotizaciones/:id', async (req, res, next) => {
+  try {
+    const b = req.body;
+    const result = await req.tdb.tx(async (cli) => {
+      const exist = await cli.query(`SELECT id FROM cotizaciones WHERE id = $1 FOR UPDATE`, [req.params.id]);
+      if (!exist.rows.length) return null;
+      const t = computeTotals(b.items);
+      const upd = await cli.query(
+        `UPDATE cotizaciones SET
+           contacto_id = $1, estado = COALESCE($2, estado), moneda = COALESCE($3, moneda),
+           subtotal = $4, iva = $5, total = $6, validez_dias = COALESCE($7, validez_dias),
+           detalle_categorias = $8::jsonb, cliente_snapshot = $9::jsonb, metadata = $10::jsonb,
+           updated_at = NOW()
+         WHERE id = $11 RETURNING *`,
+        [b.contacto_id || null, b.estado, b.moneda, t.subtotal, t.iva, t.total,
+         num(b.validez_dias, null), JSON.stringify(b.detalle_categorias || null),
+         JSON.stringify(b.cliente_snapshot || {}), JSON.stringify(b.metadata || {}),
+         req.params.id]);
+      await cli.query(`DELETE FROM cotizacion_items WHERE cotizacion_id = $1`, [req.params.id]);
+      await insertCotizacionItems(cli, req.params.id, b.items);
+      return upd.rows[0];
+    });
+    if (!result) return res.status(404).json({ error: 'No encontrada' });
+    res.json(result);
   } catch (e) { next(e); }
 });
 
@@ -324,7 +382,7 @@ router.get('/cotizaciones/:id', async (req, res, next) => {
   try {
     const c = await req.tdb.query(`SELECT * FROM cotizaciones WHERE id = $1`, [req.params.id]);
     if (!c.rows.length) return res.status(404).json({ error: 'No encontrada' });
-    const items = await req.tdb.query(`SELECT * FROM cotizacion_items WHERE cotizacion_id = $1`, [req.params.id]);
+    const items = await req.tdb.query(`SELECT * FROM cotizacion_items WHERE cotizacion_id = $1 ORDER BY id`, [req.params.id]);
     res.json({ ...c.rows[0], items: items.rows });
   } catch (e) { next(e); }
 });
