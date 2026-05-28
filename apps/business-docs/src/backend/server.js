@@ -33,10 +33,42 @@ app.use((req, res, next) => {
   next();
 });
 
-// ── Middleware ────────────────────────────────────────────────────────────────
-app.use(cors());
+// ── CORS (whitelist via env, vacio = abierto solo en dev) ────────────────────
+const allowedOrigins = (process.env.CORS_ORIGINS || '')
+  .split(',').map(s => s.trim()).filter(Boolean);
+const corsOpts = allowedOrigins.length
+  ? {
+      origin: (origin, cb) => {
+        if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+        return cb(new Error('Origin no permitido'));
+      },
+      credentials: true,
+    }
+  : {};
+app.use(cors(corsOpts));
 app.use(express.json({ limit: '50mb' }));
-app.use(express.static(path.join(__dirname, '../../public'), { etag: false, maxAge: 0 }));
+
+// ── Auth gate para /api/* (excepto login) ────────────────────────────────────
+const { requireAuth } = require('./utils/auth');
+const authRoutes = require('./routes/auth');
+app.use('/api/auth', authRoutes);
+
+app.use((req, res, next) => {
+  if (!req.path.startsWith('/api/')) return next();
+  if (req.path === '/api/auth/login') return next();
+  if (req.path.startsWith('/api/auth/')) return next(); // /me y /change-password ya tienen requireAuth interno
+  return requireAuth(req, res, next);
+});
+
+// Hub (landing) en /. El cotizador legacy queda accesible en /travel/.
+const PUBLIC_DIR = path.join(__dirname, '../../public');
+app.get('/', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'hub.html')));
+app.get(['/travel', '/travel/'],       (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'index.html')));
+app.get(['/tech', '/tech/'],           (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'tech', 'index.html')));
+app.get(['/paybridge', '/paybridge/'], (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'paybridge', 'index.html')));
+app.get(['/admin', '/admin/'],         (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'admin', 'index.html')));
+
+app.use(express.static(PUBLIC_DIR, { etag: false, maxAge: 0, index: false }));
 
 // CRM SPA — serve pre-built dist under /crm
 const crmDistPath = path.join(__dirname, '../../../crm-ui/dist');
@@ -64,6 +96,13 @@ const mailRoutes           = require('./routes/mail');
 const dashboardRoutes      = require('./routes/dashboard');
 const whatsappSyncRoutes   = require('./routes/whatsappSync');
 const whatsappLeadsRoutes  = require('./routes/whatsappLeads');
+const adminIaRoutes        = require('./routes/adminIa');
+const voucherRoutes        = require('./routes/voucher');
+const comprobantesRoutes   = require('./routes/comprobantes');
+const techRoutes           = require('./routes/tech');
+const paybridgeRoutes      = require('./routes/paybridge');
+const adminCoreRoutes      = require('./routes/adminCore');
+const arcaRoutes           = require('./routes/arca');
 
 // Quick cotizacion estado update (used by cotizador frontend)
 const dbPool = require('./utils/db');
@@ -208,6 +247,15 @@ app.use('/api/proveedores', proveedoresRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/whatsapp-sync', whatsappSyncRoutes);
 app.use('/api/whatsapp-leads', whatsappLeadsRoutes);
+app.use('/api/admin-ia', adminIaRoutes);
+app.use('/api/voucher', voucherRoutes);
+app.use('/api/comprobantes', comprobantesRoutes);
+
+// ── Verticales nuevas ─────────────────────────────────────────────────────────
+app.use('/api/tech',      techRoutes);
+app.use('/api/paybridge', paybridgeRoutes);
+app.use('/api/admin',     adminCoreRoutes);
+app.use('/api/arca',      arcaRoutes);
 
 // ── WA Import — receives file as base64 or rows as JSON ──────────────────────
 app.post('/api/wa-import', async (req, res, next) => {
@@ -457,8 +505,23 @@ function normalizePhone(p) {
 
 // ── Error handler ─────────────────────────────────────────────────────────────
 app.use((err, req, res, next) => {
-  log.error(req, 'unhandled_error', { error: err.message, stack: err.stack });
-  res.status(500).json({ error: err.message });
+  // Log con detalle: method, path, query, body (acotado), stack
+  const detail = {
+    method: req.method,
+    path: req.path,
+    query: req.query,
+    body: typeof req.body === 'object' ? JSON.stringify(req.body).slice(0, 500) : undefined,
+    error: err.message,
+    code: err.code,
+    detail_pg: err.detail,
+    table: err.table,
+    constraint: err.constraint,
+    stack: err.stack,
+  };
+  log.error(req, 'unhandled_error', detail);
+  // Tambien imprimir a stderr para que aparezca en docker logs sin parsing
+  console.error('\n[ERROR]', req.method, req.path, '\n', err.stack || err.message, '\n');
+  res.status(500).json({ error: err.message, code: err.code });
 });
 
 // ── Start ─────────────────────────────────────────────────────────────────────

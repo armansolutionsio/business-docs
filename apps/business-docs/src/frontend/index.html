@@ -987,16 +987,112 @@
         .modal-footer .btn-cancel:hover {
             background: #e8e8e8;
         }
+
+        /* ===== BRANDING ARMAN SOLUTIONS (Cotizador tech) ===== */
+        body.brand-solutions { background: linear-gradient(135deg, #7048B0 0%, #4F2D91 100%); }
+        body.brand-solutions .header { background: linear-gradient(135deg, #7048B0 0%, #4F2D91 100%); }
+        body.brand-solutions .tab-button:hover { background: #efe6ff; color: #7048B0; }
+        body.brand-solutions .tab-button.active { color: #7048B0; border-bottom-color: #7048B0; background: #efe6ff; }
+        body.brand-solutions .form-section { border-left-color: #7048B0; }
+        body.brand-solutions .section-title { color: #7048B0; }
+        body.brand-solutions input:focus,
+        body.brand-solutions textarea:focus,
+        body.brand-solutions select:focus { border-color: #7048B0; box-shadow: 0 0 0 3px rgba(112, 72, 176, 0.15); }
+        body.brand-solutions .btn-add-item { background: #7048B0; }
+        body.brand-solutions .btn-add-item:hover { background: #5A3892; box-shadow: 0 4px 12px rgba(112, 72, 176, 0.3); }
+        body.brand-solutions .btn-primary { background: linear-gradient(135deg, #7048B0 0%, #5A3892 100%); box-shadow: 0 4px 15px rgba(112, 72, 176, 0.2); }
+        body.brand-solutions .btn-primary:hover { background: linear-gradient(135deg, #5A3892 0%, #432670 100%); box-shadow: 0 6px 20px rgba(112, 72, 176, 0.35); }
+        body.brand-solutions .btn-secondary { color: #7048B0; border-color: #7048B0; }
+        body.brand-solutions .btn-secondary:hover { background: #efe6ff; border-color: #5A3892; }
+        body.brand-solutions .total-section { background: linear-gradient(135deg, #7048B0 0%, #4F2D91 100%); }
+        body.brand-solutions .modal-header h2 { color: #7048B0; }
+        body.brand-solutions .modal-footer .btn-save { background: linear-gradient(135deg, #7048B0 0%, #5A3892 100%); }
+        body.brand-solutions .multiselect-option:hover { border-color: #7048B0; background: #efe6ff; }
+        body.brand-solutions .multiselect-option input[type="checkbox"] { accent-color: #7048B0; }
+        body.brand-solutions .multiselect-option input[type="checkbox"]:checked + span { color: #7048B0; }
+        body.brand-solutions .payment-method-btn:hover { border-color: #7048B0; background: #efe6ff; }
+        body.brand-solutions .payment-method-btn.active { background: #7048B0; border-color: #7048B0; }
+        body.brand-solutions .header .brand img { background: rgba(255,255,255,0.12); }
+        body.brand-solutions .totals-summary .total-line.grand { background: #7048B0 !important; color: white; }
+        body.brand-solutions .totals-summary .total-line { border-color: #d4c4f0; }
+
+        /* Sub-rubro tech card */
+        .tech-rubro-card {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 14px;
+            margin-bottom: 12px;
+        }
+        .tech-rubro-card:hover { border-color: #c4a0e8; }
+        .tech-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr auto;
+            gap: 10px;
+            align-items: end;
+            margin-bottom: 10px;
+        }
+        .tech-row .form-group { margin: 0; }
+        .tech-row label { font-size: 11px; }
+        .tech-row input, .tech-row select { padding: 8px 10px; font-size: 13px; }
+        .tech-rubro-list .row-display {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr auto;
+            gap: 10px;
+            align-items: center;
+            background: #faf7ff;
+            border: 1px solid #e8ddf7;
+            border-radius: 6px;
+            padding: 10px 12px;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+        .tech-rubro-list .row-display .desc { font-weight: 600; color: #2c3e50; }
+        .tech-rubro-list .row-display .meta { color: #666; font-size: 12px; }
+        .tech-rubro-list .row-display .subtotal { text-align: right; font-weight: 700; color: #7048B0; font-family: 'Courier New', monospace; }
+        .tech-rubro-list .row-display button.remove-row {
+            background: #e74c3c; color: white; border: none; padding: 6px 10px;
+            border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 600;
+        }
+        .tech-rubro-list .row-display button.remove-row:hover { background: #c0392b; }
+        .totals-summary {
+            background: white;
+            border: 2px solid #7048B0;
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin: 20px 0;
+        }
+        .totals-summary .total-line {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            font-size: 14px;
+            border-bottom: 1px solid #eee;
+        }
+        .totals-summary .total-line:last-child { border-bottom: none; }
+        .totals-summary .total-line.grand {
+            margin-top: 6px;
+            padding: 14px 16px;
+            background: #7048B0;
+            color: white;
+            border-radius: 6px;
+            font-size: 18px;
+            font-weight: 700;
+        }
+        .totals-summary .label { color: #555; }
+        .totals-summary .value { font-family: 'Courier New', monospace; font-weight: 600; }
+        .totals-summary .subtotal-block { background: #faf7ff; border-radius: 6px; padding: 6px 12px; margin: 6px 0; }
+        .legal-textarea { min-height: 140px; font-size: 12px; }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="header">
+        <div class="header" id="appHeader">
             <div class="brand">
-                <img src="logo.png" alt="Arman Travel" onerror="this.style.display='none'">
+                <img id="brandLogo" src="logo-arman-travel.png" alt="Arman Travel" onerror="this.style.display='none'">
                 <div>
-                    <h1>Arman Travel</h1>
-                    <p>Sistema de Gestión de Documentos Comerciales</p>
+                    <h1 id="brandTitle">Arman Travel</h1>
+                    <p id="brandSubtitle">Sistema de Gestión de Documentos Comerciales</p>
                 </div>
             </div>
             <button class="header-btn" onclick="openClientsModal()" title="Gestionar clientes">
@@ -1013,7 +1109,8 @@
                 <span class="coming-soon">Próximamente</span>
             </button>
             <button class="tab-button" data-tab="receipt">RECIBO</button>
-            <button class="tab-button active" data-tab="quote">COTIZADOR</button>
+            <button class="tab-button active" data-tab="quote">COTIZADOR TRAVEL</button>
+            <button class="tab-button" data-tab="quote-tech">COTIZADOR</button>
         </div>
 
         <div class="content" id="content">

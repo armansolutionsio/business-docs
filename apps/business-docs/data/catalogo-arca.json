@@ -1,0 +1,161 @@
+{
+  "version": "2026-04-29",
+  "ultimaRevision": "2026-04-29",
+  "organismo": "ARCA (Agencia de Recaudación y Control Aduanero) — sucesora de AFIP desde 2024",
+  "fuentes": [
+    "RG (AFIP) 1415/2003 — Régimen general de emisión de comprobantes",
+    "RG (AFIP) 4290/2018 — Régimen de emisión electrónica con QR",
+    "RG (AFIP) 4291/2018 — Notas de Crédito y Débito asociadas",
+    "RG (AFIP) 5616/2024 — Adecuaciones FCE MiPyMEs",
+    "Ley 27.743 (2024) — Régimen de Transparencia Fiscal al Consumidor (IVA Contenido en Factura B/C)",
+    "RG (AFIP) 2408 — Percepciones IVA",
+    "RG (AFIP) 830 — Retenciones Ganancias"
+  ],
+  "tiposComprobante": [
+    { "codigo": "001", "nombre": "Factura A", "emisor": "Responsable Inscripto", "receptor": "RI o Monotributo (con CUIT)" },
+    { "codigo": "002", "nombre": "Nota de Débito A", "emisor": "RI", "receptor": "RI / Monotributo" },
+    { "codigo": "003", "nombre": "Nota de Crédito A", "emisor": "RI", "receptor": "RI / Monotributo" },
+    { "codigo": "004", "nombre": "Recibo A", "emisor": "RI", "receptor": "RI / Monotributo" },
+    { "codigo": "005", "nombre": "Nota de Venta al Contado A", "emisor": "RI", "receptor": "RI / Monotributo" },
+    { "codigo": "006", "nombre": "Factura B", "emisor": "RI", "receptor": "Consumidor Final / Monotributo / Exento" },
+    { "codigo": "007", "nombre": "Nota de Débito B", "emisor": "RI", "receptor": "CF / Mono / Exento" },
+    { "codigo": "008", "nombre": "Nota de Crédito B", "emisor": "RI", "receptor": "CF / Mono / Exento" },
+    { "codigo": "009", "nombre": "Recibo B", "emisor": "RI", "receptor": "CF / Mono / Exento" },
+    { "codigo": "011", "nombre": "Factura C", "emisor": "Monotributo / Exento", "receptor": "Cualquiera" },
+    { "codigo": "012", "nombre": "Nota de Débito C", "emisor": "Mono / Exento", "receptor": "Cualquiera" },
+    { "codigo": "013", "nombre": "Nota de Crédito C", "emisor": "Mono / Exento", "receptor": "Cualquiera" },
+    { "codigo": "015", "nombre": "Recibo C", "emisor": "Mono / Exento", "receptor": "Cualquiera" },
+    { "codigo": "019", "nombre": "Factura E", "emisor": "RI / Mono", "receptor": "Exterior (exportación)" },
+    { "codigo": "020", "nombre": "Nota de Débito E", "emisor": "RI / Mono", "receptor": "Exterior" },
+    { "codigo": "021", "nombre": "Nota de Crédito E", "emisor": "RI / Mono", "receptor": "Exterior" },
+    { "codigo": "051", "nombre": "Factura M", "emisor": "RI bajo régimen de control", "receptor": "RI" },
+    { "codigo": "052", "nombre": "Nota de Débito M", "emisor": "RI bajo régimen de control", "receptor": "RI" },
+    { "codigo": "053", "nombre": "Nota de Crédito M", "emisor": "RI bajo régimen de control", "receptor": "RI" },
+    { "codigo": "054", "nombre": "Recibo M", "emisor": "RI bajo régimen de control", "receptor": "RI" },
+    { "codigo": "060", "nombre": "Cta. Venta y Líquido producto A", "emisor": "RI agropecuario", "receptor": "RI" },
+    { "codigo": "061", "nombre": "Cta. Venta y Líquido producto B", "emisor": "RI agropecuario", "receptor": "CF / Mono" },
+    { "codigo": "063", "nombre": "Liquidación A", "emisor": "RI", "receptor": "RI" },
+    { "codigo": "064", "nombre": "Liquidación B", "emisor": "RI", "receptor": "CF / Mono" },
+    { "codigo": "081", "nombre": "Tique Factura A", "emisor": "Controlador fiscal", "receptor": "RI / Mono" },
+    { "codigo": "082", "nombre": "Tique Factura B", "emisor": "Controlador fiscal", "receptor": "CF / Mono" },
+    { "codigo": "083", "nombre": "Tique", "emisor": "Controlador fiscal", "receptor": "CF" },
+    { "codigo": "111", "nombre": "Tique Factura C", "emisor": "Controlador fiscal", "receptor": "Cualquiera" },
+    { "codigo": "112", "nombre": "Tique Nota de Crédito A", "emisor": "Controlador fiscal", "receptor": "—" },
+    { "codigo": "113", "nombre": "Tique Nota de Crédito B", "emisor": "Controlador fiscal", "receptor": "—" },
+    { "codigo": "114", "nombre": "Tique Nota de Crédito C", "emisor": "Controlador fiscal", "receptor": "—" },
+    { "codigo": "115", "nombre": "Tique Nota de Débito A", "emisor": "Controlador fiscal", "receptor": "—" },
+    { "codigo": "116", "nombre": "Tique Nota de Débito B", "emisor": "Controlador fiscal", "receptor": "—" },
+    { "codigo": "117", "nombre": "Tique Nota de Débito C", "emisor": "Controlador fiscal", "receptor": "—" },
+    { "codigo": "201", "nombre": "Factura de Crédito Electrónica MiPyMEs A", "emisor": "RI MiPyMEs", "receptor": "RI" },
+    { "codigo": "202", "nombre": "Nota de Débito Electrónica MiPyMEs A", "emisor": "RI MiPyMEs", "receptor": "RI" },
+    { "codigo": "203", "nombre": "Nota de Crédito Electrónica MiPyMEs A", "emisor": "RI MiPyMEs", "receptor": "RI" },
+    { "codigo": "206", "nombre": "Factura de Crédito Electrónica MiPyMEs B", "emisor": "RI MiPyMEs", "receptor": "CF / Mono" },
+    { "codigo": "207", "nombre": "Nota de Débito Electrónica MiPyMEs B", "emisor": "RI MiPyMEs", "receptor": "CF / Mono" },
+    { "codigo": "208", "nombre": "Nota de Crédito Electrónica MiPyMEs B", "emisor": "RI MiPyMEs", "receptor": "CF / Mono" },
+    { "codigo": "211", "nombre": "Factura de Crédito Electrónica MiPyMEs C", "emisor": "Mono", "receptor": "Cualquiera" },
+    { "codigo": "212", "nombre": "Nota de Débito Electrónica MiPyMEs C", "emisor": "Mono", "receptor": "Cualquiera" },
+    { "codigo": "213", "nombre": "Nota de Crédito Electrónica MiPyMEs C", "emisor": "Mono", "receptor": "Cualquiera" }
+  ],
+  "tiposDocumento": [
+    { "codigo": 80, "nombre": "CUIT" },
+    { "codigo": 86, "nombre": "CUIL" },
+    { "codigo": 87, "nombre": "CDI (Clave de Identificación)" },
+    { "codigo": 89, "nombre": "LE (Libreta de Enrolamiento)" },
+    { "codigo": 90, "nombre": "LC (Libreta Cívica)" },
+    { "codigo": 91, "nombre": "CI Extranjera" },
+    { "codigo": 92, "nombre": "En trámite" },
+    { "codigo": 93, "nombre": "Acta de Nacimiento" },
+    { "codigo": 94, "nombre": "Pasaporte" },
+    { "codigo": 95, "nombre": "CI Buenos Aires (RNP)" },
+    { "codigo": 96, "nombre": "DNI" },
+    { "codigo": 99, "nombre": "Sin identificar / venta global diaria" }
+  ],
+  "monedas": [
+    { "codigo": "PES", "iso": "ARS", "nombre": "Peso Argentino" },
+    { "codigo": "DOL", "iso": "USD", "nombre": "Dólar Estadounidense" },
+    { "codigo": "002", "iso": "USD", "nombre": "Dólar (alternativo en algunos PDFs)" },
+    { "codigo": "060", "iso": "EUR", "nombre": "Euro" },
+    { "codigo": "012", "iso": "CHF", "nombre": "Franco Suizo" },
+    { "codigo": "014", "iso": "CAD", "nombre": "Dólar Canadiense" },
+    { "codigo": "021", "iso": "GBP", "nombre": "Libra Esterlina" }
+  ],
+  "alicuotasIVA": [
+    { "codigo": 3, "porcentaje": 0,    "nombre": "0%" },
+    { "codigo": 9, "porcentaje": 2.5,  "nombre": "2,5%" },
+    { "codigo": 8, "porcentaje": 5,    "nombre": "5%" },
+    { "codigo": 4, "porcentaje": 10.5, "nombre": "10,5%" },
+    { "codigo": 5, "porcentaje": 21,   "nombre": "21%" },
+    { "codigo": 6, "porcentaje": 27,   "nombre": "27%" }
+  ],
+  "camposUniversales": [
+    "Datos del emisor: razón social, CUIT, condición frente al IVA, domicilio fiscal",
+    "Ingresos Brutos (jurisdicción + número)",
+    "Fecha de Inicio de Actividades",
+    "Tipo de comprobante + código numérico",
+    "Punto de Venta (4-5 dígitos)",
+    "Número de Comprobante (8 dígitos)",
+    "Fecha de Emisión",
+    "Datos del receptor: razón social, tipo + número de documento, condición IVA, domicilio",
+    "Detalle de ítems: código, descripción, cantidad, unidad de medida, precio unitario, % bonif, importe bonif, subtotal",
+    "CAE / CAEA / CAI + fecha de vencimiento",
+    "QR ARCA (RG 4290): URL https://www.afip.gob.ar/fe/qr/?p=BASE64_JSON_FIRMADO",
+    "Importe total final"
+  ],
+  "camposPorTipo": {
+    "Factura A": {
+      "obligatorios": ["IVA discriminado por alícuota", "Importe Neto Gravado por alícuota", "Otros Tributos"],
+      "opcionales": ["Importe No Gravado", "Operaciones Exentas", "Percepciones IIBB / IVA / Ganancias", "IVA Contenido (no aplica)", "Tipo de cambio si es ME"]
+    },
+    "Factura B": {
+      "obligatorios": ["IVA Contenido (Ley 27.743, vigente desde 2024)", "Importe Total"],
+      "noAplica": ["IVA discriminado", "Importe Neto Gravado por alícuota"],
+      "opcionales": ["Otros Tributos", "Importe No Gravado", "Operaciones Exentas"]
+    },
+    "Factura C": {
+      "obligatorios": ["Importe Total"],
+      "noAplica": ["IVA discriminado", "IVA Contenido (excepto si Mono está obligado)"],
+      "opcionales": ["Otros Tributos"]
+    },
+    "Factura E": {
+      "obligatorios": ["Moneda", "Tipo de Cambio (cotización ARCA)", "INCOTERM", "País de destino", "Código de operación"],
+      "opcionales": ["Detalle de productos exportados", "Régimen aduanero"]
+    },
+    "Factura M": {
+      "obligatorios": ["IVA discriminado", "Régimen de Transparencia Fiscal Especial"],
+      "opcionales": ["Otros Tributos"],
+      "notas": "Emitida por contribuyentes bajo régimen de control especial. Tratamiento similar a Factura A pero con discriminación adicional."
+    },
+    "Nota de Crédito A/B/C/M": {
+      "obligatorios": ["Comprobante asociado (tipo, PV, número, fecha) — RG 4291", "Motivo de emisión"],
+      "notas": "Hereda IVA, alícuotas y regímenes del comprobante asociado."
+    },
+    "Nota de Débito A/B/C/M": {
+      "obligatorios": ["Comprobante asociado", "Motivo de emisión"],
+      "notas": "Hereda IVA, alícuotas y regímenes del comprobante asociado."
+    },
+    "FCE MiPyMEs A/B/C": {
+      "obligatorios": ["Plazo de pago", "Fecha de vencimiento de pago", "CBU del emisor para depósito automático"],
+      "opcionales": ["Aceptación / rechazo registrado en ARCA", "Cesión de la FCE en mercado secundario"]
+    },
+    "Tique / Tique Factura": {
+      "obligatorios": ["Datos del controlador fiscal (memoria, número de homologación)", "Cinta de auditoría"],
+      "opcionales": ["IVA discriminado (para tique factura A)"]
+    }
+  },
+  "tributosOpcionales": [
+    "Percepción IVA (RG 2408 / RG 5616)",
+    "Percepción Ganancias (RG 830)",
+    "Percepción IIBB CABA (Res. 305 AGIP)",
+    "Percepción IIBB por jurisdicción provincial",
+    "Impuestos internos (combustibles, tabaco, alcoholes, telecomunicaciones)",
+    "SIRCREB (Régimen de Recaudación Tributaria sobre Acreditaciones Bancarias)",
+    "SUSS (Sistema Único de la Seguridad Social)",
+    "SICORE (Sistema de Control de Retenciones)"
+  ],
+  "notasRegulatorias": [
+    "Desde 2024 ARCA reemplaza a AFIP como autoridad fiscal nacional. Las RG previas siguen vigentes salvo derogación expresa.",
+    "Ley 27.743 (Régimen de Transparencia Fiscal al Consumidor) obliga a discriminar 'IVA Contenido' en Factura B y C.",
+    "RG 4290/2018 obliga a incluir QR firmado en todos los comprobantes electrónicos.",
+    "Para verificar la autenticidad de un comprobante: webservice 'wsmtxca' (RG 2904) o consulta web AFIP/ARCA con CAE."
+  ]
+}

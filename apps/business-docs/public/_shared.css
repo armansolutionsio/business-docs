@@ -1,0 +1,81 @@
+/* Estilos compartidos para las UIs de cada vertical (Tech, PayBridge, Admin). */
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,sans-serif;
+  background:#0d121e;color:#e7ecf5;font-size:14px;
+}
+.app{display:grid;grid-template-columns:240px 1fr;min-height:100vh}
+.side{
+  background:#101727;border-right:1px solid #1f2a44;padding:20px 16px;
+  display:flex;flex-direction:column;gap:6px;
+}
+.side .brand{padding:6px 8px 16px;border-bottom:1px solid #1f2a44;margin-bottom:12px}
+.side .brand h1{font-size:18px;font-weight:600}
+.side .brand small{color:#8ea0c2;font-size:11px;text-transform:uppercase;letter-spacing:1px}
+.side a{
+  display:block;padding:9px 12px;border-radius:8px;color:#a6b6d6;text-decoration:none;font-size:14px;
+}
+.side a:hover{background:#19223a;color:#fff}
+.side a.active{background:#1c2c52;color:#fff}
+.side .back{margin-top:auto;color:#6e82a9;font-size:12px;padding-top:16px;border-top:1px solid #1f2a44}
+.side .back-btn{
+  display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:8px;
+  background:#19223a;color:#a6b6d6;text-decoration:none;font-size:13px;font-weight:500;
+  transition:background .15s,color .15s,transform .15s;border:1px solid #2a3656;
+}
+.side .back-btn:hover{background:#243057;color:#fff;transform:translateX(-2px)}
+.side .back-btn .arrow{font-size:14px;transition:transform .15s}
+.side .back-btn:hover .arrow{transform:translateX(-3px)}
+.main{padding:24px 32px;overflow:auto}
+.head{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+.head h2{font-size:22px;font-weight:600}
+.btn{
+  background:#3a5cc4;color:#fff;border:none;padding:8px 14px;border-radius:8px;
+  font-size:13px;cursor:pointer;font-weight:500;
+}
+.btn:hover{background:#4a6ed4}
+.btn.ghost{background:transparent;border:1px solid #2a3656;color:#a6b6d6}
+.btn.ghost:hover{background:#19223a;color:#fff}
+.btn.danger{background:#c44a4a}
+.btn.success{background:#3aa472}
+.card{
+  background:#141c30;border:1px solid #1f2a44;border-radius:12px;padding:18px;margin-bottom:16px;
+}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:9px 10px;text-align:left;border-bottom:1px solid #1f2a44}
+th{color:#8ea0c2;font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.7px}
+input,select,textarea{
+  background:#0d121e;border:1px solid #2a3656;color:#e7ecf5;padding:8px 10px;
+  border-radius:8px;font-size:13px;font-family:inherit;width:100%;
+}
+input:focus,select:focus,textarea:focus{border-color:#5b7bd6;outline:none}
+label{display:block;margin-bottom:4px;font-size:12px;color:#8ea0c2}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.row{display:flex;gap:8px;align-items:center}
+.tag{
+  display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;
+  background:#1c2c52;color:#a6c3ff;
+}
+.tag.green{background:#163a2a;color:#7fe6b1}
+.tag.amber{background:#3a2e16;color:#ffd089}
+.tag.red{background:#3a1616;color:#ff8a8a}
+.empty{color:#6e82a9;text-align:center;padding:32px;font-size:13px}
+.kpi{
+  background:linear-gradient(135deg,#19233d,#111a2e);border:1px solid #2a3656;
+  border-radius:12px;padding:16px;flex:1;
+}
+.kpi .lbl{color:#8ea0c2;font-size:11px;text-transform:uppercase;letter-spacing:.8px}
+.kpi .val{font-size:26px;font-weight:600;margin-top:4px}
+.modal-bg{
+  position:fixed;inset:0;background:rgba(7,11,20,.75);display:none;
+  align-items:center;justify-content:center;z-index:50;
+}
+.modal-bg.open{display:flex}
+.modal{
+  background:#141c30;border:1px solid #2a3656;border-radius:14px;padding:24px;
+  width:min(560px,92vw);max-height:88vh;overflow:auto;
+}
+.modal h3{margin-bottom:14px;font-size:18px}
+hr{border:none;border-top:1px solid #1f2a44;margin:14px 0}

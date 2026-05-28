@@ -4,8 +4,80 @@ const appState = {
     items: [],
     formData: {},
     categoryDetails: {},
-    images: null
+    images: null,
+    // Estado específico del Cotizador (tech)
+    tech: {
+        hours: [],          // [{ id, role, seniority, hours, rate, currency }]
+        infra: [],          // [{ id, concept, model, cost, periods }]
+        licenses: [],       // [{ id, service, model, cost, periods }]
+        credentials: [],    // [{ id, concept, cost }]
+        others: [],         // [{ id, description, quantity, price }]
+    }
 };
+
+// ===== CATÁLOGOS PARA EL COTIZADOR (TECH) =====
+const TECH_PROJECT_TYPES = [
+    'Aplicación Web', 'Aplicación Móvil (iOS/Android)', 'Aplicación de Escritorio',
+    'API / Backend', 'E-commerce', 'CRM / ERP a medida', 'SaaS / Plataforma',
+    'Integración de Sistemas', 'Automatización / RPA', 'Inteligencia Artificial / ML',
+    'Data Engineering / Pipelines', 'Business Intelligence / Dashboards',
+    'Bot / Chatbot / WhatsApp', 'DevOps / Infraestructura', 'Auditoría / Consultoría',
+    'Mantenimiento / Soporte', 'Otro'
+];
+const TECH_METHODOLOGIES = ['Scrum', 'Kanban', 'Scrumban', 'Cascada', 'Híbrida', 'Por hitos'];
+const TECH_ROLES = [
+    'Tech Lead', 'Arquitecto de Software', 'Senior Full-Stack', 'Senior Backend',
+    'Senior Frontend', 'Mid Full-Stack', 'Mid Backend', 'Mid Frontend',
+    'Junior Developer', 'Mobile Developer', 'UX/UI Designer', 'QA Engineer',
+    'DevOps / SRE', 'Data Engineer', 'Data Scientist', 'ML Engineer',
+    'Project Manager', 'Product Owner', 'Consultor', 'Otro'
+];
+const TECH_SENIORITIES = ['Junior', 'Semi-Senior', 'Senior', 'Lead', 'N/A'];
+const TECH_INFRA_PRESETS = [
+    'AWS - Cómputo (EC2/Lambda)', 'AWS - Almacenamiento (S3)', 'AWS - RDS / Aurora',
+    'AWS - CloudFront / Route 53', 'GCP - Compute Engine', 'GCP - Cloud SQL',
+    'GCP - Cloud Storage', 'Azure - App Service', 'Azure - SQL Database',
+    'Vercel', 'Netlify', 'Railway', 'Render', 'Fly.io', 'DigitalOcean',
+    'Supabase', 'Firebase', 'PlanetScale', 'MongoDB Atlas', 'Redis Cloud',
+    'Cloudflare (CDN/WAF)', 'Servidor dedicado / VPS', 'Backups y DRP', 'Otro'
+];
+const TECH_LICENSE_PRESETS = [
+    'GitHub / GitLab / Bitbucket', 'Sentry (monitoreo errores)', 'Datadog / New Relic',
+    'Stripe / MercadoPago (pasarela)', 'OpenAI API / Anthropic API',
+    'Auth0 / Clerk / Cognito', 'Twilio (SMS/Voz)', 'WhatsApp Business API',
+    'SendGrid / Mailgun / Resend', 'Mapbox / Google Maps API', 'Algolia / Meilisearch',
+    'Atlassian (Jira/Confluence)', 'Figma / Adobe Creative Cloud',
+    'Postman / Bruno', 'Apple Developer Program', 'Google Play Console',
+    'Microsoft 365 / Google Workspace', 'Zapier / Make (n8n)', 'Otro'
+];
+const TECH_CREDENTIAL_PRESETS = [
+    'Dominio (.com / .com.ar / etc.)', 'Certificado SSL extendido',
+    'Apple Developer Program (anual)', 'Google Play Console (one-time)',
+    'Firma de código (Code Signing)', 'Verificación de empresa (Meta/Google)',
+    'Cuentas de servicios cloud', 'Licencia de software de terceros', 'Otro'
+];
+const TECH_PAYMENT_SCHEMES = [
+    '50% anticipo / 50% contra-entrega',
+    '40% anticipo / 30% mid / 30% entrega',
+    '30% anticipo / hitos parciales / 10% aceptación',
+    'Pago por hitos (a definir)',
+    'Mensualizado (proyecto largo)',
+    'Pago contra-entrega 100%',
+    'Anticipo 100%',
+    'A convenir'
+];
+const TECH_DEFAULT_TERMS = [
+    'PROPIEDAD INTELECTUAL: Todo el código fuente, la documentación y los entregables del proyecto serán propiedad del CLIENTE una vez recibido el pago total acordado. Los componentes de uso interno, librerías propias y herramientas previas de ARMAN SOLUTIONS continuarán siendo propiedad del PROVEEDOR.',
+    'CONFIDENCIALIDAD: Las partes se comprometen a mantener absoluta confidencialidad sobre la información técnica, comercial, financiera y estratégica intercambiada durante la ejecución del proyecto, durante un plazo mínimo de 5 (cinco) años contados desde la finalización del mismo.',
+    'ALCANCE Y CAMBIOS (CHANGE REQUESTS): Cualquier modificación al alcance descripto en esta cotización implicará una orden de cambio (CR) que será presupuestada por separado. ARMAN SOLUTIONS no estará obligada a ejecutar tareas fuera del alcance hasta tanto se apruebe la CR correspondiente por escrito.',
+    'GARANTÍA: Se otorga una garantía sobre defectos en la funcionalidad entregada por un plazo de 30 (treinta) días corridos desde la entrega final, siempre que no medie modificación posterior por terceros. Quedan excluidas mejoras, nuevas funcionalidades, errores derivados de cambios de entorno, datos corruptos o uso indebido.',
+    'LIMITACIÓN DE RESPONSABILIDAD: La responsabilidad económica de ARMAN SOLUTIONS por incumplimientos se limita al monto efectivamente abonado por el CLIENTE bajo esta cotización. En ningún caso se responderá por daños indirectos, lucro cesante, pérdida de chance, ni perjuicios consecuentes o reputacionales.',
+    'COSTOS RECURRENTES DE TERCEROS: Los costos de infraestructura cloud, suscripciones, licencias, credenciales, dominios y servicios SaaS de terceros listados en esta cotización son referenciales y pueden variar según el proveedor; serán trasladados al CLIENTE a costo, salvo que se indique lo contrario.',
+    'PLAZO DE ENTREGA: Los plazos consignados están sujetos a la entrega oportuna por parte del CLIENTE de información, accesos, validaciones y aprobaciones requeridas. Las demoras imputables al CLIENTE extenderán automáticamente el cronograma.',
+    'CANCELACIÓN: En caso de cancelación anticipada del proyecto por parte del CLIENTE, se facturarán las horas y costos efectivamente incurridos hasta la notificación, más una compensación equivalente al 15% del saldo pendiente en concepto de lucro cesante.',
+    'JURISDICCIÓN Y LEY APLICABLE: Para toda controversia derivada de la presente cotización, las partes se someten a los Tribunales Ordinarios de la Ciudad Autónoma de Buenos Aires, República Argentina, con renuncia expresa a cualquier otro fuero o jurisdicción que pudiera corresponder. Se aplicará la legislación argentina vigente.',
+    'ACEPTACIÓN: La aprobación de esta cotización por escrito (firma, e-mail, mensajería instantánea o transferencia del anticipo) implica el pleno conocimiento y aceptación de todas las condiciones aquí establecidas.'
+].join('\n\n');
 
 // ===== BASE DE DATOS DE AEROPUERTOS (IATA) =====
 const AIRPORTS_DB = [
@@ -447,8 +519,34 @@ function setupTabButtons() {
     });
 }
 
+// Cambia el branding del header/body según la pestaña activa
+function applyBrandingForTab(tabName) {
+    const body = document.body;
+    const logo = document.getElementById('brandLogo');
+    const title = document.getElementById('brandTitle');
+    const subtitle = document.getElementById('brandSubtitle');
+    if (tabName === 'quote-tech') {
+        body.classList.add('brand-solutions');
+        if (logo) { logo.src = '/Logo Arman Solutions.png'; logo.alt = 'Arman Solutions'; }
+        if (title) title.textContent = 'Arman Solutions';
+        if (subtitle) subtitle.textContent = 'Cotizador de Proyectos Tecnológicos';
+    } else {
+        body.classList.remove('brand-solutions');
+        if (logo) { logo.src = '/logo-arman-travel.png'; logo.alt = 'Arman Travel'; }
+        if (title) title.textContent = 'Arman Travel';
+        if (subtitle) subtitle.textContent = 'Sistema de Gestión de Documentos Comerciales';
+    }
+}
+
 // Renderizar contenido de pestaña
 function renderTab(tabName) {
+    applyBrandingForTab(tabName);
+
+    if (tabName === 'quote-tech') {
+        renderTechQuoteTab();
+        return;
+    }
+
     const config = documentConfig[tabName];
     const contentDiv = document.getElementById('content');
     let html = '<form id="documentForm">';
@@ -1963,6 +2061,728 @@ async function deleteClientFromList(clientId) {
     } catch (error) {
         console.error('Error:', error);
         showMessage('Error al eliminar cliente', 'error');
+    }
+}
+
+// ============================================================
+// =====               COTIZADOR (TECH)                   =====
+// ============================================================
+
+// Genera próximo número de cotización tech (formato CTZ-YYYY-NNNN local)
+function nextTechQuoteNumber() {
+    const year = new Date().getFullYear();
+    const counterKey = 'techQuoteCounter_' + year;
+    const current = parseInt(localStorage.getItem(counterKey) || '0', 10) + 1;
+    localStorage.setItem(counterKey, String(current));
+    return `CTZ-${year}-${String(current).padStart(4, '0')}`;
+}
+function peekTechQuoteNumber() {
+    const year = new Date().getFullYear();
+    const counterKey = 'techQuoteCounter_' + year;
+    const next = parseInt(localStorage.getItem(counterKey) || '0', 10) + 1;
+    return `CTZ-${year}-${String(next).padStart(4, '0')}`;
+}
+
+function renderTechQuoteTab() {
+    const today = new Date().toISOString().split('T')[0];
+    const inThirtyDays = new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0];
+
+    // Reset state
+    appState.tech = { hours: [], infra: [], licenses: [], credentials: [], others: [] };
+    appState.formData = {};
+
+    const html = `
+    <form id="documentForm">
+        <div class="message" id="message"></div>
+        <div class="loading" id="loading"><div class="spinner"></div><p>Generando documento...</p></div>
+
+        <!-- DATOS DEL EMISOR -->
+        <div class="form-section">
+            <h3 class="section-title">Datos del Emisor</h3>
+            <div class="form-grid">
+                <div class="form-group"><label>Razón Social<span class="required">*</span></label>
+                    <input type="text" name="companyName" required value="${escapeHtml(companyData.companyName || '')}"></div>
+                <div class="form-group"><label>CUIT<span class="required">*</span></label>
+                    <input type="text" name="companyCUIT" required value="${escapeHtml(companyData.companyCUIT || '')}"></div>
+                <div class="form-group"><label>Condición IVA</label>
+                    <input type="text" name="companyIVACondition" value="${escapeHtml(companyData.companyIVACondition || '')}"></div>
+                <div class="form-group"><label>Ingresos Brutos</label>
+                    <input type="text" name="companyGrossIncome" value="${escapeHtml(companyData.companyGrossIncome || '')}"></div>
+                <div class="form-group full-width"><label>Domicilio Fiscal<span class="required">*</span></label>
+                    <input type="text" name="companyAddress" required value="${escapeHtml(companyData.companyAddress || '')}"></div>
+                <div class="form-group"><label>Email<span class="required">*</span></label>
+                    <input type="email" name="companyEmail" required value="${escapeHtml(companyData.companyEmail || '')}"></div>
+                <div class="form-group"><label>Teléfono<span class="required">*</span></label>
+                    <input type="tel" name="companyPhone" required value="${escapeHtml(companyData.companyPhone || '')}"></div>
+                <div class="form-group"><label>Sitio Web</label>
+                    <input type="text" name="companyWebsite" placeholder="armansolutions.com" value="armansolutions.com"></div>
+                <div class="form-group"><label>Inicio de Actividades</label>
+                    <input type="date" name="companyStartDate" value="${escapeHtml(companyData.companyStartDate || '')}"></div>
+            </div>
+        </div>
+
+        <!-- DATOS DEL CLIENTE -->
+        <div class="form-section">
+            <h3 class="section-title">Datos del Cliente</h3>
+            <div class="form-grid">
+                <div class="form-group"><label>Nombre / Razón Social<span class="required">*</span></label>
+                    <input type="text" name="clientName" required></div>
+                <div class="form-group"><label>CUIT / DNI</label>
+                    <input type="text" name="clientCUIT" placeholder="XX-XXXXXXXX-X"></div>
+                <div class="form-group"><label>Condición IVA</label>
+                    <select name="clientIVACondition">
+                        <option value="">Seleccionar...</option>
+                        <option>Responsable Inscripto</option>
+                        <option>Monotributista</option>
+                        <option>Exento</option>
+                        <option>Consumidor Final</option>
+                        <option>Exterior</option>
+                    </select></div>
+                <div class="form-group"><label>Persona de Contacto</label>
+                    <input type="text" name="clientContactPerson" placeholder="Nombre y rol del referente"></div>
+                <div class="form-group"><label>Email</label>
+                    <input type="email" name="clientEmail"></div>
+                <div class="form-group"><label>Teléfono</label>
+                    <input type="tel" name="clientPhone"></div>
+                <div class="form-group full-width"><label>Domicilio</label>
+                    <input type="text" name="clientDomicilio" placeholder="Calle, número, piso"></div>
+                <div class="form-group"><label>Localidad</label>
+                    <input type="text" name="clientLocalidad"></div>
+                <div class="form-group"><label>Provincia / País</label>
+                    <input type="text" name="clientProvincia"></div>
+                <div class="form-group"><label>Código Postal</label>
+                    <input type="text" name="clientCodigoPostal"></div>
+            </div>
+        </div>
+
+        <!-- DATOS DEL DOCUMENTO -->
+        <div class="form-section">
+            <h3 class="section-title">Datos del Documento</h3>
+            <div class="form-grid">
+                <div class="form-group"><label>Número de Cotización<span class="required">*</span></label>
+                    <input type="text" name="quoteNumber" required value="${peekTechQuoteNumber()}"></div>
+                <div class="form-group"><label>Fecha de Emisión<span class="required">*</span></label>
+                    <input type="date" name="quoteDate" required value="${today}"></div>
+                <div class="form-group"><label>Fecha de Vencimiento<span class="required">*</span></label>
+                    <input type="date" name="quoteValidUntil" required value="${inThirtyDays}"></div>
+                <div class="form-group"><label>Validez de la Oferta (días)<span class="required">*</span></label>
+                    <input type="number" name="validity" required min="1" value="30"></div>
+            </div>
+        </div>
+
+        <!-- INFORMACIÓN DEL PROYECTO -->
+        <div class="form-section">
+            <h3 class="section-title">Información del Proyecto</h3>
+            <div class="form-grid">
+                <div class="form-group full-width"><label>Nombre del Proyecto<span class="required">*</span></label>
+                    <input type="text" name="projectName" required placeholder="Ej: Plataforma de gestión de pedidos"></div>
+                <div class="form-group"><label>Tipo de Proyecto<span class="required">*</span></label>
+                    <select name="projectType" required>
+                        <option value="">Seleccionar...</option>
+                        ${TECH_PROJECT_TYPES.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('')}
+                    </select></div>
+                <div class="form-group"><label>Metodología</label>
+                    <select name="projectMethodology">
+                        <option value="">Seleccionar...</option>
+                        ${TECH_METHODOLOGIES.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('')}
+                    </select></div>
+                <div class="form-group"><label>Plazo Estimado (semanas)</label>
+                    <input type="number" name="projectDurationWeeks" min="1" placeholder="12"></div>
+                <div class="form-group"><label>Inicio Estimado</label>
+                    <input type="date" name="projectStartDate"></div>
+                <div class="form-group full-width"><label>Descripción / Alcance del Proyecto<span class="required">*</span></label>
+                    <textarea name="projectScope" required rows="4" placeholder="Describir el alcance funcional, técnico y los entregables esperados..."></textarea></div>
+                <div class="form-group full-width"><label>Stack Tecnológico Propuesto</label>
+                    <textarea name="projectStack" rows="2" placeholder="Ej: React + Node.js + PostgreSQL, deploy en AWS"></textarea></div>
+                <div class="form-group full-width"><label>Entregables</label>
+                    <textarea name="projectDeliverables" rows="3" placeholder="Listar entregables: código fuente, documentación, despliegue, capacitación, etc."></textarea></div>
+                <div class="form-group full-width"><label>Lo que NO está Incluido (Exclusiones)</label>
+                    <textarea name="projectExclusions" rows="2" placeholder="Aclarar qué queda fuera del alcance: hosting, dominios, costos de terceros, capacitación extendida, etc."></textarea></div>
+                <div class="form-group full-width"><label>Supuestos / Asunciones</label>
+                    <textarea name="projectAssumptions" rows="2" placeholder="Ej: el cliente proveerá los accesos a producción, el diseño UX está aprobado, etc."></textarea></div>
+            </div>
+        </div>
+
+        <!-- HORAS DE DESARROLLO -->
+        <div class="form-section">
+            <h3 class="section-title">💻 Recursos Humanos / Horas de Desarrollo</h3>
+            <div class="tech-rubro-card">
+                <div class="tech-row">
+                    <div class="form-group"><label>Rol</label>
+                        <select id="techHourRole">
+                            ${TECH_ROLES.map(r => `<option value="${escapeHtml(r)}">${escapeHtml(r)}</option>`).join('')}
+                        </select></div>
+                    <div class="form-group"><label>Seniority</label>
+                        <select id="techHourSeniority">
+                            ${TECH_SENIORITIES.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('')}
+                        </select></div>
+                    <div class="form-group"><label>Horas</label>
+                        <input type="number" id="techHourQty" min="0" step="0.5" placeholder="40"></div>
+                    <div class="form-group"><label>USD / hora</label>
+                        <input type="number" id="techHourRate" min="0" step="0.01" placeholder="35"></div>
+                    <button type="button" class="btn-add-item" onclick="addTechHour()">+ Agregar</button>
+                </div>
+            </div>
+            <div class="tech-rubro-list" id="techHoursList"></div>
+        </div>
+
+        <!-- INFRAESTRUCTURA -->
+        <div class="form-section">
+            <h3 class="section-title">☁️ Infraestructura / Servicios Cloud</h3>
+            <p style="font-size: 12px; color: #666; margin-bottom: 10px;">Costos recurrentes por nube, bases de datos, CDN, almacenamiento, backups, etc.</p>
+            <div class="tech-rubro-card">
+                <div class="tech-row">
+                    <div class="form-group"><label>Concepto</label>
+                        <input type="text" id="techInfraConcept" placeholder="Ej: AWS RDS Postgres" list="techInfraPresets">
+                        <datalist id="techInfraPresets">
+                            ${TECH_INFRA_PRESETS.map(p => `<option value="${escapeHtml(p)}"></option>`).join('')}
+                        </datalist></div>
+                    <div class="form-group"><label>Modelo</label>
+                        <select id="techInfraModel">
+                            <option value="Mensual">Mensual</option>
+                            <option value="Anual">Anual</option>
+                            <option value="One-time">Pago único</option>
+                            <option value="Por uso">Por uso (estimado)</option>
+                        </select></div>
+                    <div class="form-group"><label>Costo (USD)</label>
+                        <input type="number" id="techInfraCost" min="0" step="0.01" placeholder="50"></div>
+                    <div class="form-group"><label>Cantidad de períodos</label>
+                        <input type="number" id="techInfraPeriods" min="1" step="1" placeholder="12" value="1"></div>
+                    <button type="button" class="btn-add-item" onclick="addTechInfra()">+ Agregar</button>
+                </div>
+            </div>
+            <div class="tech-rubro-list" id="techInfraList"></div>
+        </div>
+
+        <!-- LICENCIAS Y SUSCRIPCIONES -->
+        <div class="form-section">
+            <h3 class="section-title">🔑 Licencias y Suscripciones</h3>
+            <p style="font-size: 12px; color: #666; margin-bottom: 10px;">APIs de terceros, herramientas SaaS, monitoring, analítica, pasarelas de pago, etc.</p>
+            <div class="tech-rubro-card">
+                <div class="tech-row">
+                    <div class="form-group"><label>Servicio</label>
+                        <input type="text" id="techLicenseService" placeholder="Ej: Sentry" list="techLicensePresets">
+                        <datalist id="techLicensePresets">
+                            ${TECH_LICENSE_PRESETS.map(p => `<option value="${escapeHtml(p)}"></option>`).join('')}
+                        </datalist></div>
+                    <div class="form-group"><label>Modelo</label>
+                        <select id="techLicenseModel">
+                            <option value="Mensual">Mensual</option>
+                            <option value="Anual">Anual</option>
+                            <option value="One-time">Pago único</option>
+                            <option value="Por uso">Por uso (estimado)</option>
+                        </select></div>
+                    <div class="form-group"><label>Costo (USD)</label>
+                        <input type="number" id="techLicenseCost" min="0" step="0.01" placeholder="29"></div>
+                    <div class="form-group"><label>Cantidad de períodos</label>
+                        <input type="number" id="techLicensePeriods" min="1" step="1" placeholder="12" value="1"></div>
+                    <button type="button" class="btn-add-item" onclick="addTechLicense()">+ Agregar</button>
+                </div>
+            </div>
+            <div class="tech-rubro-list" id="techLicensesList"></div>
+        </div>
+
+        <!-- CREDENCIALES / DOMINIOS -->
+        <div class="form-section">
+            <h3 class="section-title">🪪 Credenciales, Dominios y Certificados</h3>
+            <p style="font-size: 12px; color: #666; margin-bottom: 10px;">Dominios, SSL, cuentas de developer, firma de código, verificaciones, etc.</p>
+            <div class="tech-rubro-card">
+                <div class="tech-row" style="grid-template-columns: 3fr 1fr auto;">
+                    <div class="form-group"><label>Concepto</label>
+                        <input type="text" id="techCredConcept" placeholder="Ej: Apple Developer (anual)" list="techCredPresets">
+                        <datalist id="techCredPresets">
+                            ${TECH_CREDENTIAL_PRESETS.map(p => `<option value="${escapeHtml(p)}"></option>`).join('')}
+                        </datalist></div>
+                    <div class="form-group"><label>Costo (USD)</label>
+                        <input type="number" id="techCredCost" min="0" step="0.01" placeholder="99"></div>
+                    <button type="button" class="btn-add-item" onclick="addTechCredential()">+ Agregar</button>
+                </div>
+            </div>
+            <div class="tech-rubro-list" id="techCredentialsList"></div>
+        </div>
+
+        <!-- OTROS / ÍTEMS LIBRES -->
+        <div class="form-section">
+            <h3 class="section-title">➕ Otros Conceptos</h3>
+            <div class="tech-rubro-card">
+                <div class="tech-row">
+                    <div class="form-group"><label>Descripción</label>
+                        <input type="text" id="techOtherDesc" placeholder="Ej: Capacitación, viajes, etc."></div>
+                    <div class="form-group"><label>Cantidad</label>
+                        <input type="number" id="techOtherQty" min="0" step="0.01" placeholder="1"></div>
+                    <div class="form-group"><label>Precio Unit. (USD)</label>
+                        <input type="number" id="techOtherPrice" min="0" step="0.01" placeholder="0"></div>
+                    <div class="form-group"><label>Unidad</label>
+                        <input type="text" id="techOtherUnit" placeholder="hora / unidad / día"></div>
+                    <button type="button" class="btn-add-item" onclick="addTechOther()">+ Agregar</button>
+                </div>
+            </div>
+            <div class="tech-rubro-list" id="techOthersList"></div>
+        </div>
+
+        <!-- AJUSTES FINANCIEROS -->
+        <div class="form-section">
+            <h3 class="section-title">Ajustes Financieros</h3>
+            <div class="form-grid">
+                <div class="form-group"><label>Moneda<span class="required">*</span></label>
+                    <select name="currency" id="techCurrency" required onchange="updateTechTotals()">
+                        <option value="USD" selected>USD - Dólar Estadounidense</option>
+                        <option value="ARS">ARS - Peso Argentino</option>
+                        <option value="EUR">EUR - Euro</option>
+                    </select></div>
+                <div class="form-group"><label>Tipo de Cambio (si aplica)</label>
+                    <input type="number" name="exchangeRate" id="techFxRate" min="0" step="0.01" placeholder="1" value="1" onchange="updateTechTotals()"></div>
+                <div class="form-group"><label>Contingencia / Riesgo (%)</label>
+                    <input type="number" name="contingencyPct" id="techContingency" min="0" max="100" step="0.1" value="10" onchange="updateTechTotals()"></div>
+                <div class="form-group"><label>Margen / Markup adicional (%)</label>
+                    <input type="number" name="marginPct" id="techMargin" min="0" max="100" step="0.1" value="0" onchange="updateTechTotals()"></div>
+                <div class="form-group"><label>Descuento (%)</label>
+                    <input type="number" name="discountPct" id="techDiscount" min="0" max="100" step="0.1" value="0" onchange="updateTechTotals()"></div>
+                <div class="form-group"><label>IVA (%)</label>
+                    <input type="number" name="ivaPct" id="techIva" min="0" max="100" step="0.1" value="21" onchange="updateTechTotals()"></div>
+                <div class="form-group"><label>Otros Impuestos / Retenciones (%)</label>
+                    <input type="number" name="otherTaxesPct" id="techOtherTaxes" min="0" max="100" step="0.1" value="0" onchange="updateTechTotals()"></div>
+                <div class="form-group"><label>Aplica IVA a costos cloud/licencias?</label>
+                    <select name="ivaScope" id="techIvaScope" onchange="updateTechTotals()">
+                        <option value="all" selected>Sobre todo</option>
+                        <option value="hours">Solo sobre horas</option>
+                        <option value="none">No aplicar IVA</option>
+                    </select></div>
+            </div>
+        </div>
+
+        <!-- TOTALES -->
+        <div class="totals-summary" id="techTotalsSummary">
+            <div class="total-line"><span class="label">Recursos Humanos / Horas</span><span class="value" id="techTotalHours">0,00</span></div>
+            <div class="total-line"><span class="label">Infraestructura</span><span class="value" id="techTotalInfra">0,00</span></div>
+            <div class="total-line"><span class="label">Licencias y Suscripciones</span><span class="value" id="techTotalLicenses">0,00</span></div>
+            <div class="total-line"><span class="label">Credenciales / Dominios</span><span class="value" id="techTotalCredentials">0,00</span></div>
+            <div class="total-line"><span class="label">Otros Conceptos</span><span class="value" id="techTotalOthers">0,00</span></div>
+            <div class="total-line subtotal-block"><span class="label"><strong>Subtotal</strong></span><span class="value" id="techSubtotal">0,00</span></div>
+            <div class="total-line"><span class="label">+ Contingencia</span><span class="value" id="techContingencyAmt">0,00</span></div>
+            <div class="total-line"><span class="label">+ Margen</span><span class="value" id="techMarginAmt">0,00</span></div>
+            <div class="total-line"><span class="label">- Descuento</span><span class="value" id="techDiscountAmt">0,00</span></div>
+            <div class="total-line subtotal-block"><span class="label"><strong>Base imponible</strong></span><span class="value" id="techTaxableBase">0,00</span></div>
+            <div class="total-line"><span class="label">IVA</span><span class="value" id="techIvaAmt">0,00</span></div>
+            <div class="total-line"><span class="label">Otros Impuestos / Retenciones</span><span class="value" id="techOtherTaxesAmt">0,00</span></div>
+            <div class="total-line grand"><span>TOTAL COTIZADO</span><span class="value" id="techGrandTotal">0,00</span></div>
+        </div>
+
+        <!-- CONDICIONES COMERCIALES -->
+        <div class="form-section">
+            <h3 class="section-title">Condiciones Comerciales</h3>
+            <div class="form-grid">
+                <div class="form-group"><label>Esquema de Pago<span class="required">*</span></label>
+                    <select name="paymentScheme" required>
+                        ${TECH_PAYMENT_SCHEMES.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('')}
+                    </select></div>
+                <div class="form-group"><label>Plazo de Entrega</label>
+                    <input type="text" name="deliveryTerm" placeholder="Ej: 12 semanas a partir del anticipo" value="A confirmar"></div>
+                <div class="form-group"><label>Garantía (días)</label>
+                    <input type="number" name="warrantyDays" min="0" value="30"></div>
+                <div class="form-group"><label>Soporte Post-Entrega (días)</label>
+                    <input type="number" name="supportDays" min="0" value="30"></div>
+                <div class="form-group full-width"><label>Forma de Pago<span class="required">*</span></label>
+                    <div class="multiselect-grid">
+                        ${['Transferencia Bancaria','Transferencia Internacional (Wire)','MercadoPago','Stripe','PayPal','Crypto (USDT/USDC)','Cheque','Efectivo','Factoring'].map(opt => `
+                            <label class="multiselect-option">
+                                <input type="checkbox" name="paymentTerms" value="${escapeHtml(opt)}" ${opt === 'Transferencia Bancaria' ? 'checked' : ''}>
+                                <span>${escapeHtml(opt)}</span>
+                            </label>
+                        `).join('')}
+                    </div>
+                    <input type="hidden" id="paymentTerms-hidden" name="paymentTerms" value="Transferencia Bancaria">
+                </div>
+                <div class="form-group full-width"><label>Datos Bancarios (opcional)</label>
+                    <textarea name="bankDetails" rows="2" placeholder="Banco, CBU, Alias, Titular, CUIT"></textarea></div>
+            </div>
+        </div>
+
+        <!-- TÉRMINOS Y CONDICIONES LEGALES -->
+        <div class="form-section">
+            <h3 class="section-title">Términos y Condiciones Legales</h3>
+            <p style="font-size: 12px; color: #666; margin-bottom: 10px;">Texto legal por defecto editable. Se incluirá en el PDF.</p>
+            <div class="form-grid">
+                <div class="form-group full-width">
+                    <textarea name="legalTerms" class="legal-textarea" rows="14">${escapeHtml(TECH_DEFAULT_TERMS)}</textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- NOTAS -->
+        <div class="form-section">
+            <h3 class="section-title">Notas y Observaciones</h3>
+            <div class="form-grid">
+                <div class="form-group full-width">
+                    <textarea name="notes" rows="3" placeholder="Notas adicionales para el cliente..."></textarea></div>
+            </div>
+        </div>
+
+        <!-- ACCIONES -->
+        <div class="button-group">
+            <button type="button" class="btn btn-primary" onclick="downloadTechQuote()" style="grid-column: 1 / -1;">
+                📄 Descargar Cotización (PDF)
+            </button>
+        </div>
+    </form>`;
+
+    document.getElementById('content').innerHTML = html;
+
+    // Wire multiselect for payment terms
+    setupMultiselect();
+    updateTechTotals();
+}
+
+// ===== HELPERS DE ÍTEMS DEL COTIZADOR (TECH) =====
+function addTechHour() {
+    const role = document.getElementById('techHourRole').value;
+    const seniority = document.getElementById('techHourSeniority').value;
+    const hours = parseFloat(document.getElementById('techHourQty').value) || 0;
+    const rate = parseFloat(document.getElementById('techHourRate').value) || 0;
+    if (!hours || hours <= 0) { showMessage('Ingresá la cantidad de horas', 'error'); return; }
+    if (!rate || rate <= 0) { showMessage('Ingresá la tarifa por hora', 'error'); return; }
+    appState.tech.hours.push({ id: Date.now(), role, seniority, hours, rate });
+    document.getElementById('techHourQty').value = '';
+    document.getElementById('techHourRate').value = '';
+    renderTechHoursList();
+    updateTechTotals();
+}
+function removeTechHour(id) {
+    appState.tech.hours = appState.tech.hours.filter(h => h.id !== id);
+    renderTechHoursList(); updateTechTotals();
+}
+function renderTechHoursList() {
+    const el = document.getElementById('techHoursList');
+    if (!el) return;
+    el.innerHTML = appState.tech.hours.map(h => `
+        <div class="row-display">
+            <div><div class="desc">${escapeHtml(h.role)} <span style="font-weight:400;color:#7048B0;">· ${escapeHtml(h.seniority)}</span></div>
+                 <div class="meta">${h.hours} hs × USD ${formatCurrency(h.rate)}/h</div></div>
+            <div class="meta">${h.hours} hs</div>
+            <div class="meta">USD ${formatCurrency(h.rate)}</div>
+            <div class="subtotal">USD ${formatCurrency(h.hours * h.rate)}</div>
+            <button type="button" class="remove-row" onclick="removeTechHour(${h.id})">Eliminar</button>
+        </div>`).join('');
+}
+
+function addTechInfra() {
+    const concept = (document.getElementById('techInfraConcept').value || '').trim();
+    const model = document.getElementById('techInfraModel').value;
+    const cost = parseFloat(document.getElementById('techInfraCost').value) || 0;
+    const periods = parseInt(document.getElementById('techInfraPeriods').value) || 1;
+    if (!concept) { showMessage('Ingresá el concepto', 'error'); return; }
+    if (cost < 0) { showMessage('El costo debe ser válido', 'error'); return; }
+    appState.tech.infra.push({ id: Date.now(), concept, model, cost, periods });
+    document.getElementById('techInfraConcept').value = '';
+    document.getElementById('techInfraCost').value = '';
+    document.getElementById('techInfraPeriods').value = '1';
+    renderTechInfraList(); updateTechTotals();
+}
+function removeTechInfra(id) {
+    appState.tech.infra = appState.tech.infra.filter(x => x.id !== id);
+    renderTechInfraList(); updateTechTotals();
+}
+function renderTechInfraList() {
+    const el = document.getElementById('techInfraList');
+    if (!el) return;
+    el.innerHTML = appState.tech.infra.map(x => `
+        <div class="row-display">
+            <div><div class="desc">${escapeHtml(x.concept)}</div>
+                 <div class="meta">${escapeHtml(x.model)} · ${x.periods} período${x.periods > 1 ? 's' : ''}</div></div>
+            <div class="meta">${escapeHtml(x.model)}</div>
+            <div class="meta">USD ${formatCurrency(x.cost)}</div>
+            <div class="subtotal">USD ${formatCurrency(x.cost * x.periods)}</div>
+            <button type="button" class="remove-row" onclick="removeTechInfra(${x.id})">Eliminar</button>
+        </div>`).join('');
+}
+
+function addTechLicense() {
+    const service = (document.getElementById('techLicenseService').value || '').trim();
+    const model = document.getElementById('techLicenseModel').value;
+    const cost = parseFloat(document.getElementById('techLicenseCost').value) || 0;
+    const periods = parseInt(document.getElementById('techLicensePeriods').value) || 1;
+    if (!service) { showMessage('Ingresá el servicio', 'error'); return; }
+    appState.tech.licenses.push({ id: Date.now(), service, model, cost, periods });
+    document.getElementById('techLicenseService').value = '';
+    document.getElementById('techLicenseCost').value = '';
+    document.getElementById('techLicensePeriods').value = '1';
+    renderTechLicensesList(); updateTechTotals();
+}
+function removeTechLicense(id) {
+    appState.tech.licenses = appState.tech.licenses.filter(x => x.id !== id);
+    renderTechLicensesList(); updateTechTotals();
+}
+function renderTechLicensesList() {
+    const el = document.getElementById('techLicensesList');
+    if (!el) return;
+    el.innerHTML = appState.tech.licenses.map(x => `
+        <div class="row-display">
+            <div><div class="desc">${escapeHtml(x.service)}</div>
+                 <div class="meta">${escapeHtml(x.model)} · ${x.periods} período${x.periods > 1 ? 's' : ''}</div></div>
+            <div class="meta">${escapeHtml(x.model)}</div>
+            <div class="meta">USD ${formatCurrency(x.cost)}</div>
+            <div class="subtotal">USD ${formatCurrency(x.cost * x.periods)}</div>
+            <button type="button" class="remove-row" onclick="removeTechLicense(${x.id})">Eliminar</button>
+        </div>`).join('');
+}
+
+function addTechCredential() {
+    const concept = (document.getElementById('techCredConcept').value || '').trim();
+    const cost = parseFloat(document.getElementById('techCredCost').value) || 0;
+    if (!concept) { showMessage('Ingresá el concepto', 'error'); return; }
+    appState.tech.credentials.push({ id: Date.now(), concept, cost });
+    document.getElementById('techCredConcept').value = '';
+    document.getElementById('techCredCost').value = '';
+    renderTechCredentialsList(); updateTechTotals();
+}
+function removeTechCredential(id) {
+    appState.tech.credentials = appState.tech.credentials.filter(x => x.id !== id);
+    renderTechCredentialsList(); updateTechTotals();
+}
+function renderTechCredentialsList() {
+    const el = document.getElementById('techCredentialsList');
+    if (!el) return;
+    el.innerHTML = appState.tech.credentials.map(x => `
+        <div class="row-display" style="grid-template-columns: 3fr 1fr auto;">
+            <div class="desc">${escapeHtml(x.concept)}</div>
+            <div class="subtotal">USD ${formatCurrency(x.cost)}</div>
+            <button type="button" class="remove-row" onclick="removeTechCredential(${x.id})">Eliminar</button>
+        </div>`).join('');
+}
+
+function addTechOther() {
+    const description = (document.getElementById('techOtherDesc').value || '').trim();
+    const quantity = parseFloat(document.getElementById('techOtherQty').value) || 0;
+    const price = parseFloat(document.getElementById('techOtherPrice').value) || 0;
+    const unit = (document.getElementById('techOtherUnit').value || '').trim();
+    if (!description) { showMessage('Ingresá la descripción', 'error'); return; }
+    if (!quantity || quantity <= 0) { showMessage('Ingresá la cantidad', 'error'); return; }
+    appState.tech.others.push({ id: Date.now(), description, quantity, price, unit });
+    document.getElementById('techOtherDesc').value = '';
+    document.getElementById('techOtherQty').value = '';
+    document.getElementById('techOtherPrice').value = '';
+    document.getElementById('techOtherUnit').value = '';
+    renderTechOthersList(); updateTechTotals();
+}
+function removeTechOther(id) {
+    appState.tech.others = appState.tech.others.filter(x => x.id !== id);
+    renderTechOthersList(); updateTechTotals();
+}
+function renderTechOthersList() {
+    const el = document.getElementById('techOthersList');
+    if (!el) return;
+    el.innerHTML = appState.tech.others.map(x => `
+        <div class="row-display">
+            <div><div class="desc">${escapeHtml(x.description)}</div>
+                 <div class="meta">${x.quantity} ${escapeHtml(x.unit || '')}</div></div>
+            <div class="meta">${x.quantity}</div>
+            <div class="meta">USD ${formatCurrency(x.price)}</div>
+            <div class="subtotal">USD ${formatCurrency(x.quantity * x.price)}</div>
+            <button type="button" class="remove-row" onclick="removeTechOther(${x.id})">Eliminar</button>
+        </div>`).join('');
+}
+
+// Calcula y refresca todos los subtotales
+function updateTechTotals() {
+    const t = appState.tech;
+    const sumHours = t.hours.reduce((s, h) => s + h.hours * h.rate, 0);
+    const sumInfra = t.infra.reduce((s, x) => s + x.cost * x.periods, 0);
+    const sumLicenses = t.licenses.reduce((s, x) => s + x.cost * x.periods, 0);
+    const sumCredentials = t.credentials.reduce((s, x) => s + x.cost, 0);
+    const sumOthers = t.others.reduce((s, x) => s + x.quantity * x.price, 0);
+    const subtotal = sumHours + sumInfra + sumLicenses + sumCredentials + sumOthers;
+
+    const contingency = parseFloat(document.getElementById('techContingency')?.value) || 0;
+    const margin = parseFloat(document.getElementById('techMargin')?.value) || 0;
+    const discount = parseFloat(document.getElementById('techDiscount')?.value) || 0;
+    const iva = parseFloat(document.getElementById('techIva')?.value) || 0;
+    const otherTaxes = parseFloat(document.getElementById('techOtherTaxes')?.value) || 0;
+    const ivaScope = document.getElementById('techIvaScope')?.value || 'all';
+
+    const contingencyAmt = subtotal * (contingency / 100);
+    const marginAmt = subtotal * (margin / 100);
+    const discountAmt = (subtotal + contingencyAmt + marginAmt) * (discount / 100);
+    const taxableBase = subtotal + contingencyAmt + marginAmt - discountAmt;
+
+    let ivaBase = taxableBase;
+    if (ivaScope === 'hours') {
+        const hoursPortion = subtotal > 0 ? sumHours / subtotal : 1;
+        ivaBase = taxableBase * hoursPortion;
+    } else if (ivaScope === 'none') {
+        ivaBase = 0;
+    }
+    const ivaAmt = ivaBase * (iva / 100);
+    const otherTaxesAmt = taxableBase * (otherTaxes / 100);
+    const grand = taxableBase + ivaAmt + otherTaxesAmt;
+
+    const setText = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = formatCurrency(val); };
+    setText('techTotalHours', sumHours);
+    setText('techTotalInfra', sumInfra);
+    setText('techTotalLicenses', sumLicenses);
+    setText('techTotalCredentials', sumCredentials);
+    setText('techTotalOthers', sumOthers);
+    setText('techSubtotal', subtotal);
+    setText('techContingencyAmt', contingencyAmt);
+    setText('techMarginAmt', marginAmt);
+    setText('techDiscountAmt', discountAmt);
+    setText('techTaxableBase', taxableBase);
+    setText('techIvaAmt', ivaAmt);
+    setText('techOtherTaxesAmt', otherTaxesAmt);
+    setText('techGrandTotal', grand);
+
+    // cache for downloadTechQuote
+    appState.tech._totals = {
+        sumHours, sumInfra, sumLicenses, sumCredentials, sumOthers,
+        subtotal, contingencyAmt, marginAmt, discountAmt, taxableBase,
+        ivaAmt, otherTaxesAmt, grand,
+        contingencyPct: contingency, marginPct: margin, discountPct: discount,
+        ivaPct: iva, otherTaxesPct: otherTaxes, ivaScope,
+    };
+}
+
+async function downloadTechQuote() {
+    try {
+        const form = document.getElementById('documentForm');
+        if (!form.checkValidity()) { form.reportValidity(); return; }
+
+        if (!appState.tech.hours.length && !appState.tech.infra.length && !appState.tech.licenses.length && !appState.tech.credentials.length && !appState.tech.others.length) {
+            showMessage('Agregá al menos un ítem (horas, infra, licencias, credenciales u otros)', 'error');
+            return;
+        }
+
+        showLoading(true);
+
+        // Reservar y persistir el número
+        const formData = new FormData(form);
+        const data = {};
+        formData.forEach((value, key) => { data[key] = value; });
+
+        // Si el número ya tiene formato CTZ-YYYY-NNNN, sincronizamos el contador
+        const m = String(data.quoteNumber || '').match(/^CTZ-(\d{4})-(\d+)$/);
+        if (m) {
+            const counterKey = 'techQuoteCounter_' + m[1];
+            const used = parseInt(m[2], 10);
+            if (used > parseInt(localStorage.getItem(counterKey) || '0', 10)) {
+                localStorage.setItem(counterKey, String(used));
+            }
+        }
+
+        updateTechTotals();
+        const totals = appState.tech._totals || {};
+
+        const items = [
+            ...appState.tech.hours.map(h => ({
+                description: `${h.role} (${h.seniority}) — ${h.hours} hs`,
+                quantity: h.hours, price: h.rate, _kind: 'hours', _meta: h
+            })),
+            ...appState.tech.infra.map(x => ({
+                description: `${x.concept} — ${x.model}`,
+                quantity: x.periods, price: x.cost, _kind: 'infra', _meta: x
+            })),
+            ...appState.tech.licenses.map(x => ({
+                description: `${x.service} — ${x.model}`,
+                quantity: x.periods, price: x.cost, _kind: 'license', _meta: x
+            })),
+            ...appState.tech.credentials.map(x => ({
+                description: x.concept, quantity: 1, price: x.cost, _kind: 'credential', _meta: x
+            })),
+            ...appState.tech.others.map(x => ({
+                description: `${x.description}${x.unit ? ' (' + x.unit + ')' : ''}`,
+                quantity: x.quantity, price: x.price, _kind: 'other', _meta: x
+            })),
+        ];
+
+        const techPayload = {
+            ...data,
+            items,
+            currency: data.currency || 'USD',
+            // Marcadores de la cotización tech
+            _docKind: 'quote-tech',
+            techDetails: {
+                hours: appState.tech.hours,
+                infra: appState.tech.infra,
+                licenses: appState.tech.licenses,
+                credentials: appState.tech.credentials,
+                others: appState.tech.others,
+                totals,
+                projectName: data.projectName,
+                projectType: data.projectType,
+                projectMethodology: data.projectMethodology,
+                projectScope: data.projectScope,
+                projectStack: data.projectStack,
+                projectDeliverables: data.projectDeliverables,
+                projectExclusions: data.projectExclusions,
+                projectAssumptions: data.projectAssumptions,
+                projectDurationWeeks: data.projectDurationWeeks,
+                projectStartDate: data.projectStartDate,
+                paymentScheme: data.paymentScheme,
+                warrantyDays: data.warrantyDays,
+                supportDays: data.supportDays,
+                bankDetails: data.bankDetails,
+                legalTerms: data.legalTerms,
+                quoteValidUntil: data.quoteValidUntil,
+                clientContactPerson: data.clientContactPerson,
+                clientIVACondition: data.clientIVACondition,
+                exchangeRate: data.exchangeRate,
+            },
+            // Para el desglose fiscal compatible con el backend
+            ivaRate: (parseFloat(data.ivaPct) || 0) / 100,
+            otherTaxes: totals.otherTaxesAmt || 0,
+            discount: totals.discountAmt || 0,
+            // El total final ya viene calculado
+            _precomputedTotal: totals.grand,
+        };
+
+        // Cargar logo Solutions para incrustarlo en el PDF
+        const assets = {};
+        try {
+            const logoResp = await fetch('/Logo%20Arman%20Solutions.png');
+            if (logoResp.ok) {
+                const logoBlob = await logoResp.blob();
+                const logoDataUrl = await new Promise((resolve, reject) => {
+                    const r = new FileReader();
+                    r.onload = () => resolve(r.result);
+                    r.onerror = reject;
+                    r.readAsDataURL(logoBlob);
+                });
+                assets.logo = logoDataUrl;
+            }
+        } catch (_) { /* fallback al SVG del template */ }
+
+        const payload = { type: 'quote-tech', data: techPayload, assets };
+
+        const response = await fetch('/api/documents/generate-pdf', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Error: ${response.statusText} - ${errorText}`);
+        }
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const clientName = String(data.clientName || 'Cliente').replace(/[^a-zA-Z0-9]/g, '_');
+        const docNumber = String(data.quoteNumber || Date.now()).replace(/[^a-zA-Z0-9]/g, '_');
+        a.download = `Cotizacion_${clientName}_${docNumber}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        a.remove();
+        showMessage('PDF descargado correctamente', 'success');
+
+        // Refrescar el número visible para la próxima cotización
+        const numEl = document.querySelector('input[name="quoteNumber"]');
+        if (numEl) numEl.value = peekTechQuoteNumber();
+    } catch (error) {
+        console.error('Error:', error);
+        showMessage(`Error al generar la cotización: ${error.message}`, 'error');
+    } finally {
+        showLoading(false);
     }
 }
 

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Arman Admin — Lectura de comprobantes</title>
+  <link rel="icon" href="/favicon.ico">
+  <link rel="stylesheet" href="/_shared.css">
+  <script src="/_shared/auth.js"></script>
+  <script>ArmanAuth.requireSession({ vertical: 'admin' });</script>
+  <style>
+    body { background: #0d121e !important; }
+    .lect-shell { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+    .lect-side {
+      background: #101727; border-right: 1px solid #1f2a44; padding: 22px 16px;
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .lect-side .brand { padding: 4px 8px 18px; border-bottom: 1px solid #1f2a44; margin-bottom: 14px; }
+    .lect-side .brand small { color: #8ea0c2; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; }
+    .lect-side .brand h1 { color: #e8edf5; font-size: 18px; font-weight: 600; margin-top: 4px; }
+    .lect-side a {
+      display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 8px;
+      color: #a6b6d6; text-decoration: none; font-size: 14px;
+    }
+    .lect-side a:hover { background: #19223a; color: #fff; }
+    .lect-side a.active { background: #1c2c52; color: #fff; }
+    .lect-side .back { margin-top: auto; padding-top: 16px; border-top: 1px solid #1f2a44; }
+    .lect-main { padding: 22px 26px; overflow: auto; min-width: 0; }
+    .lect-card {
+      background: white; border-radius: 14px;
+      box-shadow: 0 12px 40px rgba(0,0,0,.4), 0 0 0 1px #1f2a44;
+      overflow: hidden; min-height: calc(100vh - 44px);
+    }
+    .lect-header {
+      background: linear-gradient(135deg, #19233d, #111a2e); color: #e8edf5;
+      padding: 14px 24px; display: flex; align-items: center; gap: 14px;
+      border-bottom: 3px solid #d985ff;
+    }
+    .lect-header h1 { font-size: 18px; font-weight: 600; margin: 0; }
+    .lect-header p { color: #8ea0c2; font-size: 12px; margin: 0; }
+  </style>
+</head>
+<body>
+  <div class="lect-shell">
+    <aside class="lect-side">
+      <div class="brand">
+        <small>Arman Admin</small>
+        <h1>Lectura IA</h1>
+      </div>
+      <a href="/admin/lectura.html" class="active">Lectura de comprobantes</a>
+      <a href="/admin/" style="font-size:13px">← Panel Admin</a>
+      <div class="back">
+        <a href="/" class="back-btn"><span class="arrow">←</span><span>Volver al hub</span></a>
+      </div>
+    </aside>
+
+    <main class="lect-main">
+      <div class="lect-card">
+        <div class="lect-header" id="appHeader">
+          <div>
+            <h1 id="brandTitle">Lectura inteligente de comprobantes</h1>
+            <p id="brandSubtitle">Subí un PDF / imagen / escaneo y extraé los datos estructurados (factura, NC, ND, recibo, tique fiscal).</p>
+          </div>
+        </div>
+        <!-- Tabs viejos que app.js necesita para detectar el tab activo (ocultos) -->
+        <div class="tabs" id="tabs" style="display:none">
+          <button class="tab-button active" data-tab="admin-ia">ADMIN IA</button>
+        </div>
+        <div class="content" id="content"></div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Modales que app.js puede invocar -->
+  <div id="companyModal" class="modal"><div class="modal-content"></div></div>
+  <div id="clientsModal"  class="modal"><div class="modal-content"></div></div>
+
+  <!-- Estilos del cotizador legacy (necesarios para los form/cards de la lectura IA) -->
+  <script>
+    (async () => {
+      try {
+        const html = await fetch('/travel/').then(r => r.text());
+        const matches = html.match(/<style>([\s\S]*?)<\/style>/g) || [];
+        for (const block of matches) {
+          const css = block.replace(/<\/?style>/g, '');
+          const s = document.createElement('style');
+          s.textContent = css;
+          document.head.appendChild(s);
+        }
+        const fix = document.createElement('style');
+        fix.textContent = `
+          body { background: #0d121e !important; padding: 0 !important; }
+          .lect-card .container { max-width: 100% !important; margin: 0 !important; box-shadow: none !important; background: white !important; }
+          .lect-card { background: white !important; }
+          .arman-app { display: contents !important; }
+        `;
+        document.head.appendChild(fix);
+      } catch (e) { console.warn('No se pudieron cargar estilos legacy', e); }
+    })();
+  </script>
+
+  <script src="/app.js?v=20260420b"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      if (typeof renderTab === 'function') {
+        appState.currentTab = 'admin-ia';
+        renderTab('admin-ia');
+      }
+    });
+  </script>
+</body>
+</html>

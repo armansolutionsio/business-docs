@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PayBridge — Links de cobro</title>
+  <link rel="stylesheet" href="/_shared.css" />
+  <script src="/_shared/auth.js"></script>
+  <script>ArmanAuth.requireSession({ vertical: 'paybridge' });</script>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand"><small>Arman</small><h1>PayBridge</h1></div>
+    <a data-tab="dashboard" class="active">Dashboard</a>
+    <a data-tab="links">Payment Links</a>
+    <a data-tab="transactions">Transacciones</a>
+    <a data-tab="contactos">Clientes</a>
+    <a data-tab="tareas">Tareas</a>
+    <a data-tab="notas">Notas</a>
+    <a data-tab="fees">Fee rules</a>
+    <a data-tab="monedas">Monedas</a>
+    <div class="back"><a href="/" class="back-btn"><span class="arrow">←</span><span>Volver al hub</span></a></div>
+  </aside>
+  <main class="main" id="main"></main>
+</div>
+
+<script>
+const API = '/api/paybridge';
+const $ = (s, p = document) => p.querySelector(s);
+const fmt = (n, c = 'USD') => { try { return new Intl.NumberFormat('es-AR', { style:'currency', currency:c }).format(Number(n||0)); } catch { return `${c} ${Number(n||0).toFixed(2)}`; } };
+const fmtDate = (d) => d ? new Date(d).toLocaleString('es-AR') : '—';
+async function api(p, o = {}) {
+  const r = await fetch(API + p, { headers: {'Content-Type':'application/json'}, ...o });
+  if (!r.ok) throw new Error((await r.json()).error || r.statusText);
+  return r.json();
+}
+function tag(estado) {
+  const m = { activo:'green', completado:'green', pagado:'green', pendiente:'amber', cancelado:'red', expirado:'red' };
+  return `<span class="tag ${m[estado]||''}">${estado||'—'}</span>`;
+}
+
+const state = { editingContacto: null };
+
+const tabs = {
+  async dashboard() {
+    const d = await api('/dashboard');
+    const porMon = (d.por_moneda || []).map(m =>
+      `<tr><td>${m.moneda}</td><td>${m.cantidad}</td><td>${fmt(m.bruto, m.moneda)}</td><td>${fmt(m.fee, m.moneda)}</td></tr>`).join('');
+    return `
+      <div class="head"><h2>Dashboard PayBridge</h2></div>
+      <div class="row" style="gap:14px;flex-wrap:wrap">
+        <div class="kpi"><div class="lbl">Links activos</div><div class="val">${d.links_activos}</div></div>
+        <div class="kpi"><div class="lbl">Tx 30 días</div><div class="val">${d.tx_30d}</div></div>
+        <div class="kpi"><div class="lbl">Fees 30 días</div><div class="val">${fmt(d.fees_30d, 'USD')}</div></div>
+        <div class="kpi"><div class="lbl">Clientes</div><div class="val">${d.contactos}</div></div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <h3 style="margin-bottom:10px;font-size:15px">Cobros por moneda (30d)</h3>
+        <table><thead><tr><th>Moneda</th><th>Tx</th><th>Bruto</th><th>Fee</th></tr></thead>
+        <tbody>${porMon || `<tr><td colspan="4" class="empty">Sin transacciones</td></tr>`}</tbody></table>
+      </div>`;
+  },
+  async links() {
+    const data = await api('/links');
+    return `
+      <div class="head"><h2>Payment Links</h2><button class="btn" onclick="ui.newLink()">+ Nuevo link</button></div>
+      <div class="card">
+        <table><thead><tr><th>Slug</th><th>Cliente</th><th>Descripción</th><th>Monto</th>
+          <th>Fee</th><th>Neto</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>
+        ${data.map(l => `<tr>
+          <td><code>${l.slug}</code></td>
+          <td>${l.cliente_nombre || '—'}</td>
+          <td>${l.descripcion || '—'}</td>
+          <td>${fmt(l.monto, l.moneda)}</td>
+          <td>${fmt(l.fee_calculado, l.moneda)}</td>
+          <td><b>${fmt(l.monto_neto, l.moneda)}</b></td>
+          <td>${tag(l.estado)}</td>
+          <td>
+            <button class="btn ghost" onclick="navigator.clipboard.writeText(location.origin+'/pay/'+'${l.slug}');alert('URL copiada')">Copiar URL</button>
+            ${l.estado === 'activo' ? `<button class="btn success" onclick="ui.simularPago('${l.slug}')">Simular pago</button>` : ''}
+          </td></tr>`).join('') || `<tr><td colspan="8" class="empty">Sin links</td></tr>`}
+        </tbody></table>
+      </div>`;
+  },
+  async transactions() {
+    const data = await api('/transactions');
+    return `
+      <div class="head"><h2>Transacciones</h2></div>
+      <div class="card">
+        <table><thead><tr><th>Fecha</th><th>Link</th><th>Pagador</th>
+          <th>Bruto</th><th>Fee</th><th>Neto</th><th>Estado</th></tr></thead><tbody>
+        ${data.map(t => `<tr><td>${fmtDate(t.completado_at || t.created_at)}</td>
+          <td><code>${t.link_slug || '—'}</code></td>
+          <td>${t.payer_nombre || t.payer_email || '—'}</td>
+          <td>${fmt(t.monto_bruto, t.moneda)}</td><td>${fmt(t.fee, t.moneda)}</td>
+          <td><b>${fmt(t.monto_neto, t.moneda)}</b></td><td>${tag(t.estado)}</td></tr>`).join('')
+          || `<tr><td colspan="7" class="empty">Sin transacciones</td></tr>`}
+        </tbody></table>
+      </div>`;
+  },
+  async contactos() {
+    const data = await api('/contactos');
+    return `
+      <div class="head"><h2>Clientes</h2><button class="btn" onclick="ui.newContacto()">+ Nuevo</button></div>
+      <div class="card">
+        <p style="color:#8ea0c2;font-size:12px;margin-bottom:10px">Cliente PayBridge: registramos sus datos, link de cobros generados, comisiones efectivas y datos de DolarApp para asesoramiento.</p>
+        <table><thead><tr><th>Nombre</th><th>Email</th><th>DolarApp alias</th><th>Estado DolarApp</th><th>País</th><th>Estado</th><th></th></tr></thead><tbody>
+        ${data.map(c => `<tr>
+          <td><b>${(c.nombre||'').replace(/</g,'&lt;')}</b>${c.razon_social?'<br><small style="color:#6e82a9">'+(c.razon_social||'').replace(/</g,'&lt;')+'</small>':''}</td>
+          <td>${c.email||'—'}</td>
+          <td>${c.dolarapp_alias||'—'}</td>
+          <td><span class="tag ${c.dolarapp_estado==='onboardeado'?'green':c.dolarapp_estado==='pendiente'?'amber':''}">${c.dolarapp_estado||'sin_onboardear'}</span></td>
+          <td>${c.pais||'—'}</td>
+          <td>${tag(c.estado)}</td>
+          <td><button class="btn ghost" onclick='ui.editContacto(${JSON.stringify(c).replace(/'/g,"&#39;")})'>Editar</button></td>
+        </tr>`).join('') || `<tr><td colspan="7" class="empty">Sin clientes</td></tr>`}
+        </tbody></table>
+      </div>`;
+  },
+  async tareas() {
+    const items = await api('/crm/tareas');
+    return `<div class="head"><h2>Tareas</h2><button class="btn" onclick="ui.newTarea()">+ Nueva tarea</button></div>
+      <div class="card">
+        <table><thead><tr><th>Título</th><th>Contacto</th><th>Estado</th><th>Prioridad</th><th>Asignado</th><th>Fecha límite</th><th></th></tr></thead><tbody>
+        ${items.map(t => `<tr>
+          <td><b>${(t.titulo||'').replace(/</g,'&lt;')}</b></td>
+          <td>${t.contacto_nombre||'—'}</td>
+          <td><span class="tag ${t.estado==='completada'?'green':''}">${t.estado}</span></td>
+          <td>${t.prioridad||'normal'}</td>
+          <td>${t.asignado_a||'—'}</td>
+          <td>${t.fecha_limite ? fmtDate(t.fecha_limite) : '—'}</td>
+          <td>${t.estado!=='completada'?'<button class="btn ghost" onclick="ui.completarTarea('+t.id+')">Completar</button>':''}</td>
+        </tr>`).join('') || '<tr><td colspan="7" class="empty">Sin tareas</td></tr>'}
+        </tbody></table>
+      </div>`;
+  },
+  async notas() {
+    const contactos = await api('/contactos');
+    return `<div class="head"><h2>Notas por cliente</h2></div>
+      <div class="card">
+        <select id="nt-cid" onchange="ui.loadNotas(this.value)">
+          <option value="">— Elegir cliente —</option>
+          ${contactos.map(c => `<option value="${c.id}">${(c.nombre||'').replace(/</g,'&lt;')}</option>`).join('')}
+        </select>
+      </div>
+      <div id="nt-box"></div>`;
+  },
+  async fees() {
+    const data = await api('/fee-rules');
+    return `
+      <div class="head"><h2>Fee rules</h2><button class="btn" onclick="ui.newFee()">+ Nueva</button></div>
+      <div class="card">
+        <table><thead><tr><th>Nombre</th><th>Moneda</th><th>% Fee</th><th>Fee fijo</th><th>Min</th><th>Max</th></tr></thead><tbody>
+        ${data.map(f => `<tr><td>${f.nombre}</td><td>${f.moneda||'*'}</td>
+          <td>${f.fee_pct}%</td><td>${f.fee_fijo}</td>
+          <td>${f.minimo||'—'}</td><td>${f.maximo||'—'}</td></tr>`).join('')}
+        </tbody></table>
+      </div>`;
+  },
+  async monedas() {
+    const data = await api('/monedas');
+    return `
+      <div class="head"><h2>Monedas soportadas</h2></div>
+      <div class="card">
+        <table><thead><tr><th>Code</th><th>Nombre</th><th>Símbolo</th><th>Tipo</th></tr></thead><tbody>
+        ${data.map(m => `<tr><td><b>${m.code}</b></td><td>${m.nombre}</td>
+          <td>${m.simbolo}</td><td>${m.es_cripto ? '<span class="tag amber">Cripto</span>' : '<span class="tag">Fiat</span>'}</td></tr>`).join('')}
+        </tbody></table>
+      </div>`;
+  },
+};
+
+const ui = {
+  modal(html) {
+    let bg = $('#mb');
+    if (!bg) { bg = document.createElement('div'); bg.id='mb'; bg.className='modal-bg'; document.body.appendChild(bg); }
+    bg.innerHTML = `<div class="modal">${html}</div>`;
+    bg.classList.add('open');
+    bg.onclick = e => { if (e.target===bg) bg.classList.remove('open'); };
+  },
+  closeModal() { $('#mb').classList.remove('open'); },
+
+  async newLink() {
+    const [cs, ms] = await Promise.all([api('/contactos'), api('/monedas')]);
+    this.modal(`<h3>Nuevo link de cobro</h3>
+      <label>Cliente (opcional)</label>
+      <select id="f-cli"><option value="">—</option>${cs.map(c=>`<option value="${c.id}">${c.nombre}</option>`).join('')}</select>
+      <label style="margin-top:8px">Descripción</label><input id="f-desc"/>
+      <div class="grid2" style="margin-top:8px">
+        <div><label>Monto</label><input id="f-monto" type="number" step="0.01"/></div>
+        <div><label>Moneda</label>
+          <select id="f-mon">${ms.map(m=>`<option value="${m.code}">${m.code} — ${m.nombre}</option>`).join('')}</select></div>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <input id="f-multi" type="checkbox" style="width:auto"/>
+        <label for="f-multi" style="margin:0;cursor:pointer">Multi-uso (no se cierra al primer pago)</label>
+      </div>
+      <hr/>
+      <div class="row" style="justify-content:flex-end">
+        <button class="btn ghost" onclick="ui.closeModal()">Cancelar</button>
+        <button class="btn" onclick="ui.saveLink()">Crear</button>
+      </div>`);
+  },
+  async saveLink() {
+    await api('/links', { method:'POST', body: JSON.stringify({
+      contacto_id: $('#f-cli').value || null, descripcion: $('#f-desc').value,
+      monto: $('#f-monto').value, moneda: $('#f-mon').value,
+      multi_uso: $('#f-multi').checked })});
+    this.closeModal(); render('links');
+  },
+
+  async simularPago(slug) {
+    const email = prompt('Email del pagador (opcional):') || '';
+    const nombre = prompt('Nombre del pagador (opcional):') || '';
+    await api(`/links/${slug}/pagar`, { method:'POST',
+      body: JSON.stringify({ payer_email: email, payer_nombre: nombre })});
+    alert('Pago simulado registrado');
+    render('links');
+  },
+
+  newContacto() {
+    state.editingContacto = null;
+    this.modal(this._contactoForm({}));
+  },
+  editContacto(c) {
+    state.editingContacto = c.id;
+    this.modal(this._contactoForm(c));
+  },
+  _contactoForm(c) {
+    const v = (k, def='') => (c[k] ?? def).toString().replace(/"/g,'&quot;');
+    return `<h3>${c.id?'Editar':'Nuevo'} cliente</h3>
+      <label>Nombre</label><input id="f-nom" value="${v('nombre')}"/>
+      <div class="grid2" style="margin-top:8px">
+        <div><label>Razón social</label><input id="f-rs" value="${v('razon_social')}"/></div>
+        <div><label>CUIT</label><input id="f-cuit" value="${v('cuit')}"/></div>
+      </div>
+      <div class="grid2" style="margin-top:8px">
+        <div><label>Email</label><input id="f-email" type="email" value="${v('email')}"/></div>
+        <div><label>Teléfono</label><input id="f-tel" value="${v('telefono')}"/></div>
+      </div>
+      <div class="grid2" style="margin-top:8px">
+        <div><label>País</label><input id="f-pais" value="${v('pais','Argentina')}"/></div>
+        <div><label>Estado</label>
+          <select id="f-est">${['activo','inactivo'].map(e=>`<option ${c.estado===e?'selected':''}>${e}</option>`).join('')}</select></div>
+      </div>
+      <hr/>
+      <div style="font-size:12px;color:#8ea0c2;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">DolarApp</div>
+      <div class="grid2">
+        <div><label>Alias DolarApp</label><input id="f-da-alias" value="${v('dolarapp_alias')}"/></div>
+        <div><label>Email DolarApp</label><input id="f-da-email" value="${v('dolarapp_email')}"/></div>
+      </div>
+      <div class="grid2" style="margin-top:8px">
+        <div><label>Estado onboarding</label>
+          <select id="f-da-est">${['sin_onboardear','pendiente','onboardeado','rechazado'].map(e=>`<option ${c.dolarapp_estado===e?'selected':''}>${e}</option>`).join('')}</select></div>
+        <div><label>Fecha onboarding</label><input type="date" id="f-da-fecha" value="${c.dolarapp_onboarding_at?(c.dolarapp_onboarding_at).slice(0,10):''}"/></div>
+      </div>
+      <label style="margin-top:8px">Notas DolarApp / asesoramiento</label>
+      <textarea id="f-da-notas" rows="2">${v('dolarapp_notas')}</textarea>
+      <hr/>
+      <div class="row" style="justify-content:flex-end">
+        <button class="btn ghost" onclick="ui.closeModal()">Cancelar</button>
+        <button class="btn" onclick="ui.saveContacto()">Guardar</button>
+      </div>`;
+  },
+  async saveContacto() {
+    const body = {
+      nombre: $('#f-nom').value, razon_social: $('#f-rs').value || null,
+      email: $('#f-email').value, telefono: $('#f-tel').value,
+      pais: $('#f-pais').value, cuit: $('#f-cuit').value, estado: $('#f-est').value,
+      dolarapp_alias: $('#f-da-alias').value || null,
+      dolarapp_email: $('#f-da-email').value || null,
+      dolarapp_estado: $('#f-da-est').value,
+      dolarapp_onboarding_at: $('#f-da-fecha').value || null,
+      dolarapp_notas: $('#f-da-notas').value || null,
+    };
+    try {
+      const id = state.editingContacto;
+      await api('/contactos' + (id?'/'+id:''), { method: id?'PATCH':'POST', body: JSON.stringify(body) });
+      this.closeModal(); render('contactos');
+    } catch (e) { alert(e.message); }
+  },
+
+  // ── CRM handlers (tareas / notas) ────────────────────────────
+  newTarea() {
+    api('/contactos').then(cs => {
+      this.modal(`<h3>Nueva tarea</h3>
+        <label>Título</label><input id="t-titulo"/>
+        <label style="margin-top:8px">Cliente</label>
+        <select id="t-cid"><option value="">—</option>${cs.map(c=>`<option value="${c.id}">${(c.nombre||'').replace(/</g,'&lt;')}</option>`).join('')}</select>
+        <div class="grid2" style="margin-top:8px">
+          <div><label>Prioridad</label><select id="t-prio"><option>baja</option><option selected>normal</option><option>alta</option></select></div>
+          <div><label>Fecha límite</label><input type="date" id="t-fecha"/></div>
+        </div>
+        <label style="margin-top:8px">Asignado a</label><input id="t-asig"/>
+        <label style="margin-top:8px">Descripción</label><textarea id="t-desc" rows="2"></textarea>
+        <hr/>
+        <div class="row" style="justify-content:flex-end">
+          <button class="btn ghost" onclick="ui.closeModal()">Cancelar</button>
+          <button class="btn" onclick="ui.saveTarea()">Crear</button>
+        </div>`);
+    });
+  },
+  async saveTarea() {
+    try {
+      await api('/crm/tareas', { method:'POST', body: JSON.stringify({
+        titulo: $('#t-titulo').value, descripcion: $('#t-desc').value,
+        contacto_id: $('#t-cid').value || null, prioridad: $('#t-prio').value,
+        asignado_a: $('#t-asig').value || null, fecha_limite: $('#t-fecha').value || null
+      })});
+      this.closeModal(); render('tareas');
+    } catch (e) { alert(e.message); }
+  },
+  async completarTarea(id) {
+    await api('/crm/tareas/' + id, { method:'PATCH', body: JSON.stringify({ estado:'completada' }) });
+    render('tareas');
+  },
+  async loadNotas(cid) {
+    if (!cid) { $('#nt-box').innerHTML = ''; return; }
+    const items = await api('/crm/contactos/' + cid + '/notas');
+    $('#nt-box').innerHTML = `
+      <div class="card">
+        <textarea id="nt-text" rows="3" placeholder="Nueva nota..."></textarea>
+        <div style="margin-top:8px"><button class="btn" onclick="ui.addNota(${cid})">Agregar nota</button></div>
+      </div>
+      <div class="card">
+        ${items.map(n => `<div style="padding:10px 0;border-bottom:1px solid #1f2a44">
+          <div style="font-size:11px;color:#6e82a9">${fmtDate(n.created_at)} · ${n.created_by||'—'}</div>
+          <div style="margin-top:4px">${(n.contenido||'').replace(/</g,'&lt;')}</div>
+        </div>`).join('') || '<div class="empty">Sin notas</div>'}
+      </div>`;
+  },
+  async addNota(cid) {
+    const txt = $('#nt-text').value.trim();
+    if (!txt) return;
+    await api('/crm/contactos/' + cid + '/notas', { method:'POST', body: JSON.stringify({ contenido: txt }) });
+    this.loadNotas(cid);
+  },
+
+  async newFee() {
+    const ms = await api('/monedas');
+    this.modal(`<h3>Nueva fee rule</h3>
+      <label>Nombre</label><input id="f-nom"/>
+      <div class="grid3" style="margin-top:8px">
+        <div><label>Moneda</label>
+          <select id="f-mon">${ms.map(m=>`<option value="${m.code}">${m.code}</option>`).join('')}</select></div>
+        <div><label>% Fee</label><input id="f-pct" type="number" step="0.1"/></div>
+        <div><label>Fee fijo</label><input id="f-fix" type="number" step="0.01"/></div>
+      </div>
+      <hr/>
+      <div class="row" style="justify-content:flex-end">
+        <button class="btn ghost" onclick="ui.closeModal()">Cancelar</button>
+        <button class="btn" onclick="ui.saveFee()">Crear</button>
+      </div>`);
+  },
+  async saveFee() {
+    await api('/fee-rules', { method:'POST', body: JSON.stringify({
+      nombre: $('#f-nom').value, moneda: $('#f-mon').value,
+      fee_pct: $('#f-pct').value, fee_fijo: $('#f-fix').value })});
+    this.closeModal(); render('fees');
+  },
+};
+
+async function render(n) {
+  document.querySelectorAll('.side a').forEach(a => a.classList.toggle('active', a.dataset.tab === n));
+  try { $('#main').innerHTML = await tabs[n](); }
+  catch (e) { $('#main').innerHTML = `<div class="card"><b style="color:#ff8a8a">Error:</b> ${e.message}</div>`; }
+}
+document.querySelectorAll('.side a[data-tab]').forEach(a => a.addEventListener('click', () => render(a.dataset.tab)));
+render('dashboard');
+</script>
+</body>
+</html>

@@ -149,7 +149,7 @@ export default function EnviarMailModal({ selectedContacts, onClose, onSent, use
         contacto_ids: selectedContacts.map(c => c.id),
         asunto,
         cuerpo,
-        enviado_por: user?.username,
+        enviado_por: user?.email,
         adjuntos: adjuntos.map(a => ({ id: a.id, originalName: a.originalName, mimetype: a.mimetype })),
       });
       setResultado(res);

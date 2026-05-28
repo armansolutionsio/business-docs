@@ -66,6 +66,155 @@ async function runMigrations() {
     `);
 
     console.log('[migrate] Anulacion + JSONB + historial columns ready');
+
+    // ─── Admin IA: templates de extracción de comprobantes ───────────────
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS admin_ia_templates (
+        id                SERIAL PRIMARY KEY,
+        slug              VARCHAR(80) UNIQUE NOT NULL,
+        nombre            VARCHAR(200) NOT NULL,
+        proveedor_cuit    VARCHAR(20),
+        tipo_doc_default  VARCHAR(60),
+        fingerprints      JSONB DEFAULT '[]'::jsonb,
+        fixed_fields      JSONB DEFAULT '{}'::jsonb,
+        extractors        JSONB DEFAULT '{}'::jsonb,
+        is_factory        BOOLEAN NOT NULL DEFAULT FALSE,
+        is_active         BOOLEAN NOT NULL DEFAULT TRUE,
+        version           INTEGER NOT NULL DEFAULT 1,
+        notas             TEXT,
+        created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        created_by        VARCHAR(80),
+        updated_by        VARCHAR(80)
+      );
+      CREATE INDEX IF NOT EXISTS idx_aia_tpl_active ON admin_ia_templates (is_active) WHERE is_active = TRUE;
+      CREATE INDEX IF NOT EXISTS idx_aia_tpl_cuit   ON admin_ia_templates (proveedor_cuit) WHERE proveedor_cuit IS NOT NULL;
+    `);
+
+    // Seed factory templates (idempotente: ON CONFLICT DO NOTHING por slug)
+    const factory = [
+      {
+        slug: 'afip-estandar',
+        nombre: 'ARCA / AFIP Estándar',
+        proveedor_cuit: null,
+        tipo_doc_default: null,
+        fingerprints: [
+          'Régimen de Transparencia Fiscal',
+          'Comprobante Autorizado',
+          'Domicilio Comercial:',
+          'Apellido y Nombre / Razón Social:',
+          'Punto de Venta: Comp. Nro:',
+          'CAE N°:',
+          'IVA Contenido:'
+        ],
+        fixed_fields: {},
+        extractors: {
+          puntoVentaNumero: { strategy: 'afip_pv_nro_layout' },
+          cae: { strategy: 'afip_cae_separado' },
+          totales: { strategy: 'afip_layout_totals' },
+          ivaContenido: { strategy: 'ley_27743' },
+          receptor: { strategy: 'afip_apellido_razon_social' }
+        },
+        notas: 'PDF descargado del portal de Comprobantes en Línea de ARCA/AFIP. Layout con labels en columna izquierda y valores en columna derecha; pdf-parse linealiza ambas columnas por separado.'
+      },
+      {
+        slug: 'software-turismo',
+        nombre: 'Software de Turismo (FAC + DETALLE COMPUTO DE IVA)',
+        proveedor_cuit: null,
+        tipo_doc_default: null,
+        fingerprints: [
+          'DETALLE COMPUTO DE IVA',
+          'SR/ES:',
+          'Cond.de Venta:',
+          'I.V.A. RESPONSABLE INSCRIPTO CUIT:',
+          'TURISMO NACIONAL',
+          'TURISMO INTERNACIONAL',
+          'Concepto facturado por cta y orden de terceros'
+        ],
+        fixed_fields: {},
+        extractors: {
+          tipoNumero: { strategy: 'turismo_fac_letra' },
+          ivaDiscriminado: { strategy: 'detalle_computo_iva' },
+          receptor: { strategy: 'sr_es_block' },
+          otrosTributos: { strategy: 'concepto_terceros_dnt' },
+          pieColumnas: { strategy: 'pes_caret_columns' }
+        },
+        notas: 'PDF emitido por software de gestión de agencias de viaje (típico de mayoristas/operadores). Discriminación de IVA en el formato "X% sobre N = IVA". Campo "Concepto facturado por cuenta y orden de terceros" identifica DNT/percepciones.'
+      },
+      {
+        slug: 'tique-fiscal-ar',
+        nombre: 'Tique Fiscal AR (impresora fiscal: Hasar/Epson/NCR/Bematech)',
+        proveedor_cuit: null,
+        tipo_doc_default: null,
+        fingerprints: [
+          'TIQUE FACTURA',
+          'ALICUOTA',
+          'IMPORTE TOTAL OTROS TRIBUTOS',
+          'TOT:',
+          'Tasa vial municipal',
+          'Impuesto interno a nivel ítem',
+          'Su Vuelto',
+          'Ley 27743 Transparencia Fiscal',
+          'EPEPAAO',
+          'REGISTRO:'
+        ],
+        fixed_fields: {},
+        extractors: {
+          tipoNumero: { strategy: 'tique_factura_codigo' },
+          ivaDiscriminado: { strategy: 'alicuota_pct_monto' },
+          impTotal: { strategy: 'tot_con_coma_decimal' },
+          ivaDerivado: { strategy: 'derivar_iva_si_solo_alicuota' }
+        },
+        notas: 'Comprobantes emitidos por impresoras fiscales argentinas (Hasar, Epson TM, NCR, Bematech, Neptuno, etc.). Discriminación de IVA en formato "ALICUOTA NN,NN% MONTO". Otros Tributos numerados (10 - Impuesto interno..., 03 - Tasa vial municipal...). Total como "TOT: NNNNN" + valor con coma decimal. CAEA en lugar de CAE. Cuando el OCR de un escaneo comió el monto del IVA y solo hay una alícuota mencionada, el extractor lo deriva por aritmética desde el Total y los Otros Tributos.'
+      }
+    ];
+    for (const t of factory) {
+      await db.query(
+        `INSERT INTO admin_ia_templates
+           (slug, nombre, proveedor_cuit, tipo_doc_default, fingerprints, fixed_fields, extractors, is_factory, notas, created_by)
+         VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb, $7::jsonb, TRUE, $8, 'system')
+         ON CONFLICT (slug) DO NOTHING`,
+        [t.slug, t.nombre, t.proveedor_cuit, t.tipo_doc_default,
+         JSON.stringify(t.fingerprints), JSON.stringify(t.fixed_fields),
+         JSON.stringify(t.extractors), t.notas]
+      );
+    }
+    console.log('[migrate] admin_ia_templates ready (' + factory.length + ' factory templates seeded)');
+
+    // ─── pgcrypto (necesario para gen_random_uuid; tolerar fallo de permisos) ──
+    try { await db.query(`CREATE EXTENSION IF NOT EXISTS "pgcrypto"`); }
+    catch (e) { console.warn('[migrate] pgcrypto no disponible, customers_global UUID requerira otro mecanismo:', e.message); }
+
+    // ─── Multi-vertical bootstrap (tech / paybridge / admin_core) ─────────
+    try {
+      const { bootstrapVerticalSchemas } = require('./schemas');
+      await bootstrapVerticalSchemas();
+    } catch (e) {
+      console.error('[migrate] bootstrapVerticalSchemas FAILED:', e.message);
+    }
+
+    // ─── Identidad global de cliente cross-vertical ───────────────────────
+    try {
+      await db.query(`ALTER TABLE public.contactos ADD COLUMN IF NOT EXISTS global_customer_id UUID`);
+      await db.query(`CREATE INDEX IF NOT EXISTS idx_public_contactos_global ON public.contactos(global_customer_id)`);
+    } catch (e) { console.warn('[migrate] alter public.contactos:', e.message); }
+
+    // ─── Seed admin inicial si no existe ningun usuario ──────────────────
+    const bcrypt = require('bcryptjs');
+    const { rows: userCount } = await db.query(`SELECT COUNT(*)::int AS n FROM admin_core.users`);
+    if (userCount[0].n === 0) {
+      const email = process.env.SEED_ADMIN_EMAIL || 'admin@arman.local';
+      const password = process.env.SEED_ADMIN_PASSWORD || 'admin123';
+      const hash = await bcrypt.hash(password, 10);
+      await db.query(
+        `INSERT INTO admin_core.users (email, nombre, password_hash, rol, verticales, activo)
+         VALUES ($1, 'Administrador', $2, 'admin', '["tech","travel","paybridge","admin"]'::jsonb, TRUE)
+         ON CONFLICT (email) DO NOTHING`,
+        [email, hash]
+      );
+      console.log(`[migrate] Admin sembrado: ${email} / password en SEED_ADMIN_PASSWORD (cambiar al primer login)`);
+    }
+
   } catch (e) {
     console.error('[migrate] Error (non-fatal):', e.message);
   }

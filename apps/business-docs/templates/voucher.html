@@ -1,0 +1,437 @@
+<style>
+  .voucher-root {
+    color: #1f2937;
+    font-family: 'Segoe UI', Arial, sans-serif;
+  }
+  .voucher-root .v-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    padding-bottom: 14px;
+    border-bottom: 2px solid #1A1864;
+    margin-bottom: 14px;
+  }
+  .voucher-root .v-brand { display: flex; align-items: center; gap: 14px; }
+  .voucher-root .v-brand img { width: 90px; height: auto; object-fit: contain; }
+  .voucher-root .v-brand .v-brand-text { line-height: 1.15; }
+  .voucher-root .v-brand .v-brand-title {
+    font-size: 22pt; font-weight: 800; color: #1A1864; letter-spacing: 1.5px;
+  }
+  .voucher-root .v-brand .v-brand-sub {
+    font-size: 9pt; color: #555; letter-spacing: 2.5px; margin-top: 2px;
+  }
+  .voucher-root .v-brand .v-brand-leg {
+    font-size: 8pt; color: #888; margin-top: 1px; letter-spacing: 1.5px;
+  }
+  .voucher-root .v-contact {
+    font-size: 8.5pt; color: #333; line-height: 1.6;
+  }
+  .voucher-root .v-contact div { display: flex; align-items: center; gap: 6px; }
+  .voucher-root .v-contact .v-ic {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 14px; height: 14px; border-radius: 50%;
+    background: #1A1864; color: #fff; font-size: 8pt; font-weight: 700;
+  }
+
+  .voucher-root .v-title-bar {
+    display: flex; align-items: center; justify-content: space-between; gap: 14px;
+    background: #1A1864; color: #fff; border-radius: 8px;
+    padding: 14px 20px; margin-bottom: 18px;
+  }
+  .voucher-root .v-title-bar .v-title { font-size: 18pt; font-weight: 800; letter-spacing: 1.5px; }
+  .voucher-root .v-title-bar .v-title-sub { font-size: 9pt; opacity: .9; margin-top: 2px; letter-spacing: 2.5px; }
+  .voucher-root .v-title-bar .v-num {
+    background: #fff; color: #1A1864; border-radius: 6px; padding: 8px 14px;
+    text-align: center; min-width: 130px;
+  }
+  .voucher-root .v-title-bar .v-num .l { font-size: 7.5pt; color: #1A1864; letter-spacing: 1.5px; font-weight: 700; }
+  .voucher-root .v-title-bar .v-num .v { font-size: 14pt; font-weight: 800; }
+
+  .voucher-root .v-section {
+    border: 1px solid #d8d6ea; border-radius: 8px;
+    padding: 12px 14px; margin-bottom: 12px; page-break-inside: avoid;
+  }
+  .voucher-root .v-section h3 {
+    font-size: 11pt; font-weight: 800; color: #1A1864;
+    margin: 0 0 10px 0; padding-bottom: 6px;
+    border-bottom: 1px solid #e6e4f4; letter-spacing: .5px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .voucher-root .v-section h3 .v-ico {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px; border-radius: 5px;
+    background: #1A1864; color: #fff; font-size: 11pt; font-weight: 800;
+  }
+  .voucher-root .v-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 22px; }
+  .voucher-root .v-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px 18px; }
+  .voucher-root .v-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px 14px; }
+  .voucher-root .v-field { display: flex; flex-direction: column; padding: 3px 0; }
+  .voucher-root .v-field .v-l {
+    font-size: 7.5pt; color: #6b6f80; text-transform: uppercase;
+    letter-spacing: .6px; font-weight: 700;
+  }
+  .voucher-root .v-field .v-v {
+    font-size: 10pt; color: #1f2937; font-weight: 500; padding-top: 2px;
+    word-break: break-word;
+  }
+
+  .voucher-root table.v-table {
+    width: 100%; border-collapse: collapse; font-size: 9.5pt;
+  }
+  .voucher-root table.v-table thead th {
+    background: #ecebf7; color: #1A1864; text-align: left;
+    font-size: 8.5pt; font-weight: 700; padding: 7px 9px;
+    text-transform: uppercase; letter-spacing: .5px;
+    border-bottom: 1.5px solid #1A1864;
+  }
+  .voucher-root table.v-table tbody td {
+    padding: 7px 9px; border-bottom: 1px solid #ece9f5; vertical-align: top;
+  }
+  .voucher-root table.v-table tbody tr:last-child td { border-bottom: none; }
+  .voucher-root table.v-table tbody td .v-mono { font-family: 'Courier New', monospace; }
+
+  .voucher-root .v-card {
+    background: #fafafd; border: 1px solid #e6e4f4; border-radius: 6px;
+    padding: 10px 12px; margin-bottom: 8px; page-break-inside: avoid;
+  }
+  .voucher-root .v-card:last-child { margin-bottom: 0; }
+  .voucher-root .v-card .v-card-title {
+    font-size: 10pt; font-weight: 700; color: #1A1864; margin-bottom: 6px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .voucher-root .v-card .v-card-title .badge {
+    background: #1A1864; color: #fff; font-size: 8pt; font-weight: 700;
+    padding: 2px 8px; border-radius: 999px; letter-spacing: .4px;
+  }
+
+  .voucher-root .v-pay {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+  }
+  .voucher-root .v-pay .v-pay-card {
+    border: 1px solid #d8d6ea; border-radius: 8px; padding: 12px 14px;
+  }
+  .voucher-root .v-pay .v-pay-card .v-pay-row {
+    display: flex; justify-content: space-between; padding: 4px 0;
+    font-size: 10pt;
+  }
+  .voucher-root .v-pay .v-pay-card .v-pay-row.total {
+    border-top: 1.5px solid #1A1864; margin-top: 6px; padding-top: 8px;
+    font-weight: 800; color: #1A1864; font-size: 11pt;
+  }
+
+  .voucher-root .v-obs ul { margin: 0; padding-left: 18px; }
+  .voucher-root .v-obs li { font-size: 9.5pt; padding: 2px 0; line-height: 1.5; }
+  .voucher-root .v-obs p { font-size: 9.5pt; line-height: 1.6; white-space: pre-wrap; margin: 0; }
+
+  .voucher-root .v-footer {
+    margin-top: 18px; padding: 14px 16px; border-radius: 8px;
+    background: linear-gradient(135deg, #1A1864 0%, #3D3791 100%);
+    color: #fff; text-align: center; page-break-inside: avoid;
+  }
+  .voucher-root .v-footer .v-thanks {
+    font-size: 14pt; font-style: italic; font-weight: 700; margin-bottom: 4px;
+  }
+  .voucher-root .v-footer .v-sub {
+    font-size: 9.5pt; opacity: .9;
+  }
+  .voucher-root .v-footer-info {
+    margin-top: 10px; display: grid; grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px; font-size: 8.5pt; color: #fff;
+  }
+  .voucher-root .v-footer-info .v-fi { text-align: center; line-height: 1.4; }
+  .voucher-root .v-footer-info .v-fi-t { font-weight: 700; letter-spacing: .8px; font-size: 9pt; }
+
+  .voucher-root .v-empty-hint { font-size: 9pt; color: #9aa0b2; font-style: italic; }
+</style>
+
+<div class="voucher-root">
+
+  <!-- HEADER: LOGO + CONTACTO -->
+  <div class="v-header">
+    <div class="v-brand">
+      {{#if logo}}
+        <img src="{{logo.dataUrl}}" alt="Arman Travel">
+      {{else}}
+        <div class="v-brand-text">
+          <div class="v-brand-title">ARMAN</div>
+          <div class="v-brand-sub">— TRAVEL —</div>
+          <div class="v-brand-leg">LEG 20758</div>
+        </div>
+      {{/if}}
+    </div>
+    <div class="v-contact">
+      {{#if companyPhone}}<div><span class="v-ic">T</span>{{companyPhone}}</div>{{/if}}
+      {{#if companyInstagram}}<div><span class="v-ic">I</span>{{companyInstagram}}</div>{{/if}}
+      {{#if companyEmail}}<div><span class="v-ic">@</span>{{companyEmail}}</div>{{/if}}
+      {{#if companyAddress}}<div><span class="v-ic">D</span>{{companyAddress}}</div>{{/if}}
+    </div>
+  </div>
+
+  <!-- TITULO -->
+  <div class="v-title-bar">
+    <div>
+      <div class="v-title">VOUCHER DE VIAJE</div>
+      <div class="v-title-sub">CONFIRMACION DE RESERVA</div>
+    </div>
+    <div class="v-num">
+      <div class="l">N° DE VOUCHER</div>
+      <div class="v">{{voucherNumber}}</div>
+    </div>
+  </div>
+
+  <!-- 1. INFORMACION GENERAL -->
+  <div class="v-section">
+    <h3><span class="v-ico">1</span> Informacion General</h3>
+    <div class="v-grid-2">
+      <div class="v-field">
+        <span class="v-l">Fecha de Emision</span>
+        <span class="v-v">{{dateFormat issueDate}}</span>
+      </div>
+      <div class="v-field">
+        <span class="v-l">Cantidad Total de Pasajeros</span>
+        <span class="v-v">{{passengerCount}}</span>
+      </div>
+      <div class="v-field">
+        <span class="v-l">Agencia</span>
+        <span class="v-v">{{agency}}</span>
+      </div>
+      <div class="v-field">
+        <span class="v-l">Asesor</span>
+        <span class="v-v">{{advisor}}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. TITULAR -->
+  <div class="v-section">
+    <h3><span class="v-ico">2</span> Titular de la Reserva</h3>
+    <div class="v-grid-2">
+      <div class="v-field">
+        <span class="v-l">Nombre Completo</span>
+        <span class="v-v">{{holderName}}</span>
+      </div>
+      <div class="v-field">
+        <span class="v-l">Tipo y N° de Documento</span>
+        <span class="v-v">{{holderDocument}}</span>
+      </div>
+      {{#if holderPhone}}
+      <div class="v-field">
+        <span class="v-l">Telefono de Contacto</span>
+        <span class="v-v">{{holderPhone}}</span>
+      </div>
+      {{/if}}
+      {{#if holderEmail}}
+      <div class="v-field">
+        <span class="v-l">Email</span>
+        <span class="v-v">{{holderEmail}}</span>
+      </div>
+      {{/if}}
+    </div>
+  </div>
+
+  <!-- 3. PASAJEROS -->
+  {{#if passengers.length}}
+  <div class="v-section">
+    <h3><span class="v-ico">3</span> Pasajeros</h3>
+    <table class="v-table">
+      <thead>
+        <tr>
+          <th style="width: 6%;">N°</th>
+          <th>Nombre Completo</th>
+          <th style="width: 28%;">Tipo y N° de Documento</th>
+          <th style="width: 18%;">Fecha de Nacimiento</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#each passengers}}
+        <tr>
+          <td><strong>{{add1 @index}}</strong></td>
+          <td>{{name}}</td>
+          <td>{{document}}</td>
+          <td>{{#if birthDate}}{{dateFormat birthDate}}{{/if}}</td>
+        </tr>
+        {{/each}}
+      </tbody>
+    </table>
+  </div>
+  {{/if}}
+
+  <!-- 4. VUELOS -->
+  {{#if flights.length}}
+  <div class="v-section">
+    <h3><span class="v-ico">A</span> Aereos / Vuelos</h3>
+    {{#each flights}}
+    <div class="v-card">
+      <div class="v-card-title">
+        <span>Vuelo {{add1 @index}}{{#if airline}} - {{airline}}{{/if}}{{#if flightNumber}} {{flightNumber}}{{/if}}</span>
+        {{#if class}}<span class="badge">{{class}}</span>{{/if}}
+      </div>
+      <div class="v-grid-4">
+        <div class="v-field"><span class="v-l">Origen</span><span class="v-v">{{origin}}</span></div>
+        <div class="v-field"><span class="v-l">Destino</span><span class="v-v">{{destination}}</span></div>
+        <div class="v-field"><span class="v-l">Salida</span><span class="v-v">{{#if departureDate}}{{dateFormat departureDate}}{{/if}}{{#if departureTime}} - {{departureTime}}{{/if}}</span></div>
+        <div class="v-field"><span class="v-l">Llegada</span><span class="v-v">{{#if arrivalDate}}{{dateFormat arrivalDate}}{{/if}}{{#if arrivalTime}} - {{arrivalTime}}{{/if}}</span></div>
+        {{#if reservationCode}}<div class="v-field"><span class="v-l">Localizador</span><span class="v-v v-mono">{{reservationCode}}</span></div>{{/if}}
+        {{#if baggage}}<div class="v-field"><span class="v-l">Equipaje</span><span class="v-v">{{baggage}}</span></div>{{/if}}
+        {{#if notes}}<div class="v-field" style="grid-column: span 2;"><span class="v-l">Notas</span><span class="v-v">{{notes}}</span></div>{{/if}}
+      </div>
+    </div>
+    {{/each}}
+  </div>
+  {{/if}}
+
+  <!-- 5. HOTELES -->
+  {{#if hotels.length}}
+  <div class="v-section">
+    <h3><span class="v-ico">H</span> Hoteles / Alojamiento</h3>
+    {{#each hotels}}
+    <div class="v-card">
+      <div class="v-card-title">
+        <span>{{#if name}}{{name}}{{else}}Hotel {{add1 @index}}{{/if}}</span>
+        {{#if nights}}<span class="badge">{{nights}} noche{{#if_gt nights 1}}s{{/if_gt}}</span>{{/if}}
+      </div>
+      <div class="v-grid-3">
+        {{#if address}}<div class="v-field"><span class="v-l">Direccion</span><span class="v-v">{{address}}</span></div>{{/if}}
+        {{#if roomType}}<div class="v-field"><span class="v-l">Habitacion</span><span class="v-v">{{roomType}}</span></div>{{/if}}
+        {{#if mealPlan}}<div class="v-field"><span class="v-l">Regimen</span><span class="v-v">{{mealPlan}}</span></div>{{/if}}
+        {{#if checkIn}}<div class="v-field"><span class="v-l">Check-in</span><span class="v-v">{{dateFormat checkIn}}</span></div>{{/if}}
+        {{#if checkOut}}<div class="v-field"><span class="v-l">Check-out</span><span class="v-v">{{dateFormat checkOut}}</span></div>{{/if}}
+        {{#if confirmationCode}}<div class="v-field"><span class="v-l">N° Confirmacion</span><span class="v-v v-mono">{{confirmationCode}}</span></div>{{/if}}
+        {{#if notes}}<div class="v-field" style="grid-column: span 3;"><span class="v-l">Notas</span><span class="v-v">{{notes}}</span></div>{{/if}}
+      </div>
+    </div>
+    {{/each}}
+  </div>
+  {{/if}}
+
+  <!-- 6. TRASLADOS -->
+  {{#if transfers.length}}
+  <div class="v-section">
+    <h3><span class="v-ico">T</span> Traslados</h3>
+    {{#each transfers}}
+    <div class="v-card">
+      <div class="v-card-title">
+        <span>{{#if type}}{{type}}{{else}}Traslado {{add1 @index}}{{/if}}</span>
+        {{#if service}}<span class="badge">{{service}}</span>{{/if}}
+      </div>
+      <div class="v-grid-3">
+        {{#if from}}<div class="v-field"><span class="v-l">Desde</span><span class="v-v">{{from}}</span></div>{{/if}}
+        {{#if to}}<div class="v-field"><span class="v-l">Hacia</span><span class="v-v">{{to}}</span></div>{{/if}}
+        {{#if date}}<div class="v-field"><span class="v-l">Fecha</span><span class="v-v">{{dateFormat date}}{{#if time}} - {{time}}{{/if}}</span></div>{{/if}}
+        {{#if provider}}<div class="v-field"><span class="v-l">Proveedor</span><span class="v-v">{{provider}}</span></div>{{/if}}
+        {{#if notes}}<div class="v-field" style="grid-column: span 3;"><span class="v-l">Notas</span><span class="v-v">{{notes}}</span></div>{{/if}}
+      </div>
+    </div>
+    {{/each}}
+  </div>
+  {{/if}}
+
+  <!-- 7. TOURS -->
+  {{#if tours.length}}
+  <div class="v-section">
+    <h3><span class="v-ico">E</span> Tours / Excursiones</h3>
+    {{#each tours}}
+    <div class="v-card">
+      <div class="v-card-title">
+        <span>{{#if name}}{{name}}{{else}}Tour {{add1 @index}}{{/if}}</span>
+        {{#if duration}}<span class="badge">{{duration}}</span>{{/if}}
+      </div>
+      <div class="v-grid-3">
+        {{#if date}}<div class="v-field"><span class="v-l">Fecha</span><span class="v-v">{{dateFormat date}}{{#if time}} - {{time}}{{/if}}</span></div>{{/if}}
+        {{#if pickup}}<div class="v-field"><span class="v-l">Punto de Encuentro</span><span class="v-v">{{pickup}}</span></div>{{/if}}
+        {{#if includes}}<div class="v-field" style="grid-column: span 3;"><span class="v-l">Incluye</span><span class="v-v">{{includes}}</span></div>{{/if}}
+        {{#if notes}}<div class="v-field" style="grid-column: span 3;"><span class="v-l">Notas</span><span class="v-v">{{notes}}</span></div>{{/if}}
+      </div>
+    </div>
+    {{/each}}
+  </div>
+  {{/if}}
+
+  <!-- 8. OTROS SERVICIOS -->
+  {{#if otherServices.length}}
+  <div class="v-section">
+    <h3><span class="v-ico">+</span> Otros Servicios</h3>
+    {{#each otherServices}}
+    <div class="v-card">
+      <div class="v-card-title">
+        <span>{{#if name}}{{name}}{{else}}Servicio {{add1 @index}}{{/if}}</span>
+      </div>
+      {{#if description}}<div class="v-field"><span class="v-v">{{description}}</span></div>{{/if}}
+    </div>
+    {{/each}}
+  </div>
+  {{/if}}
+
+  <!-- 9. INFORMACION DEL VIAJE (resumen) -->
+  {{#if hasTripInfo}}
+  <div class="v-section">
+    <h3><span class="v-ico">V</span> Informacion del Viaje</h3>
+    <div class="v-grid-2">
+      {{#if destination}}<div class="v-field"><span class="v-l">Destino</span><span class="v-v">{{destination}}</span></div>{{/if}}
+      {{#if tripStart}}<div class="v-field"><span class="v-l">Fecha de Viaje</span><span class="v-v">{{dateFormat tripStart}}{{#if tripEnd}} al {{dateFormat tripEnd}}{{/if}}</span></div>{{/if}}
+      {{#if duration}}<div class="v-field"><span class="v-l">Duracion</span><span class="v-v">{{duration}}</span></div>{{/if}}
+    </div>
+    {{#if tripDescription}}
+    <div style="margin-top: 10px;">
+      <div class="v-l" style="font-size: 7.5pt; color: #6b6f80; text-transform: uppercase; letter-spacing: .6px; font-weight: 700;">Descripcion</div>
+      <div style="font-size: 10pt; margin-top: 4px; white-space: pre-wrap; line-height: 1.55;">{{tripDescription}}</div>
+    </div>
+    {{/if}}
+  </div>
+  {{/if}}
+
+  <!-- 10. FORMA DE PAGO -->
+  {{#if hasPaymentInfo}}
+  <div class="v-section">
+    <h3><span class="v-ico">$</span> Forma de Pago</h3>
+    <div class="v-pay">
+      <div class="v-pay-card">
+        {{#if total}}<div class="v-pay-row"><span>Total</span><span class="v-mono">{{currencySymbol}} {{formatCurrency total}}</span></div>{{/if}}
+        {{#if deposit}}<div class="v-pay-row"><span>Sena / Reserva</span><span class="v-mono">{{currencySymbol}} {{formatCurrency deposit}}</span></div>{{/if}}
+        {{#if balance}}<div class="v-pay-row total"><span>Saldo Pendiente</span><span class="v-mono">{{currencySymbol}} {{formatCurrency balance}}</span></div>{{/if}}
+      </div>
+      <div class="v-pay-card">
+        {{#if paymentDueDate}}<div class="v-pay-row"><span>Fecha limite de pago</span><span>{{dateFormat paymentDueDate}}</span></div>{{/if}}
+        {{#if paymentMethod}}<div class="v-pay-row"><span>Medio de pago</span><span>{{paymentMethod}}</span></div>{{/if}}
+        {{#if paymentNotes}}<div style="font-size: 9pt; color: #555; margin-top: 6px; white-space: pre-wrap; line-height: 1.5;">{{paymentNotes}}</div>{{/if}}
+      </div>
+    </div>
+  </div>
+  {{/if}}
+
+  <!-- 11. OBSERVACIONES IMPORTANTES -->
+  {{#if observations}}
+  <div class="v-section v-obs">
+    <h3><span class="v-ico">!</span> Observaciones Importantes</h3>
+    {{#if observationList.length}}
+      <ul>
+        {{#each observationList}}<li>{{this}}</li>{{/each}}
+      </ul>
+    {{else}}
+      <p>{{observations}}</p>
+    {{/if}}
+  </div>
+  {{/if}}
+
+  <!-- FOOTER -->
+  <div class="v-footer">
+    <div class="v-thanks">Gracias por confiar en nosotros</div>
+    <div class="v-sub">Estamos felices de ser parte de tu proximo viaje. Que disfrutes esta experiencia unica!</div>
+    <div class="v-footer-info">
+      <div class="v-fi">
+        <div class="v-fi-t">ESTAMOS PARA VOS</div>
+        <div>Ante cualquier consulta no dudes en contactarnos.</div>
+      </div>
+      <div class="v-fi">
+        <div class="v-fi-t">EXPLORA MAS DESTINOS</div>
+        <div>Visita nuestra web<br>www.armantravel.com</div>
+      </div>
+      <div class="v-fi">
+        <div class="v-fi-t">ESCRIBINOS</div>
+        <div>{{companyPhone}}</div>
+      </div>
+    </div>
+  </div>
+
+</div>

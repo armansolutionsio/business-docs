@@ -17,14 +17,14 @@ export default function ContactoOportunidades({ contactoId, user }) {
   async function handleCreate(e) {
     e.preventDefault();
     if (!form.titulo.trim()) return;
-    await createOportunidad(contactoId, { ...form, vendedor: user?.username, created_by: user?.username });
+    await createOportunidad(contactoId, { ...form, vendedor: user?.email, created_by: user?.email });
     setForm({ titulo: '', destino: '', cantidad_pasajeros: 1, presupuesto_estimado: '' });
     setShowForm(false);
     await load();
   }
 
   async function changeEtapa(opp, newEtapa) {
-    await updateOportunidad(contactoId, opp.id, { estado_oportunidad: newEtapa, _user: user?.username });
+    await updateOportunidad(contactoId, opp.id, { estado_oportunidad: newEtapa, _user: user?.email });
     await load();
   }
 

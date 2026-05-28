@@ -45,7 +45,7 @@ export default function ContactoConversaciones({ contactoId, user }) {
     e.preventDefault();
     if (!form.contenido.trim()) return;
     setSaving(true);
-    await createConversacion(contactoId, { ...form, usuario_responsable: user?.username });
+    await createConversacion(contactoId, { ...form, usuario_responsable: user?.email });
     setForm(f => ({ ...f, contenido: '' }));
     await load();
     setSaving(false);

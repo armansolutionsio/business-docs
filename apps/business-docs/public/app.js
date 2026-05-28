@@ -4,8 +4,95 @@ const appState = {
     items: [],
     formData: {},
     categoryDetails: {},
-    images: null
+    images: null,
+    // Estado específico del Cotizador (tech)
+    tech: {
+        hours: [],          // [{ id, role, seniority, hours, rate }]
+        infra: [],          // [{ id, concept, model, cost, periods }]
+        licenses: [],       // [{ id, service, model, cost, periods }]
+        credentials: [],    // [{ id, concept, cost }]
+        others: [],         // [{ id, description, quantity, price, unit }]
+    },
+    // Estado especifico del Voucher
+    voucher: {
+        passengers: [],     // [{ id, name, document, birthDate }]
+        flights: [],        // [{ id, airline, flightNumber, origin, destination, departureDate, departureTime, arrivalDate, arrivalTime, class, reservationCode, baggage, notes }]
+        hotels: [],         // [{ id, name, address, checkIn, checkOut, nights, roomType, mealPlan, confirmationCode, notes }]
+        transfers: [],      // [{ id, type, service, from, to, date, time, provider, notes }]
+        tours: [],          // [{ id, name, date, time, duration, pickup, includes, notes }]
+        otherServices: [],  // [{ id, name, description }]
+        observations: [],   // string[]
+    },
+    // Estado especifico de Comprobantes (PDF combinado con botones)
+    comprobantes: {
+        title: '',
+        items: [],          // [{ id, fileName, mimeType, fileData, type, title, detecting }]
+    }
 };
+
+// ===== CATÁLOGOS PARA EL COTIZADOR (TECH) =====
+const TECH_PROJECT_TYPES = [
+    'Aplicación Web', 'Aplicación Móvil (iOS/Android)', 'Aplicación de Escritorio',
+    'API / Backend', 'E-commerce', 'CRM / ERP a medida', 'SaaS / Plataforma',
+    'Integración de Sistemas', 'Automatización / RPA', 'Inteligencia Artificial / ML',
+    'Data Engineering / Pipelines', 'Business Intelligence / Dashboards',
+    'Bot / Chatbot / WhatsApp', 'DevOps / Infraestructura', 'Auditoría / Consultoría',
+    'Mantenimiento / Soporte', 'Otro'
+];
+const TECH_METHODOLOGIES = ['Scrum', 'Kanban', 'Scrumban', 'Cascada', 'Híbrida', 'Por hitos'];
+const TECH_ROLES = [
+    'Tech Lead', 'Arquitecto de Software', 'Senior Full-Stack', 'Senior Backend',
+    'Senior Frontend', 'Mid Full-Stack', 'Mid Backend', 'Mid Frontend',
+    'Junior Developer', 'Mobile Developer', 'UX/UI Designer', 'QA Engineer',
+    'DevOps / SRE', 'Data Engineer', 'Data Scientist', 'ML Engineer',
+    'Project Manager', 'Product Owner', 'Consultor', 'Otro'
+];
+const TECH_SENIORITIES = ['Junior', 'Semi-Senior', 'Senior', 'Lead', 'N/A'];
+const TECH_INFRA_PRESETS = [
+    'AWS - Cómputo (EC2/Lambda)', 'AWS - Almacenamiento (S3)', 'AWS - RDS / Aurora',
+    'AWS - CloudFront / Route 53', 'GCP - Compute Engine', 'GCP - Cloud SQL',
+    'GCP - Cloud Storage', 'Azure - App Service', 'Azure - SQL Database',
+    'Vercel', 'Netlify', 'Railway', 'Render', 'Fly.io', 'DigitalOcean',
+    'Supabase', 'Firebase', 'PlanetScale', 'MongoDB Atlas', 'Redis Cloud',
+    'Cloudflare (CDN/WAF)', 'Servidor dedicado / VPS', 'Backups y DRP', 'Otro'
+];
+const TECH_LICENSE_PRESETS = [
+    'GitHub / GitLab / Bitbucket', 'Sentry (monitoreo errores)', 'Datadog / New Relic',
+    'Stripe / MercadoPago (pasarela)', 'OpenAI API / Anthropic API',
+    'Auth0 / Clerk / Cognito', 'Twilio (SMS/Voz)', 'WhatsApp Business API',
+    'SendGrid / Mailgun / Resend', 'Mapbox / Google Maps API', 'Algolia / Meilisearch',
+    'Atlassian (Jira/Confluence)', 'Figma / Adobe Creative Cloud',
+    'Postman / Bruno', 'Apple Developer Program', 'Google Play Console',
+    'Microsoft 365 / Google Workspace', 'Zapier / Make (n8n)', 'Otro'
+];
+const TECH_CREDENTIAL_PRESETS = [
+    'Dominio (.com / .com.ar / etc.)', 'Certificado SSL extendido',
+    'Apple Developer Program (anual)', 'Google Play Console (one-time)',
+    'Firma de código (Code Signing)', 'Verificación de empresa (Meta/Google)',
+    'Cuentas de servicios cloud', 'Licencia de software de terceros', 'Otro'
+];
+const TECH_PAYMENT_SCHEMES = [
+    '50% anticipo / 50% contra-entrega',
+    '40% anticipo / 30% mid / 30% entrega',
+    '30% anticipo / hitos parciales / 10% aceptación',
+    'Pago por hitos (a definir)',
+    'Mensualizado (proyecto largo)',
+    'Pago contra-entrega 100%',
+    'Anticipo 100%',
+    'A convenir'
+];
+const TECH_DEFAULT_TERMS = [
+    'PROPIEDAD INTELECTUAL: Todo el código fuente, la documentación y los entregables del proyecto serán propiedad del CLIENTE una vez recibido el pago total acordado. Los componentes de uso interno, librerías propias y herramientas previas de ARMAN SOLUTIONS continuarán siendo propiedad del PROVEEDOR.',
+    'CONFIDENCIALIDAD: Las partes se comprometen a mantener absoluta confidencialidad sobre la información técnica, comercial, financiera y estratégica intercambiada durante la ejecución del proyecto, durante un plazo mínimo de 5 (cinco) años contados desde la finalización del mismo.',
+    'ALCANCE Y CAMBIOS (CHANGE REQUESTS): Cualquier modificación al alcance descripto en esta cotización implicará una orden de cambio (CR) que será presupuestada por separado. ARMAN SOLUTIONS no estará obligada a ejecutar tareas fuera del alcance hasta tanto se apruebe la CR correspondiente por escrito.',
+    'GARANTÍA: Se otorga una garantía sobre defectos en la funcionalidad entregada por un plazo de 30 (treinta) días corridos desde la entrega final, siempre que no medie modificación posterior por terceros. Quedan excluidas mejoras, nuevas funcionalidades, errores derivados de cambios de entorno, datos corruptos o uso indebido.',
+    'LIMITACIÓN DE RESPONSABILIDAD: La responsabilidad económica de ARMAN SOLUTIONS por incumplimientos se limita al monto efectivamente abonado por el CLIENTE bajo esta cotización. En ningún caso se responderá por daños indirectos, lucro cesante, pérdida de chance, ni perjuicios consecuentes o reputacionales.',
+    'COSTOS RECURRENTES DE TERCEROS: Los costos de infraestructura cloud, suscripciones, licencias, credenciales, dominios y servicios SaaS de terceros listados en esta cotización son referenciales y pueden variar según el proveedor; serán trasladados al CLIENTE a costo, salvo que se indique lo contrario.',
+    'PLAZO DE ENTREGA: Los plazos consignados están sujetos a la entrega oportuna por parte del CLIENTE de información, accesos, validaciones y aprobaciones requeridas. Las demoras imputables al CLIENTE extenderán automáticamente el cronograma.',
+    'CANCELACIÓN: En caso de cancelación anticipada del proyecto por parte del CLIENTE, se facturarán las horas y costos efectivamente incurridos hasta la notificación, más una compensación equivalente al 15% del saldo pendiente en concepto de lucro cesante.',
+    'JURISDICCIÓN Y LEY APLICABLE: Para toda controversia derivada de la presente cotización, las partes se someten a los Tribunales Ordinarios de la Ciudad Autónoma de Buenos Aires, República Argentina, con renuncia expresa a cualquier otro fuero o jurisdicción que pudiera corresponder. Se aplicará la legislación argentina vigente.',
+    'ACEPTACIÓN: La aprobación de esta cotización por escrito (firma, e-mail, mensajería instantánea o transferencia del anticipo) implica el pleno conocimiento y aceptación de todas las condiciones aquí establecidas.'
+].join('\n\n');
 
 // ===== BASE DE DATOS DE AEROPUERTOS (IATA) =====
 const AIRPORTS_DB = [
@@ -121,7 +208,7 @@ const CATEGORY_DETAIL_CONFIG = {
     'Aéreos': {
         slug: 'aereos',
         title: 'Información de Vuelos',
-        icon: '✈️',
+        icon: '',
         multiInstance: true,
         subItemLabel: 'Vuelo',
         topFields: [
@@ -141,7 +228,7 @@ const CATEGORY_DETAIL_CONFIG = {
     'Hoteles': {
         slug: 'hoteles',
         title: 'Información del Hospedaje',
-        icon: '🏨',
+        icon: '',
         multiInstance: true,
         subItemLabel: 'Hotel',
         subItemFields: [
@@ -157,7 +244,7 @@ const CATEGORY_DETAIL_CONFIG = {
     'Packs Turísticos': {
         slug: 'packs',
         title: 'Detalle del Pack Turístico',
-        icon: '🎒',
+        icon: '',
         multiInstance: true,
         subItemLabel: 'Servicio',
         isPackContainer: true,
@@ -169,7 +256,7 @@ const CATEGORY_DETAIL_CONFIG = {
         ],
         serviceTypes: {
             vuelo: {
-                label: 'Vuelo', icon: '✈️',
+                label: 'Vuelo', icon: '',
                 fields: [
                     { name: 'passengerName', label: 'Pasajero', type: 'text', placeholder: 'Nombre del pasajero' },
                     { name: 'airline', label: 'Aerolínea', type: 'text', placeholder: 'Ej: Aerolíneas Argentinas' },
@@ -183,7 +270,7 @@ const CATEGORY_DETAIL_CONFIG = {
                 ]
             },
             hotel: {
-                label: 'Hotel', icon: '🏨',
+                label: 'Hotel', icon: '',
                 fields: [
                     { name: 'hotelName', label: 'Hotel', type: 'text', placeholder: 'Nombre del hotel' },
                     { name: 'hotelLocation', label: 'Ubicación', type: 'text', placeholder: 'Ciudad / zona' },
@@ -195,7 +282,7 @@ const CATEGORY_DETAIL_CONFIG = {
                 ]
             },
             traslado: {
-                label: 'Traslado', icon: '🚐',
+                label: 'Traslado', icon: '',
                 fields: [
                     { name: 'pickupPoint', label: 'Origen', type: 'airport', placeholder: 'Buscar aeropuerto o escribir dirección...' },
                     { name: 'dropoffPoint', label: 'Destino', type: 'text', placeholder: 'Hotel, aeropuerto, etc.' },
@@ -205,7 +292,7 @@ const CATEGORY_DETAIL_CONFIG = {
                 ]
             },
             tour: {
-                label: 'Tour', icon: '🗺️',
+                label: 'Tour', icon: '',
                 fields: [
                     { name: 'tourName', label: 'Tour', type: 'text', placeholder: 'Nombre del tour' },
                     { name: 'tourLocation', label: 'Ubicación', type: 'text', placeholder: 'Ciudad / zona' },
@@ -215,7 +302,7 @@ const CATEGORY_DETAIL_CONFIG = {
                 ]
             },
             seguro: {
-                label: 'Seguro', icon: '🛡️',
+                label: 'Seguro', icon: '',
                 fields: [
                     { name: 'insuranceCompany', label: 'Compañía', type: 'text', placeholder: 'Ej: Assist Card' },
                     { name: 'coverageType', label: 'Cobertura', type: 'select', options: ['Básico', 'Standard', 'Premium', 'Cobertura Total'] },
@@ -243,7 +330,7 @@ const CATEGORY_DETAIL_CONFIG = {
     'Traslados': {
         slug: 'traslados',
         title: 'Información de Traslados',
-        icon: '🚐',
+        icon: '',
         multiInstance: true,
         subItemLabel: 'Traslado',
         subItemFields: [
@@ -258,7 +345,7 @@ const CATEGORY_DETAIL_CONFIG = {
     'Tours': {
         slug: 'tours',
         title: 'Detalle del Tour',
-        icon: '🗺️',
+        icon: '',
         multiInstance: true,
         subItemLabel: 'Tour',
         subItemFields: [
@@ -273,7 +360,7 @@ const CATEGORY_DETAIL_CONFIG = {
     'Seguros': {
         slug: 'seguros',
         title: 'Detalle del Seguro de Viaje',
-        icon: '🛡️',
+        icon: '',
         multiInstance: true,
         subItemLabel: 'Seguro',
         subItemFields: [
@@ -287,7 +374,7 @@ const CATEGORY_DETAIL_CONFIG = {
     'Otros Servicios': {
         slug: 'otros',
         title: 'Información Adicional',
-        icon: '📋',
+        icon: '',
         multiInstance: true,
         subItemLabel: 'Servicio',
         subItemFields: [
@@ -450,8 +537,51 @@ function setupTabButtons() {
     });
 }
 
+// Cambia el branding del header/body según la pestaña activa
+function applyBrandingForTab(tabName) {
+    const body = document.body;
+    const logo = document.getElementById('brandLogo');
+    const title = document.getElementById('brandTitle');
+    const subtitle = document.getElementById('brandSubtitle');
+    if (tabName === 'quote-tech') {
+        body.classList.add('brand-solutions');
+        if (logo) { logo.src = '/Logo Arman Solutions.png'; logo.alt = 'Arman Solutions'; }
+        if (title) title.textContent = 'Arman Solutions';
+        if (subtitle) subtitle.textContent = 'Cotizador de Proyectos Tecnológicos';
+    } else if (tabName === 'admin-ia') {
+        body.classList.remove('brand-solutions');
+        if (logo) { logo.src = '/logo-arman-travel.png'; logo.alt = 'Arman Travel'; }
+        if (title) title.textContent = 'Admin IA';
+        if (subtitle) subtitle.textContent = 'Extracción inteligente de comprobantes (factura, NC, ND, recibo, etc.)';
+    } else {
+        body.classList.remove('brand-solutions');
+        if (logo) { logo.src = '/logo-arman-travel.png'; logo.alt = 'Arman Travel'; }
+        if (title) title.textContent = 'Arman Travel';
+        if (subtitle) subtitle.textContent = 'Sistema de Gestión de Documentos Comerciales';
+    }
+}
+
 // Renderizar contenido de pestaña
 function renderTab(tabName) {
+    applyBrandingForTab(tabName);
+
+    if (tabName === 'quote-tech') {
+        renderTechQuoteTab();
+        return;
+    }
+    if (tabName === 'admin-ia') {
+        renderAdminIaTab();
+        return;
+    }
+    if (tabName === 'voucher') {
+        renderVoucherTab();
+        return;
+    }
+    if (tabName === 'comprobantes') {
+        renderComprobantesTab();
+        return;
+    }
+
     const config = documentConfig[tabName];
     const contentDiv = document.getElementById('content');
     let html = '<form id="documentForm">';
@@ -577,14 +707,14 @@ function renderTab(tabName) {
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
                         <select id="itemCategory" style="padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;">
                             <option value="">-- Seleccionar concepto --</option>
-                            <option value="Aéreos">✈️ Aéreos</option>
-                            <option value="Hoteles">🏨 Hoteles</option>
-                            <option value="Packs Turísticos">🎒 Packs Turísticos</option>
+                            <option value="Aéreos">Aéreos</option>
+                            <option value="Hoteles">Hoteles</option>
+                            <option value="Packs Turísticos">Packs Turísticos</option>
                             <option value="VIP/Premium">⭐ VIP/Premium</option>
-                            <option value="Traslados">🚐 Traslados</option>
-                            <option value="Tours">🗺️ Tours</option>
-                            <option value="Seguros">🛡️ Seguros</option>
-                            <option value="Otros Servicios">📋 Otros Servicios</option>
+                            <option value="Traslados">Traslados</option>
+                            <option value="Tours">Tours</option>
+                            <option value="Seguros">Seguros</option>
+                            <option value="Otros Servicios">Otros Servicios</option>
                         </select>
                         <input type="text" id="itemDesc" placeholder="O escribir descripción personalizada...">
                     </div>
@@ -2410,15 +2540,2570 @@ async function deleteClientFromList(clientId) {
     showMessage('Los contactos no se pueden eliminar. Podés marcarlos como inactivos desde la ficha.', 'info');
 }
 
+// ============================================================
+// =====               COTIZADOR (TECH)                   =====
+// ============================================================
+
+function nextTechQuoteNumber() {
+    const year = new Date().getFullYear();
+    const counterKey = 'techQuoteCounter_' + year;
+    const current = parseInt(localStorage.getItem(counterKey) || '0', 10) + 1;
+    localStorage.setItem(counterKey, String(current));
+    return `CTZ-${year}-${String(current).padStart(4, '0')}`;
+}
+function peekTechQuoteNumber() {
+    const year = new Date().getFullYear();
+    const counterKey = 'techQuoteCounter_' + year;
+    const next = parseInt(localStorage.getItem(counterKey) || '0', 10) + 1;
+    return `CTZ-${year}-${String(next).padStart(4, '0')}`;
+}
+
+function renderTechQuoteTab() {
+    const today = new Date().toISOString().split('T')[0];
+    const inThirtyDays = new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0];
+
+    appState.tech = { hours: [], infra: [], licenses: [], credentials: [], others: [] };
+    appState.formData = {};
+
+    const html = `
+    <form id="documentForm">
+        <div class="message" id="message"></div>
+        <div class="loading" id="loading"><div class="spinner"></div><p>Generando documento...</p></div>
+
+        <div class="form-section">
+            <h3 class="section-title">Datos del Emisor</h3>
+            <div class="form-grid">
+                <div class="form-group"><label>Razón Social<span class="required">*</span></label>
+                    <input type="text" name="companyName" required value="${escapeHtml(companyData.companyName || '')}"></div>
+                <div class="form-group"><label>CUIT<span class="required">*</span></label>
+                    <input type="text" name="companyCUIT" required value="${escapeHtml(companyData.companyCUIT || '')}"></div>
+                <div class="form-group"><label>Condición IVA</label>
+                    <input type="text" name="companyIVACondition" value="${escapeHtml(companyData.companyIVACondition || '')}"></div>
+                <div class="form-group"><label>Ingresos Brutos</label>
+                    <input type="text" name="companyGrossIncome" value="${escapeHtml(companyData.companyGrossIncome || '')}"></div>
+                <div class="form-group full-width"><label>Domicilio Fiscal<span class="required">*</span></label>
+                    <input type="text" name="companyAddress" required value="${escapeHtml(companyData.companyAddress || '')}"></div>
+                <div class="form-group"><label>Email<span class="required">*</span></label>
+                    <input type="email" name="companyEmail" required value="${escapeHtml(companyData.companyEmail || '')}"></div>
+                <div class="form-group"><label>Teléfono<span class="required">*</span></label>
+                    <input type="tel" name="companyPhone" required value="${escapeHtml(companyData.companyPhone || '')}"></div>
+                <div class="form-group"><label>Sitio Web</label>
+                    <input type="text" name="companyWebsite" placeholder="armansolutions.com" value="armansolutions.com"></div>
+                <div class="form-group"><label>Inicio de Actividades</label>
+                    <input type="date" name="companyStartDate" value="${escapeHtml(companyData.companyStartDate || '')}"></div>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h3 class="section-title">Datos del Cliente</h3>
+            <div class="form-grid">
+                <div class="form-group"><label>Nombre / Razón Social<span class="required">*</span></label>
+                    <input type="text" name="clientName" required></div>
+                <div class="form-group"><label>CUIT / DNI</label>
+                    <input type="text" name="clientCUIT" placeholder="XX-XXXXXXXX-X"></div>
+                <div class="form-group"><label>Condición IVA</label>
+                    <select name="clientIVACondition">
+                        <option value="">Seleccionar...</option>
+                        <option>Responsable Inscripto</option>
+                        <option>Monotributista</option>
+                        <option>Exento</option>
+                        <option>Consumidor Final</option>
+                        <option>Exterior</option>
+                    </select></div>
+                <div class="form-group"><label>Persona de Contacto</label>
+                    <input type="text" name="clientContactPerson" placeholder="Nombre y rol del referente"></div>
+                <div class="form-group"><label>Email</label>
+                    <input type="email" name="clientEmail"></div>
+                <div class="form-group"><label>Teléfono</label>
+                    <input type="tel" name="clientPhone"></div>
+                <div class="form-group full-width"><label>Domicilio</label>
+                    <input type="text" name="clientDomicilio" placeholder="Calle, número, piso"></div>
+                <div class="form-group"><label>Localidad</label>
+                    <input type="text" name="clientLocalidad"></div>
+                <div class="form-group"><label>Provincia / País</label>
+                    <input type="text" name="clientProvincia"></div>
+                <div class="form-group"><label>Código Postal</label>
+                    <input type="text" name="clientCodigoPostal"></div>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h3 class="section-title">Datos del Documento</h3>
+            <div class="form-grid">
+                <div class="form-group"><label>Número de Cotización<span class="required">*</span></label>
+                    <input type="text" name="quoteNumber" required value="${peekTechQuoteNumber()}"></div>
+                <div class="form-group"><label>Fecha de Emisión<span class="required">*</span></label>
+                    <input type="date" name="quoteDate" required value="${today}"></div>
+                <div class="form-group"><label>Fecha de Vencimiento<span class="required">*</span></label>
+                    <input type="date" name="quoteValidUntil" required value="${inThirtyDays}"></div>
+                <div class="form-group"><label>Validez de la Oferta (días)<span class="required">*</span></label>
+                    <input type="number" name="validity" required min="1" value="30"></div>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h3 class="section-title">Información del Proyecto</h3>
+            <div class="form-grid">
+                <div class="form-group full-width"><label>Nombre del Proyecto<span class="required">*</span></label>
+                    <input type="text" name="projectName" required placeholder="Ej: Plataforma de gestión de pedidos"></div>
+                <div class="form-group"><label>Tipo de Proyecto<span class="required">*</span></label>
+                    <select name="projectType" required>
+                        <option value="">Seleccionar...</option>
+                        ${TECH_PROJECT_TYPES.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('')}
+                    </select></div>
+                <div class="form-group"><label>Metodología</label>
+                    <select name="projectMethodology">
+                        <option value="">Seleccionar...</option>
+                        ${TECH_METHODOLOGIES.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('')}
+                    </select></div>
+                <div class="form-group"><label>Plazo Estimado (semanas)</label>
+                    <input type="number" name="projectDurationWeeks" min="1" placeholder="12"></div>
+                <div class="form-group"><label>Inicio Estimado</label>
+                    <input type="date" name="projectStartDate"></div>
+                <div class="form-group full-width"><label>Descripción / Alcance del Proyecto<span class="required">*</span></label>
+                    <textarea name="projectScope" required rows="4" placeholder="Describir el alcance funcional, técnico y los entregables esperados..."></textarea></div>
+                <div class="form-group full-width"><label>Stack Tecnológico Propuesto</label>
+                    <textarea name="projectStack" rows="2" placeholder="Ej: React + Node.js + PostgreSQL, deploy en AWS"></textarea></div>
+                <div class="form-group full-width"><label>Entregables</label>
+                    <textarea name="projectDeliverables" rows="3" placeholder="Listar entregables: código fuente, documentación, despliegue, capacitación, etc."></textarea></div>
+                <div class="form-group full-width"><label>Lo que NO está Incluido (Exclusiones)</label>
+                    <textarea name="projectExclusions" rows="2" placeholder="Aclarar qué queda fuera del alcance: hosting, dominios, costos de terceros, capacitación extendida, etc."></textarea></div>
+                <div class="form-group full-width"><label>Supuestos / Asunciones</label>
+                    <textarea name="projectAssumptions" rows="2" placeholder="Ej: el cliente proveerá los accesos a producción, el diseño UX está aprobado, etc."></textarea></div>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h3 class="section-title">Recursos Humanos / Horas de Desarrollo</h3>
+            <div class="tech-rubro-card">
+                <div class="tech-row">
+                    <div class="form-group"><label>Rol</label>
+                        <select id="techHourRole">
+                            ${TECH_ROLES.map(r => `<option value="${escapeHtml(r)}">${escapeHtml(r)}</option>`).join('')}
+                        </select></div>
+                    <div class="form-group"><label>Seniority</label>
+                        <select id="techHourSeniority">
+                            ${TECH_SENIORITIES.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('')}
+                        </select></div>
+                    <div class="form-group"><label>Horas</label>
+                        <input type="number" id="techHourQty" min="0" step="0.5" placeholder="40"></div>
+                    <div class="form-group"><label>USD / hora</label>
+                        <input type="number" id="techHourRate" min="0" step="0.01" placeholder="35"></div>
+                    <button type="button" class="btn-add-item" onclick="addTechHour()">+ Agregar</button>
+                </div>
+            </div>
+            <div class="tech-rubro-list" id="techHoursList"></div>
+        </div>
+
+        <div class="form-section">
+            <h3 class="section-title">Infraestructura / Servicios Cloud</h3>
+            <p style="font-size: 12px; color: #666; margin-bottom: 10px;">Costos recurrentes por nube, bases de datos, CDN, almacenamiento, backups, etc.</p>
+            <div class="tech-rubro-card">
+                <div class="tech-row">
+                    <div class="form-group"><label>Concepto</label>
+                        <input type="text" id="techInfraConcept" placeholder="Ej: AWS RDS Postgres" list="techInfraPresets">
+                        <datalist id="techInfraPresets">
+                            ${TECH_INFRA_PRESETS.map(p => `<option value="${escapeHtml(p)}"></option>`).join('')}
+                        </datalist></div>
+                    <div class="form-group"><label>Modelo</label>
+                        <select id="techInfraModel">
+                            <option value="Mensual">Mensual</option>
+                            <option value="Anual">Anual</option>
+                            <option value="One-time">Pago único</option>
+                            <option value="Por uso">Por uso (estimado)</option>
+                        </select></div>
+                    <div class="form-group"><label>Costo (USD)</label>
+                        <input type="number" id="techInfraCost" min="0" step="0.01" placeholder="50"></div>
+                    <div class="form-group"><label>Cantidad de períodos</label>
+                        <input type="number" id="techInfraPeriods" min="1" step="1" placeholder="12" value="1"></div>
+                    <button type="button" class="btn-add-item" onclick="addTechInfra()">+ Agregar</button>
+                </div>
+            </div>
+            <div class="tech-rubro-list" id="techInfraList"></div>
+        </div>
+
+        <div class="form-section">
+            <h3 class="section-title">Licencias y Suscripciones</h3>
+            <p style="font-size: 12px; color: #666; margin-bottom: 10px;">APIs de terceros, herramientas SaaS, monitoring, analítica, pasarelas de pago, etc.</p>
+            <div class="tech-rubro-card">
+                <div class="tech-row">
+                    <div class="form-group"><label>Servicio</label>
+                        <input type="text" id="techLicenseService" placeholder="Ej: Sentry" list="techLicensePresets">
+                        <datalist id="techLicensePresets">
+                            ${TECH_LICENSE_PRESETS.map(p => `<option value="${escapeHtml(p)}"></option>`).join('')}
+                        </datalist></div>
+                    <div class="form-group"><label>Modelo</label>
+                        <select id="techLicenseModel">
+                            <option value="Mensual">Mensual</option>
+                            <option value="Anual">Anual</option>
+                            <option value="One-time">Pago único</option>
+                            <option value="Por uso">Por uso (estimado)</option>
+                        </select></div>
+                    <div class="form-group"><label>Costo (USD)</label>
+                        <input type="number" id="techLicenseCost" min="0" step="0.01" placeholder="29"></div>
+                    <div class="form-group"><label>Cantidad de períodos</label>
+                        <input type="number" id="techLicensePeriods" min="1" step="1" placeholder="12" value="1"></div>
+                    <button type="button" class="btn-add-item" onclick="addTechLicense()">+ Agregar</button>
+                </div>
+            </div>
+            <div class="tech-rubro-list" id="techLicensesList"></div>
+        </div>
+
+        <div class="form-section">
+            <h3 class="section-title">Credenciales, Dominios y Certificados</h3>
+            <p style="font-size: 12px; color: #666; margin-bottom: 10px;">Dominios, SSL, cuentas de developer, firma de código, verificaciones, etc.</p>
+            <div class="tech-rubro-card">
+                <div class="tech-row" style="grid-template-columns: 3fr 1fr auto;">
+                    <div class="form-group"><label>Concepto</label>
+                        <input type="text" id="techCredConcept" placeholder="Ej: Apple Developer (anual)" list="techCredPresets">
+                        <datalist id="techCredPresets">
+                            ${TECH_CREDENTIAL_PRESETS.map(p => `<option value="${escapeHtml(p)}"></option>`).join('')}
+                        </datalist></div>
+                    <div class="form-group"><label>Costo (USD)</label>
+                        <input type="number" id="techCredCost" min="0" step="0.01" placeholder="99"></div>
+                    <button type="button" class="btn-add-item" onclick="addTechCredential()">+ Agregar</button>
+                </div>
+            </div>
+            <div class="tech-rubro-list" id="techCredentialsList"></div>
+        </div>
+
+        <div class="form-section">
+            <h3 class="section-title">Otros Conceptos</h3>
+            <div class="tech-rubro-card">
+                <div class="tech-row">
+                    <div class="form-group"><label>Descripción</label>
+                        <input type="text" id="techOtherDesc" placeholder="Ej: Capacitación, viajes, etc."></div>
+                    <div class="form-group"><label>Cantidad</label>
+                        <input type="number" id="techOtherQty" min="0" step="0.01" placeholder="1"></div>
+                    <div class="form-group"><label>Precio Unit. (USD)</label>
+                        <input type="number" id="techOtherPrice" min="0" step="0.01" placeholder="0"></div>
+                    <div class="form-group"><label>Unidad</label>
+                        <input type="text" id="techOtherUnit" placeholder="hora / unidad / día"></div>
+                    <button type="button" class="btn-add-item" onclick="addTechOther()">+ Agregar</button>
+                </div>
+            </div>
+            <div class="tech-rubro-list" id="techOthersList"></div>
+        </div>
+
+        <div class="form-section">
+            <h3 class="section-title">Ajustes Financieros</h3>
+            <div class="form-grid">
+                <div class="form-group"><label>Moneda<span class="required">*</span></label>
+                    <select name="currency" id="techCurrency" required onchange="updateTechTotals()">
+                        <option value="USD" selected>USD - Dólar Estadounidense</option>
+                        <option value="ARS">ARS - Peso Argentino</option>
+                        <option value="EUR">EUR - Euro</option>
+                    </select></div>
+                <div class="form-group"><label>Tipo de Cambio (si aplica)</label>
+                    <input type="number" name="exchangeRate" id="techFxRate" min="0" step="0.01" placeholder="1" value="1" onchange="updateTechTotals()"></div>
+                <div class="form-group"><label>Contingencia / Riesgo (%)</label>
+                    <input type="number" name="contingencyPct" id="techContingency" min="0" max="100" step="0.1" value="10" onchange="updateTechTotals()"></div>
+                <div class="form-group"><label>Margen / Markup adicional (%)</label>
+                    <input type="number" name="marginPct" id="techMargin" min="0" max="100" step="0.1" value="0" onchange="updateTechTotals()"></div>
+                <div class="form-group"><label>Descuento (%)</label>
+                    <input type="number" name="discountPct" id="techDiscount" min="0" max="100" step="0.1" value="0" onchange="updateTechTotals()"></div>
+                <div class="form-group"><label>IVA (%)</label>
+                    <input type="number" name="ivaPct" id="techIva" min="0" max="100" step="0.1" value="21" onchange="updateTechTotals()"></div>
+                <div class="form-group"><label>Otros Impuestos / Retenciones (%)</label>
+                    <input type="number" name="otherTaxesPct" id="techOtherTaxes" min="0" max="100" step="0.1" value="0" onchange="updateTechTotals()"></div>
+                <div class="form-group"><label>Aplica IVA a costos cloud/licencias?</label>
+                    <select name="ivaScope" id="techIvaScope" onchange="updateTechTotals()">
+                        <option value="all" selected>Sobre todo</option>
+                        <option value="hours">Solo sobre horas</option>
+                        <option value="none">No aplicar IVA</option>
+                    </select></div>
+            </div>
+        </div>
+
+        <div class="totals-summary" id="techTotalsSummary">
+            <div class="total-line"><span class="label">Recursos Humanos / Horas</span><span class="value" id="techTotalHours">0,00</span></div>
+            <div class="total-line"><span class="label">Infraestructura</span><span class="value" id="techTotalInfra">0,00</span></div>
+            <div class="total-line"><span class="label">Licencias y Suscripciones</span><span class="value" id="techTotalLicenses">0,00</span></div>
+            <div class="total-line"><span class="label">Credenciales / Dominios</span><span class="value" id="techTotalCredentials">0,00</span></div>
+            <div class="total-line"><span class="label">Otros Conceptos</span><span class="value" id="techTotalOthers">0,00</span></div>
+            <div class="total-line subtotal-block"><span class="label"><strong>Subtotal</strong></span><span class="value" id="techSubtotal">0,00</span></div>
+            <div class="total-line"><span class="label">+ Contingencia</span><span class="value" id="techContingencyAmt">0,00</span></div>
+            <div class="total-line"><span class="label">+ Margen</span><span class="value" id="techMarginAmt">0,00</span></div>
+            <div class="total-line"><span class="label">- Descuento</span><span class="value" id="techDiscountAmt">0,00</span></div>
+            <div class="total-line subtotal-block"><span class="label"><strong>Base imponible</strong></span><span class="value" id="techTaxableBase">0,00</span></div>
+            <div class="total-line"><span class="label">IVA</span><span class="value" id="techIvaAmt">0,00</span></div>
+            <div class="total-line"><span class="label">Otros Impuestos / Retenciones</span><span class="value" id="techOtherTaxesAmt">0,00</span></div>
+            <div class="total-line grand"><span>TOTAL COTIZADO</span><span class="value" id="techGrandTotal">0,00</span></div>
+        </div>
+
+        <div class="form-section">
+            <h3 class="section-title">Condiciones Comerciales</h3>
+            <div class="form-grid">
+                <div class="form-group"><label>Esquema de Pago<span class="required">*</span></label>
+                    <select name="paymentScheme" required>
+                        ${TECH_PAYMENT_SCHEMES.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('')}
+                    </select></div>
+                <div class="form-group"><label>Plazo de Entrega</label>
+                    <input type="text" name="deliveryTerm" placeholder="Ej: 12 semanas a partir del anticipo" value="A confirmar"></div>
+                <div class="form-group"><label>Garantía (días)</label>
+                    <input type="number" name="warrantyDays" min="0" value="30"></div>
+                <div class="form-group"><label>Soporte Post-Entrega (días)</label>
+                    <input type="number" name="supportDays" min="0" value="30"></div>
+                <div class="form-group full-width"><label>Forma de Pago<span class="required">*</span></label>
+                    <div class="multiselect-grid">
+                        ${['Transferencia Bancaria','Transferencia Internacional (Wire)','MercadoPago','Stripe','PayPal','Crypto (USDT/USDC)','Cheque','Efectivo','Factoring'].map(opt => `
+                            <label class="multiselect-option">
+                                <input type="checkbox" name="paymentTerms" value="${escapeHtml(opt)}" ${opt === 'Transferencia Bancaria' ? 'checked' : ''}>
+                                <span>${escapeHtml(opt)}</span>
+                            </label>
+                        `).join('')}
+                    </div>
+                    <input type="hidden" id="paymentTerms-hidden" name="paymentTerms" value="Transferencia Bancaria">
+                </div>
+                <div class="form-group full-width"><label>Datos Bancarios (opcional)</label>
+                    <textarea name="bankDetails" rows="2" placeholder="Banco, CBU, Alias, Titular, CUIT"></textarea></div>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h3 class="section-title">Términos y Condiciones Legales</h3>
+            <p style="font-size: 12px; color: #666; margin-bottom: 10px;">Texto legal por defecto editable. Se incluirá en el PDF.</p>
+            <div class="form-grid">
+                <div class="form-group full-width">
+                    <textarea name="legalTerms" class="legal-textarea" rows="14">${escapeHtml(TECH_DEFAULT_TERMS)}</textarea>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h3 class="section-title">Notas y Observaciones</h3>
+            <div class="form-grid">
+                <div class="form-group full-width">
+                    <textarea name="notes" rows="3" placeholder="Notas adicionales para el cliente..."></textarea></div>
+            </div>
+        </div>
+
+        <div class="button-group">
+            <button type="button" class="btn btn-primary" onclick="downloadTechQuote()" style="grid-column: 1 / -1;">
+                Descargar Cotización (PDF)
+            </button>
+        </div>
+    </form>`;
+
+    document.getElementById('content').innerHTML = html;
+
+    setupMultiselect();
+    updateTechTotals();
+
+    // Reabrir cotizacion guardada via ?id=N
+    const params = new URLSearchParams(window.location.search);
+    const editId = params.get('id');
+    if (editId) loadTechQuoteFromDb(editId);
+}
+
+async function loadTechQuoteFromDb(id) {
+    try {
+        const r = await fetch(`/api/tech/cotizaciones/${id}`);
+        if (!r.ok) { showMessage('No se pudo cargar la cotización', 'error'); return; }
+        const cot = await r.json();
+        const meta = cot.metadata || {};
+        // 1) Restaurar items por categoria desde metadata.appStateTech
+        appState.tech = {
+            hours:       (meta.appStateTech && meta.appStateTech.hours)       || [],
+            infra:       (meta.appStateTech && meta.appStateTech.infra)       || [],
+            licenses:    (meta.appStateTech && meta.appStateTech.licenses)    || [],
+            credentials: (meta.appStateTech && meta.appStateTech.credentials) || [],
+            others:      (meta.appStateTech && meta.appStateTech.others)      || [],
+        };
+        appState.tech._editingId = cot.id;
+        appState.tech._lastContactoId = cot.contacto_id || null;
+        // 2) Repintar las listas de cada categoria
+        if (typeof renderTechHoursList       === 'function') renderTechHoursList();
+        if (typeof renderTechInfraList       === 'function') renderTechInfraList();
+        if (typeof renderTechLicensesList    === 'function') renderTechLicensesList();
+        if (typeof renderTechCredentialsList === 'function') renderTechCredentialsList();
+        if (typeof renderTechOthersList      === 'function') renderTechOthersList();
+        // 3) Restaurar campos del form desde formData
+        const fd = meta.formData || {};
+        const form = document.getElementById('documentForm');
+        if (form) {
+            for (const [k, v] of Object.entries(fd)) {
+                const el = form.elements[k];
+                if (!el) continue;
+                if (el.type === 'checkbox') el.checked = !!v;
+                else el.value = v;
+            }
+            // Numero de cotizacion del server (correlativo real)
+            const numEl = form.querySelector('input[name="quoteNumber"]');
+            if (numEl) numEl.value = cot.numero;
+        }
+        updateTechTotals();
+        showMessage(`Editando ${cot.numero}. Cambios sobreescriben.`, 'info');
+    } catch (e) {
+        console.error('loadTechQuoteFromDb', e);
+        showMessage('Error cargando cotización', 'error');
+    }
+}
+
+function addTechHour() {
+    const role = document.getElementById('techHourRole').value;
+    const seniority = document.getElementById('techHourSeniority').value;
+    const hours = parseFloat(document.getElementById('techHourQty').value) || 0;
+    const rate = parseFloat(document.getElementById('techHourRate').value) || 0;
+    if (!hours || hours <= 0) { showMessage('Ingresá la cantidad de horas', 'error'); return; }
+    if (!rate || rate <= 0) { showMessage('Ingresá la tarifa por hora', 'error'); return; }
+    appState.tech.hours.push({ id: Date.now(), role, seniority, hours, rate });
+    document.getElementById('techHourQty').value = '';
+    document.getElementById('techHourRate').value = '';
+    renderTechHoursList(); updateTechTotals();
+}
+function removeTechHour(id) {
+    appState.tech.hours = appState.tech.hours.filter(h => h.id !== id);
+    renderTechHoursList(); updateTechTotals();
+}
+function renderTechHoursList() {
+    const el = document.getElementById('techHoursList');
+    if (!el) return;
+    el.innerHTML = appState.tech.hours.map(h => `
+        <div class="row-display">
+            <div><div class="desc">${escapeHtml(h.role)} <span style="font-weight:400;color:#7048B0;">· ${escapeHtml(h.seniority)}</span></div>
+                 <div class="meta">${h.hours} hs × USD ${formatCurrency(h.rate)}/h</div></div>
+            <div class="meta">${h.hours} hs</div>
+            <div class="meta">USD ${formatCurrency(h.rate)}</div>
+            <div class="subtotal">USD ${formatCurrency(h.hours * h.rate)}</div>
+            <button type="button" class="remove-row" onclick="removeTechHour(${h.id})">Eliminar</button>
+        </div>`).join('');
+}
+
+function addTechInfra() {
+    const concept = (document.getElementById('techInfraConcept').value || '').trim();
+    const model = document.getElementById('techInfraModel').value;
+    const cost = parseFloat(document.getElementById('techInfraCost').value) || 0;
+    const periods = parseInt(document.getElementById('techInfraPeriods').value) || 1;
+    if (!concept) { showMessage('Ingresá el concepto', 'error'); return; }
+    appState.tech.infra.push({ id: Date.now(), concept, model, cost, periods });
+    document.getElementById('techInfraConcept').value = '';
+    document.getElementById('techInfraCost').value = '';
+    document.getElementById('techInfraPeriods').value = '1';
+    renderTechInfraList(); updateTechTotals();
+}
+function removeTechInfra(id) {
+    appState.tech.infra = appState.tech.infra.filter(x => x.id !== id);
+    renderTechInfraList(); updateTechTotals();
+}
+function renderTechInfraList() {
+    const el = document.getElementById('techInfraList');
+    if (!el) return;
+    el.innerHTML = appState.tech.infra.map(x => `
+        <div class="row-display">
+            <div><div class="desc">${escapeHtml(x.concept)}</div>
+                 <div class="meta">${escapeHtml(x.model)} · ${x.periods} período${x.periods > 1 ? 's' : ''}</div></div>
+            <div class="meta">${escapeHtml(x.model)}</div>
+            <div class="meta">USD ${formatCurrency(x.cost)}</div>
+            <div class="subtotal">USD ${formatCurrency(x.cost * x.periods)}</div>
+            <button type="button" class="remove-row" onclick="removeTechInfra(${x.id})">Eliminar</button>
+        </div>`).join('');
+}
+
+function addTechLicense() {
+    const service = (document.getElementById('techLicenseService').value || '').trim();
+    const model = document.getElementById('techLicenseModel').value;
+    const cost = parseFloat(document.getElementById('techLicenseCost').value) || 0;
+    const periods = parseInt(document.getElementById('techLicensePeriods').value) || 1;
+    if (!service) { showMessage('Ingresá el servicio', 'error'); return; }
+    appState.tech.licenses.push({ id: Date.now(), service, model, cost, periods });
+    document.getElementById('techLicenseService').value = '';
+    document.getElementById('techLicenseCost').value = '';
+    document.getElementById('techLicensePeriods').value = '1';
+    renderTechLicensesList(); updateTechTotals();
+}
+function removeTechLicense(id) {
+    appState.tech.licenses = appState.tech.licenses.filter(x => x.id !== id);
+    renderTechLicensesList(); updateTechTotals();
+}
+function renderTechLicensesList() {
+    const el = document.getElementById('techLicensesList');
+    if (!el) return;
+    el.innerHTML = appState.tech.licenses.map(x => `
+        <div class="row-display">
+            <div><div class="desc">${escapeHtml(x.service)}</div>
+                 <div class="meta">${escapeHtml(x.model)} · ${x.periods} período${x.periods > 1 ? 's' : ''}</div></div>
+            <div class="meta">${escapeHtml(x.model)}</div>
+            <div class="meta">USD ${formatCurrency(x.cost)}</div>
+            <div class="subtotal">USD ${formatCurrency(x.cost * x.periods)}</div>
+            <button type="button" class="remove-row" onclick="removeTechLicense(${x.id})">Eliminar</button>
+        </div>`).join('');
+}
+
+function addTechCredential() {
+    const concept = (document.getElementById('techCredConcept').value || '').trim();
+    const cost = parseFloat(document.getElementById('techCredCost').value) || 0;
+    if (!concept) { showMessage('Ingresá el concepto', 'error'); return; }
+    appState.tech.credentials.push({ id: Date.now(), concept, cost });
+    document.getElementById('techCredConcept').value = '';
+    document.getElementById('techCredCost').value = '';
+    renderTechCredentialsList(); updateTechTotals();
+}
+function removeTechCredential(id) {
+    appState.tech.credentials = appState.tech.credentials.filter(x => x.id !== id);
+    renderTechCredentialsList(); updateTechTotals();
+}
+function renderTechCredentialsList() {
+    const el = document.getElementById('techCredentialsList');
+    if (!el) return;
+    el.innerHTML = appState.tech.credentials.map(x => `
+        <div class="row-display" style="grid-template-columns: 3fr 1fr auto;">
+            <div class="desc">${escapeHtml(x.concept)}</div>
+            <div class="subtotal">USD ${formatCurrency(x.cost)}</div>
+            <button type="button" class="remove-row" onclick="removeTechCredential(${x.id})">Eliminar</button>
+        </div>`).join('');
+}
+
+function addTechOther() {
+    const description = (document.getElementById('techOtherDesc').value || '').trim();
+    const quantity = parseFloat(document.getElementById('techOtherQty').value) || 0;
+    const price = parseFloat(document.getElementById('techOtherPrice').value) || 0;
+    const unit = (document.getElementById('techOtherUnit').value || '').trim();
+    if (!description) { showMessage('Ingresá la descripción', 'error'); return; }
+    if (!quantity || quantity <= 0) { showMessage('Ingresá la cantidad', 'error'); return; }
+    appState.tech.others.push({ id: Date.now(), description, quantity, price, unit });
+    document.getElementById('techOtherDesc').value = '';
+    document.getElementById('techOtherQty').value = '';
+    document.getElementById('techOtherPrice').value = '';
+    document.getElementById('techOtherUnit').value = '';
+    renderTechOthersList(); updateTechTotals();
+}
+function removeTechOther(id) {
+    appState.tech.others = appState.tech.others.filter(x => x.id !== id);
+    renderTechOthersList(); updateTechTotals();
+}
+function renderTechOthersList() {
+    const el = document.getElementById('techOthersList');
+    if (!el) return;
+    el.innerHTML = appState.tech.others.map(x => `
+        <div class="row-display">
+            <div><div class="desc">${escapeHtml(x.description)}</div>
+                 <div class="meta">${x.quantity} ${escapeHtml(x.unit || '')}</div></div>
+            <div class="meta">${x.quantity}</div>
+            <div class="meta">USD ${formatCurrency(x.price)}</div>
+            <div class="subtotal">USD ${formatCurrency(x.quantity * x.price)}</div>
+            <button type="button" class="remove-row" onclick="removeTechOther(${x.id})">Eliminar</button>
+        </div>`).join('');
+}
+
+function updateTechTotals() {
+    const t = appState.tech;
+    const sumHours = t.hours.reduce((s, h) => s + h.hours * h.rate, 0);
+    const sumInfra = t.infra.reduce((s, x) => s + x.cost * x.periods, 0);
+    const sumLicenses = t.licenses.reduce((s, x) => s + x.cost * x.periods, 0);
+    const sumCredentials = t.credentials.reduce((s, x) => s + x.cost, 0);
+    const sumOthers = t.others.reduce((s, x) => s + x.quantity * x.price, 0);
+    const subtotal = sumHours + sumInfra + sumLicenses + sumCredentials + sumOthers;
+
+    const contingency = parseFloat(document.getElementById('techContingency')?.value) || 0;
+    const margin = parseFloat(document.getElementById('techMargin')?.value) || 0;
+    const discount = parseFloat(document.getElementById('techDiscount')?.value) || 0;
+    const iva = parseFloat(document.getElementById('techIva')?.value) || 0;
+    const otherTaxes = parseFloat(document.getElementById('techOtherTaxes')?.value) || 0;
+    const ivaScope = document.getElementById('techIvaScope')?.value || 'all';
+
+    const contingencyAmt = subtotal * (contingency / 100);
+    const marginAmt = subtotal * (margin / 100);
+    const discountAmt = (subtotal + contingencyAmt + marginAmt) * (discount / 100);
+    const taxableBase = subtotal + contingencyAmt + marginAmt - discountAmt;
+
+    let ivaBase = taxableBase;
+    if (ivaScope === 'hours') {
+        const hoursPortion = subtotal > 0 ? sumHours / subtotal : 1;
+        ivaBase = taxableBase * hoursPortion;
+    } else if (ivaScope === 'none') {
+        ivaBase = 0;
+    }
+    const ivaAmt = ivaBase * (iva / 100);
+    const otherTaxesAmt = taxableBase * (otherTaxes / 100);
+    const grand = taxableBase + ivaAmt + otherTaxesAmt;
+
+    const setText = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = formatCurrency(val); };
+    setText('techTotalHours', sumHours);
+    setText('techTotalInfra', sumInfra);
+    setText('techTotalLicenses', sumLicenses);
+    setText('techTotalCredentials', sumCredentials);
+    setText('techTotalOthers', sumOthers);
+    setText('techSubtotal', subtotal);
+    setText('techContingencyAmt', contingencyAmt);
+    setText('techMarginAmt', marginAmt);
+    setText('techDiscountAmt', discountAmt);
+    setText('techTaxableBase', taxableBase);
+    setText('techIvaAmt', ivaAmt);
+    setText('techOtherTaxesAmt', otherTaxesAmt);
+    setText('techGrandTotal', grand);
+
+    appState.tech._totals = {
+        sumHours, sumInfra, sumLicenses, sumCredentials, sumOthers,
+        subtotal, contingencyAmt, marginAmt, discountAmt, taxableBase,
+        ivaAmt, otherTaxesAmt, grand,
+        contingencyPct: contingency, marginPct: margin, discountPct: discount,
+        ivaPct: iva, otherTaxesPct: otherTaxes, ivaScope,
+    };
+}
+
+async function downloadTechQuote() {
+    try {
+        const form = document.getElementById('documentForm');
+        if (!form.checkValidity()) { form.reportValidity(); return; }
+
+        if (!appState.tech.hours.length && !appState.tech.infra.length && !appState.tech.licenses.length && !appState.tech.credentials.length && !appState.tech.others.length) {
+            showMessage('Agregá al menos un ítem (horas, infra, licencias, credenciales u otros)', 'error');
+            return;
+        }
+
+        showLoading(true);
+
+        const formData = new FormData(form);
+        const data = {};
+        formData.forEach((value, key) => { data[key] = value; });
+
+        updateTechTotals();
+        const totals = appState.tech._totals || {};
+
+        // ── RESOLVER CONTACTO: buscar match por cuit/email/nombre ──
+        // Si encuentra y hay cambios → preguntar si actualizar.
+        // Si no encuentra → preguntar si crear.
+        let resolvedContactoId = appState.tech._lastContactoId || null;
+        try {
+          const cn = (data.clientName || '').trim();
+          const ct = (data.clientTaxId || '').trim();
+          const ce = (data.clientEmail || '').trim();
+          if (cn || ct || ce) {
+            const qs = new URLSearchParams();
+            if (ct) qs.set('cuit', ct);
+            if (ce) qs.set('email', ce);
+            if (cn) qs.set('nombre', cn);
+            const lookupRes = await fetch('/api/tech/contactos/lookup?' + qs.toString());
+            const lookup = lookupRes.ok ? await lookupRes.json() : { match: null };
+
+            const formContacto = {
+              nombre: cn, cuit: ct, email: ce,
+              telefono: (data.clientPhone || '').trim(),
+              direccion: (data.clientAddress || '').trim(),
+              condicion_iva: (data.clientIVACondition || '').trim(),
+            };
+
+            if (lookup.match) {
+              // Comparar campos. Listar cuales cambiaron.
+              const m = lookup.match;
+              const diffs = [];
+              for (const k of Object.keys(formContacto)) {
+                const a = (formContacto[k] || '').toString().trim();
+                const b = (m[k] || '').toString().trim();
+                if (a && a !== b) diffs.push({ k, antes: b, ahora: a });
+              }
+              if (diffs.length) {
+                const txt = diffs.map(d => `  • ${d.k}: "${d.antes || '(vacío)'}" → "${d.ahora}"`).join('\n');
+                if (confirm(`Encontramos un contacto Tech existente:\n  ${m.nombre}${m.cuit?' (CUIT '+m.cuit+')':''}\n\nDetectamos cambios:\n${txt}\n\n¿Actualizar el contacto con los nuevos datos?`)) {
+                  const patchRes = await fetch(`/api/tech/contactos/${m.id}`, {
+                    method: 'PATCH', headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify(formContacto)
+                  });
+                  if (patchRes.ok) showMessage(`Contacto ${m.nombre} actualizado`, 'success');
+                }
+              }
+              resolvedContactoId = m.id;
+            } else if (cn) {
+              // No hay match. Preguntar si crear (solo si tenemos al menos nombre).
+              if (confirm(`No encontramos un contacto Tech con esos datos.\n\n¿Crear nuevo contacto?\n  • ${cn}${ct?' (CUIT '+ct+')':''}${ce?' · '+ce:''}`)) {
+                const postRes = await fetch('/api/tech/contactos', {
+                  method: 'POST', headers: {'Content-Type':'application/json'},
+                  body: JSON.stringify({ ...formContacto, estado: 'cotizado' })
+                });
+                if (postRes.ok) {
+                  const created = await postRes.json();
+                  resolvedContactoId = created.id;
+                  showMessage(`Contacto ${cn} creado`, 'success');
+                } else {
+                  console.warn('No se pudo crear contacto', await postRes.text());
+                }
+              }
+            }
+            appState.tech._lastContactoId = resolvedContactoId;
+          }
+        } catch (resolveErr) {
+          console.warn('Error resolviendo contacto:', resolveErr);
+        }
+
+        // ── PERSISTIR EN DB (tech.cotizaciones) antes de generar el PDF ──
+        // Guardamos snapshot completo del form + items por categoria en metadata
+        // para poder reabrir la cotizacion exactamente como se grabo.
+        try {
+            const dbItems = [
+              ...appState.tech.hours.map(h => ({ descripcion: `${h.role} (${h.seniority}) — ${h.hours} hs`, categoria: 'hours',       cantidad: h.hours,    precio_unitario: h.rate, iva_pct: parseFloat(data.ivaPct)||0, metadata: h })),
+              ...appState.tech.infra.map(x => ({ descripcion: `${x.concept} — ${x.model}`,                  categoria: 'infra',       cantidad: x.periods,  precio_unitario: x.cost, iva_pct: parseFloat(data.ivaPct)||0, metadata: x })),
+              ...appState.tech.licenses.map(x => ({ descripcion: `${x.service} — ${x.model}`,               categoria: 'license',     cantidad: x.periods,  precio_unitario: x.cost, iva_pct: parseFloat(data.ivaPct)||0, metadata: x })),
+              ...appState.tech.credentials.map(x => ({ descripcion: x.concept,                              categoria: 'credential',  cantidad: 1,          precio_unitario: x.cost, iva_pct: parseFloat(data.ivaPct)||0, metadata: x })),
+              ...appState.tech.others.map(x => ({ descripcion: `${x.description}${x.unit?' ('+x.unit+')':''}`, categoria: 'other',     cantidad: x.quantity, precio_unitario: x.price, iva_pct: parseFloat(data.ivaPct)||0, metadata: x })),
+            ];
+            const cotizPayload = {
+                contacto_id: resolvedContactoId || null,
+                moneda: data.currency || 'USD',
+                validez_dias: 15,
+                cliente_snapshot: {
+                    nombre: data.clientName, razon_social: data.clientName,
+                    cuit: data.clientTaxId, email: data.clientEmail,
+                    telefono: data.clientPhone, direccion: data.clientAddress,
+                    condicion_iva: data.clientIVACondition,
+                    contacto: data.clientContactPerson,
+                },
+                detalle_categorias: {
+                    hours: appState.tech.hours, infra: appState.tech.infra,
+                    licenses: appState.tech.licenses, credentials: appState.tech.credentials,
+                    others: appState.tech.others,
+                },
+                items: dbItems,
+                // Snapshot completo del form para poder reabrir y prerrellenar
+                metadata: {
+                    formData: data,           // todos los campos del <form>
+                    appStateTech: appState.tech, // estado del cotizador (items por categoria + totales)
+                    totals,                   // totales calculados
+                    savedAt: new Date().toISOString(),
+                },
+            };
+            const url = appState.tech._editingId
+                ? `/api/tech/cotizaciones/${appState.tech._editingId}`
+                : `/api/tech/cotizaciones`;
+            const method = appState.tech._editingId ? 'PUT' : 'POST';
+            const r = await fetch(url, { method, headers: { 'Content-Type':'application/json' }, body: JSON.stringify(cotizPayload) });
+            if (r.ok) {
+                const saved = await r.json();
+                appState.tech._editingId = saved.id;
+                // Reemplazo el numero del form por el correlativo real del server
+                const numEl = document.querySelector('input[name="quoteNumber"]');
+                if (numEl) numEl.value = saved.numero;
+                data.quoteNumber = saved.numero;
+                showMessage(`Cotización ${saved.numero} guardada`, 'success');
+            } else {
+                console.warn('No se pudo persistir la cotizacion tech:', await r.text());
+            }
+        } catch (persistErr) {
+            console.warn('Error persistiendo cotizacion tech:', persistErr);
+        }
+
+        const items = [
+            ...appState.tech.hours.map(h => ({
+                description: `${h.role} (${h.seniority}) — ${h.hours} hs`,
+                quantity: h.hours, price: h.rate, _kind: 'hours', _meta: h
+            })),
+            ...appState.tech.infra.map(x => ({
+                description: `${x.concept} — ${x.model}`,
+                quantity: x.periods, price: x.cost, _kind: 'infra', _meta: x
+            })),
+            ...appState.tech.licenses.map(x => ({
+                description: `${x.service} — ${x.model}`,
+                quantity: x.periods, price: x.cost, _kind: 'license', _meta: x
+            })),
+            ...appState.tech.credentials.map(x => ({
+                description: x.concept, quantity: 1, price: x.cost, _kind: 'credential', _meta: x
+            })),
+            ...appState.tech.others.map(x => ({
+                description: `${x.description}${x.unit ? ' (' + x.unit + ')' : ''}`,
+                quantity: x.quantity, price: x.price, _kind: 'other', _meta: x
+            })),
+        ];
+
+        const techPayload = {
+            ...data,
+            items,
+            currency: data.currency || 'USD',
+            _docKind: 'quote-tech',
+            techDetails: {
+                hours: appState.tech.hours,
+                infra: appState.tech.infra,
+                licenses: appState.tech.licenses,
+                credentials: appState.tech.credentials,
+                others: appState.tech.others,
+                totals,
+                projectName: data.projectName,
+                projectType: data.projectType,
+                projectMethodology: data.projectMethodology,
+                projectScope: data.projectScope,
+                projectStack: data.projectStack,
+                projectDeliverables: data.projectDeliverables,
+                projectExclusions: data.projectExclusions,
+                projectAssumptions: data.projectAssumptions,
+                projectDurationWeeks: data.projectDurationWeeks,
+                projectStartDate: data.projectStartDate,
+                paymentScheme: data.paymentScheme,
+                warrantyDays: data.warrantyDays,
+                supportDays: data.supportDays,
+                bankDetails: data.bankDetails,
+                legalTerms: data.legalTerms,
+                quoteValidUntil: data.quoteValidUntil,
+                clientContactPerson: data.clientContactPerson,
+                clientIVACondition: data.clientIVACondition,
+                exchangeRate: data.exchangeRate,
+            },
+            ivaRate: (parseFloat(data.ivaPct) || 0) / 100,
+            otherTaxes: totals.otherTaxesAmt || 0,
+            discount: totals.discountAmt || 0,
+            _precomputedTotal: totals.grand,
+        };
+
+        const assets = {};
+        try {
+            const logoResp = await fetch('/Logo%20Arman%20Solutions.png');
+            if (logoResp.ok) {
+                const logoBlob = await logoResp.blob();
+                const logoDataUrl = await new Promise((resolve, reject) => {
+                    const r = new FileReader();
+                    r.onload = () => resolve(r.result);
+                    r.onerror = reject;
+                    r.readAsDataURL(logoBlob);
+                });
+                assets.logo = logoDataUrl;
+            }
+        } catch (_) { /* fallback al SVG del template */ }
+
+        const payload = { type: 'quote-tech', data: techPayload, assets };
+
+        const response = await fetch('/api/documents/generate-pdf', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Error: ${response.statusText} - ${errorText}`);
+        }
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const clientName = String(data.clientName || 'Cliente').replace(/[^a-zA-Z0-9]/g, '_');
+        const docNumber = String(data.quoteNumber || Date.now()).replace(/[^a-zA-Z0-9]/g, '_');
+        a.download = `Cotizacion_${clientName}_${docNumber}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        a.remove();
+        showMessage('PDF descargado correctamente', 'success');
+
+        const numEl = document.querySelector('input[name="quoteNumber"]');
+        if (numEl) numEl.value = peekTechQuoteNumber();
+    } catch (error) {
+        console.error('Error:', error);
+        showMessage(`Error al generar la cotización: ${error.message}`, 'error');
+    } finally {
+        showLoading(false);
+    }
+}
+
+// ============================================================
+// =====                  ADMIN IA                         =====
+// ============================================================
+//
+// Sube un comprobante (PDF o imagen) y muestra los campos extraídos
+// en el ORDEN del libro IVA / "Mis Comprobantes" de AFIP.
+// El backend prioriza QR de AFIP, luego texto del PDF, luego OCR.
+
+const adminIaState = {
+    schema: null,
+    fields: null,
+    raw: null,
+    file: null,
+    templates: [],
+    selectedTemplateId: 'auto',  // 'auto' | 'none' | <number>
+    selectedTipoDoc: '',          // '' = autodetectar
+    catalogo: null,
+    mode: 'qr',                  // 'qr' | 'noqr'
+    confirmed: {},                // { fieldKey: true }  (modo noqr)
+    skipConfirmation: false,
+};
+
+async function renderAdminIaTab() {
+    const container = document.getElementById('content');
+    container.innerHTML = `
+        <div class="message" id="message"></div>
+
+        <div class="ia-mode-switch" role="tablist" aria-label="Modo de extracción">
+            <button id="iaModeQr"   class="${adminIaState.mode === 'qr'   ? 'active' : ''}" onclick="adminIaSetMode('qr')">Con QR (auto)</button>
+            <button id="iaModeNoQr" class="${adminIaState.mode === 'noqr' ? 'active' : ''}" onclick="adminIaSetMode('noqr')">Sin QR (escaneo / foto)</button>
+        </div>
+        <div class="ia-mode-hint" id="iaModeHint">${adminIaModeHint()}</div>
+
+        <div class="form-section">
+            <h3 class="section-title">Pre-configuración (opcional)</h3>
+            <p style="font-size: 12px; color: #666; margin-bottom: 12px;">
+                Indicá el template del proveedor y el tipo de comprobante para mejorar la extracción.
+                Si dejás "Auto-detectar" en ambos, el sistema intenta identificarlo solo.
+            </p>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Template / Proveedor</label>
+                    <select id="iaTemplateSelect" onchange="adminIaState.selectedTemplateId = this.value;"></select>
+                </div>
+                <div class="form-group">
+                    <label>Tipo de Comprobante</label>
+                    <select id="iaTipoDocSelect" onchange="adminIaState.selectedTipoDoc = this.value;">
+                        <option value="">Auto-detectar</option>
+                    </select>
+                </div>
+            </div>
+            <div style="margin-top: 10px;">
+                <button type="button" class="btn btn-secondary" onclick="adminIaOpenTemplatesManager()" style="font-size: 13px; padding: 8px 14px;">
+                    Gestionar templates
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="adminIaToggleCatalogo()" style="font-size: 13px; padding: 8px 14px; margin-left: 8px;">
+                    Ver catálogo ARCA
+                </button>
+            </div>
+        </div>
+
+        <div id="iaCatalogoBox" style="display:none;"></div>
+
+        <div class="form-section">
+            <h3 class="section-title">Cargar Comprobante</h3>
+            <div id="iaDropzone" class="ia-dropzone" onclick="document.getElementById('iaFileInput').click()">
+                <div><strong>Arrastrá un comprobante</strong> o hacé click para seleccionarlo</div>
+                <div class="hint" id="iaDropzoneHint">${adminIaDropzoneHint()}</div>
+                <input type="file" id="iaFileInput" accept="${adminIaState.mode === 'noqr' ? 'application/pdf' : 'application/pdf,image/*'}" style="display:none;">
+            </div>
+            <div id="iaSelected" style="margin-top: 10px; font-size: 13px; color: #555;"></div>
+            <div style="margin-top: 14px; display: flex; gap: 10px; align-items: center;">
+                <button type="button" class="btn btn-primary" id="iaExtractBtn" onclick="adminIaExtract()" disabled>Extraer Datos</button>
+                <button type="button" class="btn btn-secondary" id="iaResetBtn" onclick="adminIaReset()" style="display:none;">Cargar Otro</button>
+                <span id="iaStatus" style="font-size: 13px; color: #666;"></span>
+            </div>
+        </div>
+
+        <div id="iaLoading" class="loading"><div class="spinner"></div><p>Procesando comprobante (QR -> texto PDF -> OCR)</p></div>
+
+        <div id="iaResults" style="display:none;"></div>
+
+        <div id="iaTemplatesModal" class="modal" style="display:none;">
+            <div class="modal-content" style="max-width: 760px;">
+                <div class="modal-header">
+                    <h2>Gestionar Templates</h2>
+                    <button class="modal-close" onclick="adminIaCloseTemplatesManager()">&times;</button>
+                </div>
+                <div class="modal-body" style="max-height: 60vh; overflow-y: auto;" id="iaTemplatesList"></div>
+                <div class="modal-footer">
+                    <button class="btn-cancel" onclick="adminIaCloseTemplatesManager()">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Wire dropzone
+    const dz = document.getElementById('iaDropzone');
+    const input = document.getElementById('iaFileInput');
+    ['dragenter', 'dragover'].forEach(evt => {
+        dz.addEventListener(evt, (e) => { e.preventDefault(); e.stopPropagation(); dz.classList.add('dragover'); });
+    });
+    ['dragleave', 'drop'].forEach(evt => {
+        dz.addEventListener(evt, (e) => { e.preventDefault(); e.stopPropagation(); dz.classList.remove('dragover'); });
+    });
+    dz.addEventListener('drop', (e) => {
+        const f = e.dataTransfer.files && e.dataTransfer.files[0];
+        if (f) adminIaSetFile(f);
+    });
+    input.addEventListener('change', (e) => {
+        const f = e.target.files && e.target.files[0];
+        if (f) adminIaSetFile(f);
+    });
+
+    // Cargar schema, catálogo y templates en paralelo.
+    await Promise.all([
+        adminIaLoadSchema(),
+        adminIaLoadCatalogo(),
+        adminIaLoadTemplates(),
+    ]);
+}
+
+async function adminIaLoadSchema() {
+    if (adminIaState.schema) return;
+    try {
+        const r = await fetch('/api/admin-ia/schema');
+        if (r.ok) {
+            const j = await r.json();
+            adminIaState.schema = j.schema;
+        }
+    } catch (_) { /* el response del extract trae el schema igual */ }
+}
+
+async function adminIaLoadCatalogo() {
+    try {
+        const r = await fetch('/api/admin-ia/catalogo-arca');
+        if (r.ok) adminIaState.catalogo = await r.json();
+    } catch (_) {}
+    // Pueblar el select de Tipo de Comprobante.
+    const sel = document.getElementById('iaTipoDocSelect');
+    if (sel && adminIaState.catalogo && Array.isArray(adminIaState.catalogo.tiposComprobante)) {
+        const cats = adminIaState.catalogo.tiposComprobante;
+        sel.innerHTML = '<option value="">Auto-detectar</option>' +
+            cats.map(t => `<option value="${escapeHtml(t.nombre)}">${escapeHtml(t.codigo)} - ${escapeHtml(t.nombre)}</option>`).join('');
+        sel.value = adminIaState.selectedTipoDoc || '';
+    }
+}
+
+async function adminIaLoadTemplates() {
+    try {
+        const r = await fetch('/api/admin-ia/templates');
+        if (r.ok) {
+            const j = await r.json();
+            adminIaState.templates = Array.isArray(j.templates) ? j.templates : [];
+        }
+    } catch (_) { adminIaState.templates = []; }
+    const sel = document.getElementById('iaTemplateSelect');
+    if (sel) {
+        const factory = adminIaState.templates.filter(t => t.is_factory);
+        const custom = adminIaState.templates.filter(t => !t.is_factory);
+        let html = '<option value="auto">Auto-detectar</option>';
+        html += '<option value="none">No aplicar template (genérico puro)</option>';
+        if (factory.length) {
+            html += '<optgroup label="Templates de fábrica">';
+            html += factory.map(t => `<option value="${t.id}">${escapeHtml(t.nombre)}</option>`).join('');
+            html += '</optgroup>';
+        }
+        if (custom.length) {
+            html += '<optgroup label="Mis templates">';
+            html += custom.map(t => `<option value="${t.id}">${escapeHtml(t.nombre)}${t.proveedor_cuit ? ' (' + escapeHtml(t.proveedor_cuit) + ')' : ''}</option>`).join('');
+            html += '</optgroup>';
+        }
+        sel.innerHTML = html;
+        sel.value = adminIaState.selectedTemplateId || 'auto';
+    }
+}
+
+function adminIaSetFile(file) {
+    if (file.size > 25 * 1024 * 1024) { showMessage('El archivo supera 25 MB', 'error'); return; }
+    adminIaState.file = file;
+    document.getElementById('iaSelected').innerHTML =
+        `<strong>${escapeHtml(file.name)}</strong> · ${(file.size / 1024).toFixed(1)} KB · ${escapeHtml(file.type || 'desconocido')}`;
+    document.getElementById('iaExtractBtn').disabled = false;
+    document.getElementById('iaStatus').textContent = '';
+}
+
+function adminIaReset() {
+    adminIaState.file = null;
+    adminIaState.fields = null;
+    adminIaState.raw = null;
+    document.getElementById('iaSelected').innerHTML = '';
+    document.getElementById('iaResults').style.display = 'none';
+    document.getElementById('iaExtractBtn').disabled = true;
+    document.getElementById('iaResetBtn').style.display = 'none';
+    document.getElementById('iaStatus').textContent = '';
+    document.getElementById('iaFileInput').value = '';
+}
+
+function adminIaModeHint() {
+    if (adminIaState.mode === 'noqr') {
+        return 'Modo "Sin QR": pensado para PDFs escaneados, talonarios manuales, facturas viejas (pre-2018) o cualquier comprobante donde el QR no esté presente o no se pueda leer. Usa OCR cuando el PDF no tiene texto extraíble. Por ahora solo PDFs; JPG/PNG en próxima iteración. La precisión es inferior al modo con QR, así que se exige confirmar campo por campo antes de exportar.';
+    }
+    return 'Modo "Con QR": flujo automático para facturas electrónicas argentinas con QR válido y para PDFs nativos con texto. Es el que usás siempre que el comprobante tenga QR de ARCA o esté generado digitalmente.';
+}
+
+function adminIaDropzoneHint() {
+    if (adminIaState.mode === 'noqr') {
+        return 'PDF únicamente por ahora (escaneos / facturas sin QR). JPG/PNG en próxima iteración. Máx. 25 MB.';
+    }
+    return 'Acepta PDF, JPG, PNG, WEBP - Factura A/B/C/E/M, NC, ND, Recibo, Tique, etc. (máx. 25 MB)';
+}
+
+function adminIaSetMode(mode) {
+    if (mode !== 'qr' && mode !== 'noqr') return;
+    adminIaState.mode = mode;
+    adminIaState.fields = null;
+    adminIaState.raw = null;
+    adminIaState.confirmed = {};
+    adminIaState.skipConfirmation = false;
+    adminIaReset();
+    // Re-renderizar el tab para reflejar el cambio (segmented + accept del input).
+    renderAdminIaTab();
+}
+
+async function adminIaExtract() {
+    const file = adminIaState.file;
+    if (!file) { showMessage('Cargá un comprobante primero', 'error'); return; }
+
+    if (adminIaState.mode === 'noqr' && file.type && !file.type.includes('pdf') && !file.name.toLowerCase().endsWith('.pdf')) {
+        showMessage('El modo Sin QR por ahora solo acepta PDFs. Para imágenes, usá el modo Con QR (intentará extraer datos igual aunque no haya QR).', 'error');
+        return;
+    }
+
+    const btn = document.getElementById('iaExtractBtn');
+    btn.disabled = true;
+    document.getElementById('iaLoading').classList.add('active');
+    document.getElementById('iaStatus').textContent = 'Leyendo archivo…';
+
+    try {
+        const fileData = await new Promise((resolve, reject) => {
+            const r = new FileReader();
+            r.onload = () => resolve(r.result);
+            r.onerror = reject;
+            r.readAsDataURL(file);
+        });
+
+        document.getElementById('iaStatus').textContent = 'Enviando al motor…';
+        const endpoint = adminIaState.mode === 'noqr' ? '/api/admin-ia/extract-noqr' : '/api/admin-ia/extract';
+        const resp = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                fileName: file.name,
+                fileData,
+                mimeType: file.type,
+                templateId: adminIaState.selectedTemplateId || 'auto',
+                tipoDocOverride: adminIaState.selectedTipoDoc || null,
+            }),
+        });
+        if (!resp.ok) {
+            const t = await resp.text();
+            throw new Error(`HTTP ${resp.status}: ${t}`);
+        }
+        const data = await resp.json();
+        adminIaState.fields = data.fields;
+        adminIaState.raw = data;
+        if (data.schema && data.schema.length) adminIaState.schema = data.schema;
+
+        renderAdminIaResults(data);
+        document.getElementById('iaStatus').textContent = `Procesado en ${data.ms} ms`;
+        document.getElementById('iaResetBtn').style.display = 'inline-flex';
+    } catch (err) {
+        console.error(err);
+        showMessage(`Error procesando comprobante: ${err.message}`, 'error');
+        btn.disabled = false;
+    } finally {
+        document.getElementById('iaLoading').classList.remove('active');
+    }
+}
+
+function renderAdminIaResults(data) {
+    const schema = adminIaState.schema || data.schema || [];
+    const fields = data.fields || {};
+    const moneda = fields.moneda || 'ARS';
+
+    // Agrupado lógico (manteniendo el ORDEN de schema dentro de cada grupo)
+    const groupOf = (key) => {
+        if (['fecha', 'tipo', 'puntoVenta', 'numeroDesde', 'numeroHasta', 'codAutorizacion'].includes(key)) return 'Comprobante';
+        if (['tipoDocEmisor', 'nroDocEmisor', 'denominacionEmisor'].includes(key)) return 'Emisor';
+        if (['tipoDocReceptor', 'nroDocReceptor', 'denominacionReceptor'].includes(key)) return 'Receptor';
+        if (['tipoCambio', 'moneda'].includes(key)) return 'Moneda';
+        if (key.startsWith('netoGravIva') || key.startsWith('iva')) return 'Discriminación de IVA';
+        return 'Totales';
+    };
+
+    const order = ['Comprobante', 'Emisor', 'Receptor', 'Moneda', 'Discriminación de IVA', 'Totales'];
+    const groups = {};
+    schema.forEach(f => {
+        const g = groupOf(f.key);
+        if (!groups[g]) groups[g] = [];
+        groups[g].push(f);
+    });
+
+    const fmtNum = (v) => {
+        if (v == null || v === '') return '';
+        const n = Number(v);
+        if (isNaN(n)) return String(v);
+        return n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
+
+    const requiresConfirm = !!data.requiresConfirmation;
+    if (requiresConfirm) {
+        // Inicializamos el estado de confirmación: todos en false al recibir nuevos datos.
+        adminIaState.confirmed = {};
+        adminIaState.skipConfirmation = false;
+    }
+
+    const buildField = (f) => {
+        const v = fields[f.key];
+        const isNumeric = f.type === 'number';
+        const display = isNumeric ? fmtNum(v) : (v == null ? '' : v);
+        const empty = (v == null || v === '');
+        let cls = `ia-field ${empty ? 'empty' : ''}`;
+        if (requiresConfirm && !empty) {
+            cls += adminIaState.confirmed[f.key] ? ' confirmed' : ' unconfirmed';
+        }
+        const confirmCheckbox = (requiresConfirm && !empty) ? `
+            <label class="confirm-toggle" title="Marcá si el valor es correcto">
+                <input type="checkbox" data-confirm="${f.key}" ${adminIaState.confirmed[f.key] ? 'checked' : ''} onchange="adminIaToggleConfirm('${f.key}', this.checked)">
+                OK
+            </label>
+        ` : '';
+        return `
+            <div class="${cls}">
+                <span class="lbl">${escapeHtml(f.label)}</span>
+                <input type="text" class="${isNumeric ? 'numeric' : ''}" data-key="${f.key}" data-type="${f.type}" value="${escapeHtml(display)}" placeholder="—">
+                ${confirmCheckbox}
+            </div>`;
+    };
+
+    const conf = (data.confidence || 'low').toLowerCase();
+    const sources = (data.sources || []).map(s => `<span class="ia-pill src">${escapeHtml(s)}</span>`).join('');
+    const templatePill = data.template
+        ? `<span class="ia-pill src" title="Template aplicado">Template: ${escapeHtml(data.template.nombre)}${data.templateMatchedBy ? ' [' + escapeHtml(data.templateMatchedBy) + ']' : ''}</span>`
+        : '';
+
+    const groupHtml = order.map(g => {
+        if (!groups[g] || !groups[g].length) return '';
+        return `<div class="ia-section-head">${escapeHtml(g)}</div>
+            <div class="ia-results-grid">${groups[g].map(buildField).join('')}</div>`;
+    }).join('');
+
+    const totalDisplay = fields.impTotal != null ? `${moneda} ${fmtNum(fields.impTotal)}` : '—';
+
+    const confirmBar = requiresConfirm ? `
+        <div class="ia-confirm-bar" id="iaConfirmBar">
+            <div>
+                <strong>Verificación obligatoria:</strong>
+                <span style="color:#666;">marcá "OK" en cada campo si el valor extraído es correcto. Si no, corregilo y después marcá OK.</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 14px;">
+                <span class="progress" id="iaConfirmProgress">0 / 0 confirmados</span>
+                <label>
+                    <input type="checkbox" id="iaSkipConfirm" onchange="adminIaSetSkipConfirm(this.checked)">
+                    Saltar confirmación
+                </label>
+            </div>
+        </div>
+    ` : '';
+
+    const out = `
+        <div class="form-section">
+            <h3 class="section-title" style="display:flex; align-items:center; gap:10px; flex-wrap: wrap;">
+                Datos extraídos
+                <span class="ia-pill ${conf}">Confianza: ${conf}</span>
+                ${sources}
+                ${templatePill}
+            </h3>
+            ${confirmBar}
+            ${groupHtml}
+
+            <div class="ia-summary-bar">
+                <div>
+                    <div class="label">Importe Total</div>
+                    <div class="total">${escapeHtml(totalDisplay)}</div>
+                </div>
+                <div style="text-align: right;">
+                    <div class="label">${escapeHtml(fields.tipo || 'Comprobante')}</div>
+                    <div style="font-size: 14px; opacity: 0.95;">${escapeHtml((fields.puntoVenta || '') + (fields.numeroDesde ? ' - ' + fields.numeroDesde : ''))}</div>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 14px;">
+                <button type="button" class="btn btn-secondary" id="iaBtnCopy"     onclick="adminIaCopyRow()">Copiar fila (TSV)</button>
+                <button type="button" class="btn btn-primary"   id="iaBtnCsv"      onclick="adminIaDownloadCsv()">Descargar CSV (1 fila)</button>
+                <button type="button" class="btn btn-secondary" id="iaBtnTemplate" onclick="adminIaSaveAsTemplate()">Guardar como template del proveedor</button>
+            </div>
+            <p style="font-size: 11px; color: #888; margin-top: 8px;">
+                Próximamente: enviar a Google Sheets en un click. Por ahora podés copiar la fila o exportar CSV con el orden exacto de columnas del libro IVA.
+            </p>
+        </div>
+
+        ${data.qrPayload ? `
+        <div class="form-section">
+            <h3 class="section-title">QR AFIP (payload firmado)</h3>
+            <div class="ia-raw-block">${escapeHtml(JSON.stringify(data.qrPayload, null, 2))}</div>
+        </div>
+        ` : ''}
+
+        ${data.rawTextSnippet ? `
+        <div class="form-section">
+            <h3 class="section-title">Texto leído del comprobante (debug)</h3>
+            <div class="ia-raw-block">${escapeHtml(data.rawTextSnippet)}</div>
+        </div>
+        ` : ''}
+    `;
+
+    const wrap = document.getElementById('iaResults');
+    wrap.innerHTML = out;
+    wrap.style.display = 'block';
+
+    // Permite editar in-place: las correcciones se reflejan en adminIaState.fields.
+    // En modo noqr, editar un campo lo des-confirma (porque el valor cambió).
+    wrap.querySelectorAll('input[data-key]').forEach(inp => {
+        inp.addEventListener('change', () => {
+            const k = inp.dataset.key;
+            const t = inp.dataset.type;
+            let v = inp.value.trim();
+            if (t === 'number') {
+                const n = parseFloat(String(v).replace(/\./g, '').replace(',', '.'));
+                v = isNaN(n) ? null : n;
+            } else if (v === '') {
+                v = null;
+            }
+            adminIaState.fields[k] = v;
+
+            // Si está en modo confirmación, des-marcar al editar.
+            if (data.requiresConfirmation) {
+                adminIaState.confirmed[k] = false;
+                const cb = wrap.querySelector(`input[data-confirm="${k}"]`);
+                if (cb) cb.checked = false;
+                const wrapField = inp.closest('.ia-field');
+                if (wrapField) {
+                    wrapField.classList.remove('confirmed');
+                    if (v != null && v !== '') wrapField.classList.add('unconfirmed');
+                }
+                adminIaUpdateConfirmState();
+            }
+        });
+    });
+
+    // Estado inicial del gate
+    if (data.requiresConfirmation) adminIaUpdateConfirmState();
+}
+
+// ─── Confirmation gate (modo Sin QR) ─────────────────────────────────
+function adminIaToggleConfirm(key, checked) {
+    adminIaState.confirmed[key] = !!checked;
+    const wrap = document.getElementById('iaResults');
+    if (!wrap) return;
+    const fieldEl = wrap.querySelector(`input[data-key="${key}"]`)?.closest('.ia-field');
+    if (fieldEl) {
+        fieldEl.classList.toggle('confirmed', !!checked);
+        fieldEl.classList.toggle('unconfirmed', !checked);
+    }
+    adminIaUpdateConfirmState();
+}
+
+function adminIaSetSkipConfirm(skip) {
+    adminIaState.skipConfirmation = !!skip;
+    adminIaUpdateConfirmState();
+}
+
+function adminIaUpdateConfirmState() {
+    const schema = adminIaState.schema || [];
+    const f = adminIaState.fields || {};
+    const nonEmpty = schema.filter(s => f[s.key] != null && f[s.key] !== '');
+    const total = nonEmpty.length;
+    const confirmed = nonEmpty.filter(s => adminIaState.confirmed[s.key]).length;
+    const allOk = adminIaState.skipConfirmation || (total > 0 && confirmed === total);
+
+    const bar = document.getElementById('iaConfirmBar');
+    const prog = document.getElementById('iaConfirmProgress');
+    if (prog) prog.textContent = confirmed + ' / ' + total + ' confirmados';
+    if (bar) bar.classList.toggle('complete', allOk);
+
+    ['iaBtnCopy', 'iaBtnCsv', 'iaBtnTemplate'].forEach(id => {
+        const b = document.getElementById(id);
+        if (b) {
+            b.disabled = !allOk;
+            b.style.opacity = allOk ? '1' : '0.5';
+            b.style.cursor = allOk ? 'pointer' : 'not-allowed';
+            b.title = allOk ? '' : 'Confirmá todos los campos antes de exportar';
+        }
+    });
+}
+
+// Devuelve la fila actual en el orden del schema
+function adminIaCurrentRow() {
+    const schema = adminIaState.schema || [];
+    const f = adminIaState.fields || {};
+    return schema.map(s => {
+        const v = f[s.key];
+        if (v == null) return '';
+        if (s.type === 'number') return Number(v);
+        return String(v);
+    });
+}
+
+function adminIaCopyRow() {
+    const row = adminIaCurrentRow();
+    const tsv = row.map(v => (typeof v === 'number' ? String(v).replace('.', ',') : v)).join('\t');
+    navigator.clipboard.writeText(tsv).then(() => {
+        showMessage('Fila copiada al portapapeles. Pegala directo en Google Sheets.', 'success');
+    });
+}
+
+function adminIaDownloadCsv() {
+    const schema = adminIaState.schema || [];
+    const headers = schema.map(s => s.label);
+    const row = adminIaCurrentRow();
+    const csvEscape = (v) => {
+        const s = (typeof v === 'number') ? String(v).replace('.', ',') : (v == null ? '' : String(v));
+        return /[",;\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const csv = [headers.map(csvEscape).join(';'), row.map(csvEscape).join(';')].join('\r\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const stamp = new Date().toISOString().replace(/[:T]/g, '-').slice(0, 19);
+    a.download = `comprobante_${stamp}.csv`;
+    document.body.appendChild(a); a.click(); URL.revokeObjectURL(url); a.remove();
+    showMessage('CSV descargado', 'success');
+}
+
+// ─── Guardar como template del proveedor ─────────────────────────────
+async function adminIaSaveAsTemplate() {
+    const f = adminIaState.fields || {};
+    if (!f.nroDocEmisor && !f.denominacionEmisor) {
+        showMessage('Antes de guardar el template, asegurate de tener al menos el CUIT o el nombre del emisor en los campos.', 'error');
+        return;
+    }
+    const nombreSugerido = f.denominacionEmisor
+        ? f.denominacionEmisor + (f.tipo ? ' - ' + f.tipo : '')
+        : 'Proveedor ' + (f.nroDocEmisor || '');
+    const nombre = prompt('Nombre del template:', nombreSugerido);
+    if (!nombre) return;
+
+    // Sugerimos fingerprints a partir del rawText: hasta 3 strings de 12-40 chars
+    // que parezcan únicos del proveedor (encabezados, razón social, domicilio).
+    const raw = (adminIaState.raw && adminIaState.raw.rawTextSnippet) || '';
+    const candidates = [];
+    if (f.denominacionEmisor) candidates.push(f.denominacionEmisor);
+    raw.split(/\r?\n/).slice(0, 30).forEach(ln => {
+        const t = ln.trim();
+        if (t.length < 8 || t.length > 60) return;
+        if (/^\d/.test(t)) return;
+        if (/[:$€]/.test(t)) return;
+        if (/^(fecha|cuit|domicilio|razón|razon|condición|condicion|punto|comp|cae|importe|subtotal)/i.test(t)) return;
+        if (candidates.length < 5 && !candidates.includes(t)) candidates.push(t);
+    });
+
+    const fingerprintsRaw = prompt(
+        'Fingerprints (uno por línea, son los textos que identifican a este proveedor en sus facturas):',
+        candidates.slice(0, 4).join('\n')
+    );
+    if (fingerprintsRaw === null) return;
+    const fingerprints = fingerprintsRaw.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+
+    try {
+        const r = await fetch('/api/admin-ia/learn', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                nombre,
+                proveedorCuit: f.nroDocEmisor || null,
+                tipoDocDefault: f.tipo || null,
+                fingerprints,
+                groundTruth: f,
+                notas: 'Generado desde Admin IA tras corrección manual.',
+            }),
+        });
+        if (!r.ok) {
+            const t = await r.text();
+            throw new Error(t || 'Error desconocido');
+        }
+        const j = await r.json();
+        showMessage(`Template "${j.nombre}" guardado. Se aplicará automáticamente a futuros comprobantes de este proveedor.`, 'success');
+        await adminIaLoadTemplates();
+    } catch (err) {
+        showMessage('Error guardando template: ' + err.message, 'error');
+    }
+}
+
+// ─── Gestor de templates (modal) ─────────────────────────────────────
+async function adminIaOpenTemplatesManager() {
+    const modal = document.getElementById('iaTemplatesModal');
+    if (!modal) return;
+    modal.style.display = 'block';
+    await adminIaLoadTemplates();
+    adminIaRenderTemplatesList();
+}
+
+function adminIaCloseTemplatesManager() {
+    const modal = document.getElementById('iaTemplatesModal');
+    if (modal) modal.style.display = 'none';
+}
+
+function adminIaRenderTemplatesList() {
+    const el = document.getElementById('iaTemplatesList');
+    if (!el) return;
+    if (!adminIaState.templates.length) {
+        el.innerHTML = '<p style="color: #999; text-align: center;">No hay templates cargados.</p>';
+        return;
+    }
+    el.innerHTML = adminIaState.templates.map(t => {
+        const fps = Array.isArray(t.fingerprints) ? t.fingerprints : [];
+        const fixed = t.fixed_fields && typeof t.fixed_fields === 'object' ? t.fixed_fields : {};
+        const fixedKeys = Object.keys(fixed);
+        return `
+            <div style="border: 1px solid #e0e0e0; border-radius: 8px; padding: 14px; margin-bottom: 10px; background: #fafafa;">
+                <div style="display: flex; justify-content: space-between; align-items: start; gap: 12px;">
+                    <div style="flex: 1;">
+                        <div style="font-weight: 700; color: #7B2CBF; font-size: 14px;">${escapeHtml(t.nombre)}</div>
+                        <div style="font-size: 12px; color: #555; margin-top: 2px;">
+                            ${t.is_factory ? '<span class="ia-pill src">Fábrica</span>' : '<span class="ia-pill src">Custom</span>'}
+                            ${t.proveedor_cuit ? '· CUIT ' + escapeHtml(t.proveedor_cuit) : ''}
+                            ${t.tipo_doc_default ? '· ' + escapeHtml(t.tipo_doc_default) : ''}
+                            · v${t.version}
+                        </div>
+                        ${t.notas ? `<div style="font-size: 11px; color: #777; margin-top: 6px; font-style: italic;">${escapeHtml(t.notas)}</div>` : ''}
+                        ${fps.length ? `<div style="font-size: 11px; color: #555; margin-top: 6px;"><strong>Fingerprints:</strong> ${fps.map(f => `<code style="background:#f0e6ff; padding:1px 4px; border-radius:3px;">${escapeHtml(f)}</code>`).join(' ')}</div>` : ''}
+                        ${fixedKeys.length ? `<div style="font-size: 11px; color: #555; margin-top: 4px;"><strong>Fixed:</strong> ${fixedKeys.map(k => k + '=' + JSON.stringify(fixed[k])).join(', ')}</div>` : ''}
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 6px;">
+                        <button class="btn btn-secondary" style="font-size: 11px; padding: 6px 10px;" onclick="adminIaCloneTemplate(${t.id})">Clonar</button>
+                        ${t.is_factory ? '' : `<button class="btn btn-secondary" style="font-size: 11px; padding: 6px 10px; color: #c0392b; border-color: #c0392b;" onclick="adminIaDeleteTemplate(${t.id})">Eliminar</button>`}
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+async function adminIaCloneTemplate(id) {
+    try {
+        const r = await fetch(`/api/admin-ia/templates/${id}/clone`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: '{}' });
+        if (!r.ok) throw new Error(await r.text());
+        showMessage('Template clonado. Editalo desde la lista.', 'success');
+        await adminIaLoadTemplates();
+        adminIaRenderTemplatesList();
+    } catch (err) { showMessage('Error: ' + err.message, 'error'); }
+}
+
+async function adminIaDeleteTemplate(id) {
+    if (!confirm('¿Eliminar este template?')) return;
+    try {
+        const r = await fetch(`/api/admin-ia/templates/${id}`, { method: 'DELETE' });
+        if (!r.ok) throw new Error(await r.text());
+        showMessage('Template eliminado.', 'success');
+        await adminIaLoadTemplates();
+        adminIaRenderTemplatesList();
+    } catch (err) { showMessage('Error: ' + err.message, 'error'); }
+}
+
+// ─── Catálogo ARCA viewer ─────────────────────────────────────────────
+function adminIaToggleCatalogo() {
+    const box = document.getElementById('iaCatalogoBox');
+    if (!box) return;
+    if (box.style.display === 'none' || !box.style.display) {
+        adminIaRenderCatalogo();
+        box.style.display = 'block';
+    } else {
+        box.style.display = 'none';
+    }
+}
+
+function adminIaRenderCatalogo() {
+    const box = document.getElementById('iaCatalogoBox');
+    if (!box) return;
+    const c = adminIaState.catalogo;
+    if (!c) { box.innerHTML = '<p>Catálogo no disponible</p>'; return; }
+
+    const tr = (cells, tag = 'td') => '<tr>' + cells.map(c => `<${tag}>${c}</${tag}>`).join('') + '</tr>';
+    const table = (headers, rows) =>
+        `<table style="width:100%; border-collapse: collapse; font-size: 12px;">
+            <thead style="background: #efe6ff; color: #7B2CBF; text-transform: uppercase; font-size: 11px;">
+                ${tr(headers, 'th')}
+            </thead>
+            <tbody>${rows.map(r => tr(r)).join('')}</tbody>
+        </table>`;
+
+    const tipos = (c.tiposComprobante || []).map(t => [escapeHtml(t.codigo), escapeHtml(t.nombre), escapeHtml(t.emisor || ''), escapeHtml(t.receptor || '')]);
+    const docs  = (c.tiposDocumento || []).map(t => [t.codigo, escapeHtml(t.nombre)]);
+    const mons  = (c.monedas || []).map(m => [escapeHtml(m.codigo), escapeHtml(m.iso || ''), escapeHtml(m.nombre || '')]);
+    const aliq  = (c.alicuotasIVA || []).map(a => [a.codigo, a.porcentaje + '%', escapeHtml(a.nombre || '')]);
+
+    box.innerHTML = `
+        <div class="form-section" style="border-left-color: #2980b9;">
+            <h3 class="section-title" style="color: #2980b9;">
+                Catálogo ARCA
+                <span class="ia-pill src" style="background:#d6eaf8; color:#1a5276;">Versión ${escapeHtml(c.version || '?')}</span>
+            </h3>
+            <p style="font-size: 12px; color: #555;">
+                <strong>Organismo:</strong> ${escapeHtml(c.organismo || '')}<br>
+                <strong>Última revisión:</strong> ${escapeHtml(c.ultimaRevision || c.version || '')}<br>
+                <strong>Fuentes:</strong>
+                <ul style="margin: 6px 0 6px 18px; font-size: 11px;">
+                    ${(c.fuentes || []).map(f => `<li>${escapeHtml(f)}</li>`).join('')}
+                </ul>
+            </p>
+
+            <h4 style="font-size: 13px; color: #7B2CBF; margin-top: 14px;">Tipos de Comprobante</h4>
+            ${table(['Código', 'Nombre', 'Emisor típico', 'Receptor'], tipos)}
+
+            <h4 style="font-size: 13px; color: #7B2CBF; margin-top: 14px;">Tipos de Documento</h4>
+            ${table(['Código', 'Nombre'], docs)}
+
+            <h4 style="font-size: 13px; color: #7B2CBF; margin-top: 14px;">Monedas</h4>
+            ${table(['Cód. ARCA', 'ISO', 'Nombre'], mons)}
+
+            <h4 style="font-size: 13px; color: #7B2CBF; margin-top: 14px;">Alícuotas IVA</h4>
+            ${table(['Código', 'Porcentaje', 'Nombre'], aliq)}
+
+            ${c.notasRegulatorias && c.notasRegulatorias.length ? `
+                <h4 style="font-size: 13px; color: #7B2CBF; margin-top: 14px;">Notas regulatorias</h4>
+                <ul style="font-size: 11px; color: #555; margin-left: 18px;">
+                    ${c.notasRegulatorias.map(n => `<li>${escapeHtml(n)}</li>`).join('')}
+                </ul>
+            ` : ''}
+
+            <p style="font-size: 11px; color: #888; margin-top: 16px; font-style: italic;">
+                Esta información se actualiza manualmente. Si una RG nueva o un cambio fiscal afecta los campos, hay que regenerar este catálogo.
+            </p>
+        </div>
+    `;
+}
+
 // Cerrar modal si se hace clic fuera
 window.onclick = function(event) {
     const companyModal = document.getElementById('companyModal');
     const clientsModal = document.getElementById('clientsModal');
-    
+
     if (companyModal && event.target === companyModal) {
         companyModal.style.display = 'none';
     }
     if (clientsModal && event.target === clientsModal) {
         clientsModal.style.display = 'none';
+    }
+}
+
+// ============================================================================
+// VOUCHER — Pestana para generar Vouchers de Viaje (PDF)
+// ============================================================================
+
+const VOUCHER_DEFAULT_AGENCY = 'ARMAN SOLUTIONS S.R.L';
+const VOUCHER_DEFAULT_ADVISOR = 'ARMAN TRAVEL - Legajo 20758';
+const VOUCHER_DEFAULT_INSTAGRAM = '@armantravel.arg';
+
+function voucherId() { return Date.now() + Math.floor(Math.random() * 1000); }
+
+function renderVoucherTab() {
+    const v = appState.voucher;
+    const today = new Date().toISOString().split('T')[0];
+
+    const contentDiv = document.getElementById('content');
+    let html = `
+        <form id="voucherForm">
+            <div class="message" id="message"></div>
+            <div class="loading" id="loading"><div class="spinner"></div><p>Generando voucher...</p></div>
+
+            <!-- AUTOCOMPLETAR DESDE ARCHIVO -->
+            <div class="form-section" style="background: #f0e6ff; border-left: 3px solid #7B2CBF;">
+                <h3 class="section-title" style="color: #7B2CBF;">Autocompletar desde archivo</h3>
+                <p style="font-size: 12px; color: #555; margin-bottom: 10px;">
+                    Sube uno o varios PDFs / imagenes (voucher de hotel, vuelo, traslado, seguro) y la app va a leer
+                    la informacion y la va a colocar en la seccion que corresponda. Podes editar todo despues.
+                </p>
+                <div style="display: grid; grid-template-columns: auto 200px 1fr; gap: 10px; align-items: center;">
+                    <div>
+                        <label style="font-size: 11px; margin-bottom: 4px;">Tipo</label>
+                        <select id="v-uploadType" style="padding: 8px 10px; font-size: 13px;">
+                            <option value="auto">Auto-detectar</option>
+                            <option value="hotel">Hotel</option>
+                            <option value="flight">Vuelo</option>
+                            <option value="transfer">Traslado</option>
+                            <option value="insurance">Seguro</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; margin-bottom: 4px;">Archivos</label>
+                        <input type="file" id="v-uploadFiles" accept="application/pdf,image/*" multiple
+                               style="font-size: 12px; padding: 4px;" onchange="voucherProcessUploads(event)">
+                    </div>
+                    <div style="font-size: 11px; color: #7B2CBF; align-self: end; padding-bottom: 6px;">
+                        Tip: si subis varios a la vez, cada uno se procesa por separado.
+                    </div>
+                </div>
+                <div id="v-upload-log" style="margin-top: 12px;"></div>
+            </div>
+
+            <!-- DATOS DEL VOUCHER -->
+            <div class="form-section">
+                <h3 class="section-title">Datos del Voucher</h3>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>N° de Voucher</label>
+                        <input type="text" id="v-voucherNumber" placeholder="Auto-generado" value="${escapeHtml(v.voucherNumber || generateVoucherNumber())}">
+                    </div>
+                    <div class="form-group">
+                        <label>Fecha de Emision <span class="required">*</span></label>
+                        <input type="date" id="v-issueDate" value="${v.issueDate || today}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Agencia</label>
+                        <input type="text" id="v-agency" value="${escapeHtml(v.agency || VOUCHER_DEFAULT_AGENCY)}">
+                    </div>
+                    <div class="form-group">
+                        <label>Asesor</label>
+                        <input type="text" id="v-advisor" value="${escapeHtml(v.advisor || VOUCHER_DEFAULT_ADVISOR)}">
+                    </div>
+                </div>
+            </div>
+
+            <!-- DATOS DE CONTACTO DE LA EMPRESA -->
+            <div class="form-section">
+                <h3 class="section-title">Contacto de la Empresa (cabecera del voucher)</h3>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Telefono</label>
+                        <input type="text" id="v-companyPhone" value="${escapeHtml(v.companyPhone || companyData.companyPhone || '+54 9 11 5698-9263')}">
+                    </div>
+                    <div class="form-group">
+                        <label>Instagram</label>
+                        <input type="text" id="v-companyInstagram" value="${escapeHtml(v.companyInstagram || VOUCHER_DEFAULT_INSTAGRAM)}">
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="v-companyEmail" value="${escapeHtml(v.companyEmail || companyData.companyEmail || 'travel@armansolutions.io')}">
+                    </div>
+                    <div class="form-group">
+                        <label>Direccion</label>
+                        <input type="text" id="v-companyAddress" value="${escapeHtml(v.companyAddress || companyData.companyAddress || 'Uriburu 592, CABA, CP 1027')}">
+                    </div>
+                </div>
+            </div>
+
+            <!-- TITULAR -->
+            <div class="form-section">
+                <h3 class="section-title">Titular de la Reserva</h3>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Nombre Completo <span class="required">*</span></label>
+                        <input type="text" id="v-holderName" value="${escapeHtml(v.holderName || '')}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Tipo y N° de Documento</label>
+                        <input type="text" id="v-holderDocument" value="${escapeHtml(v.holderDocument || '')}" placeholder="Ej: DNI 12.345.678">
+                    </div>
+                    <div class="form-group">
+                        <label>Telefono</label>
+                        <input type="text" id="v-holderPhone" value="${escapeHtml(v.holderPhone || '')}">
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="v-holderEmail" value="${escapeHtml(v.holderEmail || '')}">
+                    </div>
+                </div>
+            </div>
+
+            <!-- PASAJEROS -->
+            <div class="form-section">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h3 class="section-title" style="margin: 0; border: none; padding: 0;">Pasajeros</h3>
+                    <button type="button" class="btn-add-item" onclick="voucherAdd('passengers')">+ Agregar Pasajero</button>
+                </div>
+                <div id="v-passengers-list"></div>
+            </div>
+
+            <!-- VUELOS -->
+            <div class="form-section">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h3 class="section-title" style="margin: 0; border: none; padding: 0;">Aereos / Vuelos</h3>
+                    <button type="button" class="btn-add-item" onclick="voucherAdd('flights')">+ Agregar Vuelo</button>
+                </div>
+                <div id="v-flights-list"></div>
+            </div>
+
+            <!-- HOTELES -->
+            <div class="form-section">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h3 class="section-title" style="margin: 0; border: none; padding: 0;">Hoteles / Alojamiento</h3>
+                    <button type="button" class="btn-add-item" onclick="voucherAdd('hotels')">+ Agregar Hotel</button>
+                </div>
+                <div id="v-hotels-list"></div>
+            </div>
+
+            <!-- TRASLADOS -->
+            <div class="form-section">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h3 class="section-title" style="margin: 0; border: none; padding: 0;">Traslados</h3>
+                    <button type="button" class="btn-add-item" onclick="voucherAdd('transfers')">+ Agregar Traslado</button>
+                </div>
+                <div id="v-transfers-list"></div>
+            </div>
+
+            <!-- TOURS -->
+            <div class="form-section">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h3 class="section-title" style="margin: 0; border: none; padding: 0;">Tours / Excursiones</h3>
+                    <button type="button" class="btn-add-item" onclick="voucherAdd('tours')">+ Agregar Tour</button>
+                </div>
+                <div id="v-tours-list"></div>
+            </div>
+
+            <!-- OTROS SERVICIOS -->
+            <div class="form-section">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h3 class="section-title" style="margin: 0; border: none; padding: 0;">Otros Servicios</h3>
+                    <button type="button" class="btn-add-item" onclick="voucherAdd('otherServices')">+ Agregar Servicio</button>
+                </div>
+                <div id="v-otherServices-list"></div>
+            </div>
+
+            <!-- INFORMACION DEL VIAJE -->
+            <div class="form-section">
+                <h3 class="section-title">Informacion General del Viaje (opcional)</h3>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Destino</label>
+                        <input type="text" id="v-destination" value="${escapeHtml(v.destination || '')}" placeholder="Ej: Cancun, Mexico">
+                    </div>
+                    <div class="form-group">
+                        <label>Duracion</label>
+                        <input type="text" id="v-duration" value="${escapeHtml(v.duration || '')}" placeholder="Ej: 7 noches / 8 dias">
+                    </div>
+                    <div class="form-group">
+                        <label>Fecha de Inicio</label>
+                        <input type="date" id="v-tripStart" value="${v.tripStart || ''}">
+                    </div>
+                    <div class="form-group">
+                        <label>Fecha de Fin</label>
+                        <input type="date" id="v-tripEnd" value="${v.tripEnd || ''}">
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Descripcion del viaje</label>
+                        <textarea id="v-tripDescription" rows="3" placeholder="Resumen general del paquete...">${escapeHtml(v.tripDescription || '')}</textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FORMA DE PAGO -->
+            <div class="form-section">
+                <h3 class="section-title">Forma de Pago (opcional)</h3>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Moneda</label>
+                        <select id="v-currency">
+                            <option value="USD" ${v.currency === 'USD' ? 'selected' : ''}>USD</option>
+                            <option value="ARS" ${v.currency === 'ARS' ? 'selected' : ''}>ARS</option>
+                            <option value="EUR" ${v.currency === 'EUR' ? 'selected' : ''}>EUR</option>
+                            <option value="BRL" ${v.currency === 'BRL' ? 'selected' : ''}>BRL</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Total</label>
+                        <input type="number" id="v-total" step="0.01" min="0" value="${v.total || ''}" oninput="voucherUpdateBalance()">
+                    </div>
+                    <div class="form-group">
+                        <label>Sena / Reserva</label>
+                        <input type="number" id="v-deposit" step="0.01" min="0" value="${v.deposit || ''}" oninput="voucherUpdateBalance()">
+                    </div>
+                    <div class="form-group">
+                        <label>Saldo</label>
+                        <input type="number" id="v-balance" step="0.01" min="0" value="${v.balance || ''}" placeholder="Auto (Total - Sena)">
+                    </div>
+                    <div class="form-group">
+                        <label>Fecha limite de pago</label>
+                        <input type="date" id="v-paymentDueDate" value="${v.paymentDueDate || ''}">
+                    </div>
+                    <div class="form-group">
+                        <label>Medio de pago</label>
+                        <input type="text" id="v-paymentMethod" value="${escapeHtml(v.paymentMethod || '')}" placeholder="Ej: Transferencia bancaria">
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Observaciones de pago</label>
+                        <textarea id="v-paymentNotes" rows="2" placeholder="Datos de cuenta, condiciones, etc.">${escapeHtml(v.paymentNotes || '')}</textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- OBSERVACIONES -->
+            <div class="form-section">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h3 class="section-title" style="margin: 0; border: none; padding: 0;">Observaciones Importantes</h3>
+                    <button type="button" class="btn-add-item" onclick="voucherAddObservation()">+ Agregar Observacion</button>
+                </div>
+                <div id="v-observations-list"></div>
+            </div>
+
+            <div class="button-group" style="grid-template-columns: 1fr;">
+                <button type="button" class="btn btn-primary" onclick="downloadVoucher()" style="padding: 16px;">
+                    Generar y Descargar Voucher PDF
+                </button>
+            </div>
+        </form>
+    `;
+
+    contentDiv.innerHTML = html;
+    voucherRenderList('passengers');
+    voucherRenderList('flights');
+    voucherRenderList('hotels');
+    voucherRenderList('transfers');
+    voucherRenderList('tours');
+    voucherRenderList('otherServices');
+    voucherRenderObservations();
+}
+
+function generateVoucherNumber() {
+    // Format: V-YYYYMMDD-HHMM
+    const d = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    return `V-${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`;
+}
+
+// Esquemas de campos por tipo (label, type, placeholder, span)
+const VOUCHER_SCHEMAS = {
+    passengers: {
+        label: 'Pasajero',
+        fields: [
+            { name: 'name', label: 'Nombre Completo', type: 'text', span: 2 },
+            { name: 'document', label: 'Tipo y N° de Documento', type: 'text', placeholder: 'Ej: DNI 12.345.678' },
+            { name: 'birthDate', label: 'Fecha de Nacimiento', type: 'date' },
+        ],
+    },
+    flights: {
+        label: 'Vuelo',
+        fields: [
+            { name: 'airline', label: 'Aerolinea', type: 'text' },
+            { name: 'flightNumber', label: 'N° de Vuelo', type: 'text', placeholder: 'Ej: AR1234' },
+            { name: 'class', label: 'Clase', type: 'text', placeholder: 'Economy / Business' },
+            { name: 'origin', label: 'Origen', type: 'text', placeholder: 'Ej: EZE - Buenos Aires' },
+            { name: 'destination', label: 'Destino', type: 'text', placeholder: 'Ej: MIA - Miami' },
+            { name: 'reservationCode', label: 'Localizador / PNR', type: 'text' },
+            { name: 'departureDate', label: 'Fecha Salida', type: 'date' },
+            { name: 'departureTime', label: 'Hora Salida', type: 'time' },
+            { name: 'arrivalDate', label: 'Fecha Llegada', type: 'date' },
+            { name: 'arrivalTime', label: 'Hora Llegada', type: 'time' },
+            { name: 'baggage', label: 'Equipaje', type: 'text', placeholder: 'Ej: 1 valija 23kg + carry-on' },
+            { name: 'notes', label: 'Notas', type: 'textarea', span: 4 },
+        ],
+    },
+    hotels: {
+        label: 'Hotel',
+        fields: [
+            { name: 'name', label: 'Nombre del Hotel', type: 'text', span: 2 },
+            { name: 'address', label: 'Direccion', type: 'text', span: 2 },
+            { name: 'checkIn', label: 'Check-in', type: 'date' },
+            { name: 'checkOut', label: 'Check-out', type: 'date' },
+            { name: 'nights', label: 'Noches', type: 'number' },
+            { name: 'roomType', label: 'Tipo de Habitacion', type: 'text', placeholder: 'Ej: Doble vista al mar' },
+            { name: 'mealPlan', label: 'Regimen', type: 'text', placeholder: 'Ej: All Inclusive' },
+            { name: 'confirmationCode', label: 'N° de Confirmacion', type: 'text' },
+            { name: 'notes', label: 'Notas', type: 'textarea', span: 4 },
+        ],
+    },
+    transfers: {
+        label: 'Traslado',
+        fields: [
+            { name: 'type', label: 'Tipo', type: 'text', placeholder: 'Ej: Aeropuerto - Hotel' },
+            { name: 'service', label: 'Servicio', type: 'text', placeholder: 'Privado / Compartido' },
+            { name: 'provider', label: 'Proveedor', type: 'text' },
+            { name: 'from', label: 'Desde', type: 'text' },
+            { name: 'to', label: 'Hacia', type: 'text' },
+            { name: 'date', label: 'Fecha', type: 'date' },
+            { name: 'time', label: 'Hora', type: 'time' },
+            { name: 'notes', label: 'Notas', type: 'textarea', span: 4 },
+        ],
+    },
+    tours: {
+        label: 'Tour',
+        fields: [
+            { name: 'name', label: 'Nombre del Tour', type: 'text', span: 2 },
+            { name: 'duration', label: 'Duracion', type: 'text', placeholder: 'Ej: 4 horas' },
+            { name: 'pickup', label: 'Punto de Encuentro', type: 'text', span: 2 },
+            { name: 'date', label: 'Fecha', type: 'date' },
+            { name: 'time', label: 'Hora', type: 'time' },
+            { name: 'includes', label: 'Incluye', type: 'textarea', span: 4 },
+            { name: 'notes', label: 'Notas', type: 'textarea', span: 4 },
+        ],
+    },
+    otherServices: {
+        label: 'Servicio',
+        fields: [
+            { name: 'name', label: 'Nombre del Servicio', type: 'text', span: 2 },
+            { name: 'description', label: 'Descripcion', type: 'textarea', span: 4 },
+        ],
+    },
+};
+
+function voucherAdd(kind) {
+    const newItem = { id: voucherId() };
+    appState.voucher[kind].push(newItem);
+    voucherRenderList(kind);
+}
+
+function voucherRemove(kind, id) {
+    appState.voucher[kind] = appState.voucher[kind].filter(x => x.id !== id);
+    voucherRenderList(kind);
+}
+
+function voucherUpdate(kind, id, fieldName, value) {
+    const item = appState.voucher[kind].find(x => x.id === id);
+    if (item) item[fieldName] = value;
+}
+
+function voucherRenderList(kind) {
+    const list = document.getElementById(`v-${kind}-list`);
+    if (!list) return;
+    const items = appState.voucher[kind];
+    const schema = VOUCHER_SCHEMAS[kind];
+
+    if (!items.length) {
+        list.innerHTML = `<div style="padding: 12px; background: #fafafa; border: 1px dashed #d1d5db; border-radius: 6px; color: #94a3b8; font-size: 13px; text-align: center;">Sin ${schema.label.toLowerCase()}s. Hace clic en + Agregar ${schema.label} para sumar uno.</div>`;
+        return;
+    }
+
+    list.innerHTML = items.map((item, idx) => {
+        const grid = schema.fields.map(f => {
+            const span = f.span ? `grid-column: span ${f.span};` : '';
+            const val = item[f.name] || '';
+            const fieldId = `v-${kind}-${item.id}-${f.name}`;
+            if (f.type === 'textarea') {
+                return `
+                    <div class="form-group" style="${span}">
+                        <label>${f.label}</label>
+                        <textarea id="${fieldId}" rows="2" placeholder="${f.placeholder || ''}" oninput="voucherUpdate('${kind}', ${item.id}, '${f.name}', this.value)">${escapeHtml(val)}</textarea>
+                    </div>
+                `;
+            }
+            return `
+                <div class="form-group" style="${span}">
+                    <label>${f.label}</label>
+                    <input type="${f.type}" id="${fieldId}" value="${escapeHtml(val)}" placeholder="${f.placeholder || ''}" oninput="voucherUpdate('${kind}', ${item.id}, '${f.name}', this.value)">
+                </div>
+            `;
+        }).join('');
+
+        return `
+            <div class="sub-item-form">
+                <div class="sub-item-header">
+                    <div class="sub-item-title">${schema.label} ${idx + 1}</div>
+                    <button type="button" class="remove-subitem-btn" onclick="voucherRemove('${kind}', ${item.id})" title="Quitar">X</button>
+                </div>
+                <div class="form-grid" style="grid-template-columns: repeat(4, 1fr);">
+                    ${grid}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function voucherAddObservation() {
+    appState.voucher.observations.push('');
+    voucherRenderObservations();
+}
+
+function voucherRemoveObservation(idx) {
+    appState.voucher.observations.splice(idx, 1);
+    voucherRenderObservations();
+}
+
+function voucherUpdateObservation(idx, value) {
+    appState.voucher.observations[idx] = value;
+}
+
+function voucherRenderObservations() {
+    const list = document.getElementById('v-observations-list');
+    if (!list) return;
+    const obs = appState.voucher.observations;
+    if (!obs.length) {
+        list.innerHTML = `<div style="padding: 12px; background: #fafafa; border: 1px dashed #d1d5db; border-radius: 6px; color: #94a3b8; font-size: 13px; text-align: center;">Sin observaciones. Hace clic en + Agregar Observacion para sumar una.</div>`;
+        return;
+    }
+    list.innerHTML = obs.map((text, idx) => `
+        <div style="display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-bottom: 8px; align-items: start;">
+            <textarea rows="2" placeholder="Observacion ${idx + 1}" oninput="voucherUpdateObservation(${idx}, this.value)">${escapeHtml(text)}</textarea>
+            <button type="button" class="remove-subitem-btn" onclick="voucherRemoveObservation(${idx})" title="Quitar">X</button>
+        </div>
+    `).join('');
+}
+
+function voucherUpdateBalance() {
+    const totalEl = document.getElementById('v-total');
+    const depositEl = document.getElementById('v-deposit');
+    const balanceEl = document.getElementById('v-balance');
+    if (!totalEl || !depositEl || !balanceEl) return;
+    const total = parseFloat(totalEl.value) || 0;
+    const deposit = parseFloat(depositEl.value) || 0;
+    if (total > 0) {
+        balanceEl.value = Math.max(0, total - deposit).toFixed(2);
+    }
+}
+
+function voucherCollectData() {
+    const get = (id) => {
+        const el = document.getElementById(id);
+        return el ? el.value : '';
+    };
+    const num = (id) => {
+        const v = get(id);
+        return v === '' ? '' : parseFloat(v);
+    };
+
+    // Limpiar pasajeros/items vacios (sin ningun campo con valor)
+    const filterNonEmpty = (arr, keys) => arr.filter(item =>
+        keys.some(k => (item[k] || '').toString().trim() !== '')
+    );
+
+    const data = {
+        voucherNumber: get('v-voucherNumber') || generateVoucherNumber(),
+        issueDate: get('v-issueDate'),
+        agency: get('v-agency'),
+        advisor: get('v-advisor'),
+
+        companyPhone: get('v-companyPhone'),
+        companyInstagram: get('v-companyInstagram'),
+        companyEmail: get('v-companyEmail'),
+        companyAddress: get('v-companyAddress'),
+
+        holderName: get('v-holderName'),
+        holderDocument: get('v-holderDocument'),
+        holderPhone: get('v-holderPhone'),
+        holderEmail: get('v-holderEmail'),
+
+        passengers: filterNonEmpty(appState.voucher.passengers, ['name', 'document', 'birthDate']),
+        flights: filterNonEmpty(appState.voucher.flights, ['airline', 'flightNumber', 'origin', 'destination']),
+        hotels: filterNonEmpty(appState.voucher.hotels, ['name', 'address', 'checkIn']),
+        transfers: filterNonEmpty(appState.voucher.transfers, ['type', 'from', 'to', 'date']),
+        tours: filterNonEmpty(appState.voucher.tours, ['name', 'date']),
+        otherServices: filterNonEmpty(appState.voucher.otherServices, ['name', 'description']),
+
+        destination: get('v-destination'),
+        duration: get('v-duration'),
+        tripStart: get('v-tripStart'),
+        tripEnd: get('v-tripEnd'),
+        tripDescription: get('v-tripDescription'),
+
+        currency: get('v-currency') || 'USD',
+        total: num('v-total'),
+        deposit: num('v-deposit'),
+        balance: num('v-balance'),
+        paymentDueDate: get('v-paymentDueDate'),
+        paymentMethod: get('v-paymentMethod'),
+        paymentNotes: get('v-paymentNotes'),
+    };
+
+    const observationsClean = appState.voucher.observations.map(s => (s || '').trim()).filter(Boolean);
+    if (observationsClean.length === 1) {
+        data.observations = observationsClean[0];
+    } else if (observationsClean.length > 1) {
+        data.observations = observationsClean.join('\n');
+        data.observationList = observationsClean;
+    }
+
+    data.passengerCount = data.passengers.length || '';
+
+    return data;
+}
+
+// ─── Autocompletar desde archivo ────────────────────────────────────────
+
+const VOUCHER_UPLOAD_TYPE_LABEL = {
+    hotel: 'Hotel', flight: 'Vuelo', transfer: 'Traslado',
+    insurance: 'Seguro', unknown: 'Desconocido',
+};
+
+function voucherAppendLog(html) {
+    const log = document.getElementById('v-upload-log');
+    if (!log) return;
+    const div = document.createElement('div');
+    div.style.cssText = 'padding: 8px 10px; margin-bottom: 6px; background: white; border: 1px solid #d8d6ea; border-radius: 6px; font-size: 12px;';
+    div.innerHTML = html;
+    log.appendChild(div);
+}
+
+function voucherMergeParsed(parsed) {
+    const v = appState.voucher;
+    const summary = [];
+    const lists = ['passengers', 'flights', 'hotels', 'transfers', 'otherServices'];
+    for (const key of lists) {
+        if (!Array.isArray(parsed[key]) || !parsed[key].length) continue;
+        for (const item of parsed[key]) {
+            v[key].push({ id: voucherId(), ...item });
+        }
+        summary.push(`${parsed[key].length} ${key}`);
+    }
+    // Auto-rellenar Titular si esta vacio: tomar primer pasajero detectado
+    const holderInput = document.getElementById('v-holderName');
+    if (holderInput && !holderInput.value && v.passengers.length) {
+        holderInput.value = v.passengers[0].name || '';
+    }
+    return summary.join(', ');
+}
+
+async function voucherProcessUploads(event) {
+    const files = Array.from(event.target.files || []);
+    if (!files.length) return;
+    const hintType = document.getElementById('v-uploadType').value;
+    const logEl = document.getElementById('v-upload-log');
+    event.target.value = ''; // permitir re-subir el mismo archivo
+
+    for (const file of files) {
+        voucherAppendLog(`<span style="color:#666;">Procesando <b>${escapeHtml(file.name)}</b>...</span>`);
+        try {
+            const fileData = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = () => reject(new Error('No se pudo leer el archivo'));
+                reader.readAsDataURL(file);
+            });
+            const res = await fetch('/api/voucher/parse', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    fileName: file.name,
+                    mimeType: file.type,
+                    fileData,
+                    hintType,
+                }),
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const parsed = await res.json();
+
+            // Reemplazar el ultimo log con resultado
+            const last = logEl.lastChild;
+            if (last) logEl.removeChild(last);
+
+            if (!parsed.ok) {
+                voucherAppendLog(`<span style="color:#c0392b;"><b>${escapeHtml(file.name)}</b>: no se pudo extraer informacion. ${escapeHtml(parsed.reason || '')}</span>`);
+                continue;
+            }
+            const typeLabel = VOUCHER_UPLOAD_TYPE_LABEL[parsed.type] || parsed.type;
+            const detected = parsed.autoDetected ? ' (auto-detectado)' : '';
+            const summary = voucherMergeParsed(parsed.data || {});
+            voucherAppendLog(
+                `<span style="color:#1e7e34;">&#10004; <b>${escapeHtml(file.name)}</b> &mdash; ${escapeHtml(typeLabel)}${detected}: ${escapeHtml(summary || 'sin datos')}</span>`
+            );
+
+            // Re-render listas afectadas
+            voucherRenderList('passengers');
+            voucherRenderList('flights');
+            voucherRenderList('hotels');
+            voucherRenderList('transfers');
+            voucherRenderList('otherServices');
+        } catch (err) {
+            voucherAppendLog(`<span style="color:#c0392b;"><b>${escapeHtml(file.name)}</b>: error &mdash; ${escapeHtml(err.message)}</span>`);
+        }
+    }
+}
+
+async function downloadVoucher() {
+    try {
+        showLoading(true);
+        const data = voucherCollectData();
+
+        // Fallback: si no hay titular pero hay pasajeros, usar el primero
+        if (!data.holderName && Array.isArray(data.passengers) && data.passengers.length) {
+            data.holderName = data.passengers[0].name || '';
+            const holderInput = document.getElementById('v-holderName');
+            if (holderInput && !holderInput.value) holderInput.value = data.holderName;
+        }
+
+        if (!data.holderName) {
+            showLoading(false);
+            showMessage('Por favor ingresa el nombre del titular', 'error');
+            const msg = document.getElementById('message');
+            if (msg) msg.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            const holderInput = document.getElementById('v-holderName');
+            if (holderInput) holderInput.focus();
+            return;
+        }
+
+        // Sincronizar estado por si se descarga de nuevo
+        appState.voucher.voucherNumber = data.voucherNumber;
+        appState.voucher.issueDate = data.issueDate;
+        appState.voucher.holderName = data.holderName;
+
+        const assets = {};
+        if (appState.images && appState.images.logo) {
+            assets.logo = appState.images.logo.data;
+        }
+
+        const payload = { type: 'voucher', data, assets };
+        const response = await fetch('/api/documents/generate-pdf', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Error: ${response.statusText} - ${errorText}`);
+        }
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const holder = (data.holderName || 'Titular').replace(/[^a-zA-Z0-9]/g, '_');
+        const number = String(data.voucherNumber).replace(/[^a-zA-Z0-9-]/g, '_');
+        a.download = `Voucher_${holder}_${number}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        a.remove();
+
+        showMessage('Voucher descargado correctamente', 'success');
+    } catch (error) {
+        console.error('Error generando voucher:', error);
+        showMessage('Error al generar el voucher: ' + error.message, 'error');
+    } finally {
+        showLoading(false);
+    }
+}
+
+// ============================================================
+// COMPROBANTES — PDF combinado con botones de acceso rapido
+// ============================================================
+
+const CMP_TYPE_OPTIONS = [
+    ['flight', 'Vuelo'], ['hotel', 'Hotel'], ['transfer', 'Traslado'],
+    ['insurance', 'Seguro'], ['tour', 'Tour'], ['other', 'Otro'],
+];
+
+function comprobantesId() { return 'c' + Date.now() + Math.floor(Math.random() * 1000); }
+
+function renderComprobantesTab() {
+    const c = appState.comprobantes;
+    const contentDiv = document.getElementById('content');
+    contentDiv.innerHTML = `
+        <form id="comprobantesForm" onsubmit="return false;">
+            <div class="message" id="message"></div>
+            <div class="loading" id="loading"><div class="spinner"></div><p>Generando PDF combinado...</p></div>
+
+            <div class="form-section" style="background:#f0e6ff; border-left:3px solid #7B2CBF;">
+                <h3 class="section-title" style="color:#7B2CBF;">Comprobantes en un solo PDF</h3>
+                <p style="font-size:12px; color:#555; margin-bottom:12px;">
+                    Subí los comprobantes del viaje (vouchers de vuelo, hotel, traslado, seguro, etc., en PDF o imagen).
+                    La app arma un único PDF con una página índice: cada comprobante aparece como un botón que, al tocarlo,
+                    lleva directo a la página de ese archivo dentro del mismo PDF.
+                </p>
+                <div style="display:grid; grid-template-columns:1fr 260px; gap:14px; align-items:end;">
+                    <div class="form-group" style="margin:0;">
+                        <label>Cliente / Pasajero (opcional)</label>
+                        <input id="cmp-title" type="text" value="${escapeHtml(c.title || '')}"
+                            placeholder="Ej: Familia Pérez"
+                            oninput="appState.comprobantes.title = this.value">
+                    </div>
+                    <div class="form-group" style="margin:0;">
+                        <label>Agregar comprobantes</label>
+                        <input type="file" accept="application/pdf,image/*" multiple
+                            onchange="comprobantesAddFiles(event)" style="font-size:12px; padding:6px;">
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3 class="section-title" style="margin:0 0 12px 0;">Comprobantes cargados</h3>
+                <div id="cmp-list"></div>
+            </div>
+
+            <div class="button-group" style="grid-template-columns:1fr;">
+                <button type="button" class="btn btn-primary" onclick="comprobantesGenerate()" style="padding:16px;">
+                    Generar y Descargar PDF Combinado
+                </button>
+            </div>
+        </form>
+    `;
+    comprobantesRenderList();
+}
+
+function comprobantesRenderList() {
+    const list = document.getElementById('cmp-list');
+    if (!list) return;
+    const items = appState.comprobantes.items;
+    if (!items.length) {
+        list.innerHTML = `<div style="padding:18px; background:#fafafa; border:1px dashed #d1d5db; border-radius:8px; color:#94a3b8; text-align:center; font-size:13px;">No hay comprobantes cargados todavía. Subí PDFs o imágenes arriba.</div>`;
+        return;
+    }
+    list.innerHTML = items.map((it, i) => {
+        const isImg = (it.mimeType || '').startsWith('image/');
+        const thumb = isImg
+            ? `<img src="${it.fileData}" style="width:46px; height:46px; object-fit:cover; border-radius:6px; border:1px solid #e5e7eb;">`
+            : `<div style="width:46px; height:46px; border-radius:6px; background:#1A1864; color:#fff; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700;">PDF</div>`;
+        const opts = CMP_TYPE_OPTIONS.map(([v, l]) => `<option value="${v}" ${it.type === v ? 'selected' : ''}>${l}</option>`).join('');
+        const status = it.detecting ? `<span id="cmp-status-${it.id}" style="font-size:11px; color:#7B2CBF;"> · detectando…</span>` : '';
+        return `
+            <div style="display:flex; gap:12px; align-items:center; padding:10px 12px; border:1px solid #e5e7eb; border-radius:8px; margin-bottom:8px; background:#fff;">
+                <div style="font-size:12px; color:#94a3b8; width:18px; text-align:center;">${i + 1}</div>
+                ${thumb}
+                <div style="flex:1; min-width:0;">
+                    <input id="cmp-title-${it.id}" type="text" value="${escapeHtml(it.title)}"
+                        oninput="comprobantesUpdate('${it.id}','title',this.value)"
+                        style="width:100%; padding:7px 9px; font-size:13px; border:1px solid #d1d5db; border-radius:6px;">
+                    <div style="font-size:11px; color:#94a3b8; margin-top:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(it.fileName)}${status}</div>
+                </div>
+                <select id="cmp-type-${it.id}" onchange="comprobantesUpdate('${it.id}','type',this.value)"
+                    style="padding:7px 9px; font-size:13px; border:1px solid #d1d5db; border-radius:6px;">${opts}</select>
+                <button type="button" onclick="comprobantesView('${it.id}')" style="padding:7px 12px; font-size:12px; border:1px solid #d1d5db; border-radius:6px; background:#f9fafb; cursor:pointer;">Ver</button>
+                <button type="button" onclick="comprobantesRemove('${it.id}')" style="padding:7px 10px; font-size:12px; border:1px solid #fecaca; color:#b91c1c; border-radius:6px; background:#fff; cursor:pointer;">Quitar</button>
+            </div>`;
+    }).join('');
+}
+
+function comprobantesReadFile(file) {
+    return new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(r.result);
+        r.onerror = () => reject(new Error('No se pudo leer el archivo'));
+        r.readAsDataURL(file);
+    });
+}
+
+async function comprobantesAddFiles(event) {
+    const files = Array.from(event.target.files || []);
+    event.target.value = '';
+    if (!files.length) return;
+
+    const nuevos = [];
+    for (const file of files) {
+        try {
+            const fileData = await comprobantesReadFile(file);
+            const item = {
+                id: comprobantesId(),
+                fileName: file.name,
+                mimeType: file.type || '',
+                fileData,
+                type: comprobantesGuessType(file.name),
+                title: file.name.replace(/\.[^.]+$/, ''),
+                detecting: true,
+            };
+            appState.comprobantes.items.push(item);
+            nuevos.push(item);
+        } catch (err) {
+            showMessage('No se pudo leer ' + file.name, 'error');
+        }
+    }
+    comprobantesRenderList();
+    // Auto-detectar tipo y titulo en segundo plano (reusa el parser del voucher).
+    nuevos.forEach(comprobantesDetect);
+}
+
+async function comprobantesDetect(item) {
+    try {
+        const res = await fetch('/api/voucher/parse', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                fileName: item.fileName,
+                mimeType: item.mimeType,
+                fileData: item.fileData,
+                hintType: 'auto',
+            }),
+        });
+        if (res.ok) {
+            const parsed = await res.json();
+            if (parsed && parsed.ok) {
+                const mapped = comprobantesMapType(parsed.type);
+                if (mapped) item.type = mapped;
+                const suggested = comprobantesSuggestTitle(parsed.data || {}, parsed.type);
+                // Solo pisar el titulo si el usuario no lo edito (sigue siendo el nombre del archivo).
+                if (suggested && item.title === item.fileName.replace(/\.[^.]+$/, '')) item.title = suggested;
+            }
+        }
+    } catch (_) {
+        // Detección best-effort: si falla, quedan los valores por defecto.
+    } finally {
+        item.detecting = false;
+        const sel = document.getElementById(`cmp-type-${item.id}`);
+        if (sel) sel.value = item.type;
+        const ti = document.getElementById(`cmp-title-${item.id}`);
+        if (ti && document.activeElement !== ti) ti.value = item.title;
+        const st = document.getElementById(`cmp-status-${item.id}`);
+        if (st) st.remove();
+    }
+}
+
+function comprobantesGuessType(fileName) {
+    const n = (fileName || '').toLowerCase();
+    if (/(vuelo|flight|aereo|aéreo|boarding|pasaje|ticket|pnr)/.test(n)) return 'flight';
+    if (/(hotel|aloja|resort|hosped|booking)/.test(n)) return 'hotel';
+    if (/(traslado|transfer|shuttle|pickup)/.test(n)) return 'transfer';
+    if (/(seguro|insurance|assist|poliza|póliza|cobertura)/.test(n)) return 'insurance';
+    if (/(tour|excursi|paseo)/.test(n)) return 'tour';
+    return 'other';
+}
+
+function comprobantesMapType(t) {
+    const map = { hotel: 'hotel', flight: 'flight', transfer: 'transfer', insurance: 'insurance', tour: 'tour' };
+    return map[t] || null;
+}
+
+function comprobantesSuggestTitle(data, type) {
+    try {
+        if (type === 'flight' && data.flights && data.flights[0]) {
+            const f = data.flights[0];
+            const al = [f.airline, f.flightNumber].filter(Boolean).join(' ');
+            const route = [f.origin, f.destination].filter(Boolean).join(' → ');
+            return [al, route].filter(Boolean).join(' · ') || null;
+        }
+        if (type === 'hotel' && data.hotels && data.hotels[0]) return data.hotels[0].name || null;
+        if (type === 'transfer' && data.transfers && data.transfers[0]) return data.transfers[0].type || null;
+        if (type === 'insurance' && data.otherServices && data.otherServices[0]) return data.otherServices[0].name || null;
+    } catch (_) {}
+    return null;
+}
+
+function comprobantesUpdate(id, field, value) {
+    const it = appState.comprobantes.items.find(x => x.id === id);
+    if (it) it[field] = value;
+}
+
+function comprobantesRemove(id) {
+    appState.comprobantes.items = appState.comprobantes.items.filter(x => x.id !== id);
+    comprobantesRenderList();
+}
+
+function comprobantesSyncInputs() {
+    appState.comprobantes.items.forEach(it => {
+        const ti = document.getElementById(`cmp-title-${it.id}`);
+        if (ti) it.title = ti.value;
+        const sel = document.getElementById(`cmp-type-${it.id}`);
+        if (sel) it.type = sel.value;
+    });
+}
+
+function comprobantesDataUrlToBlob(dataUrl) {
+    const [head, b64] = String(dataUrl).split(',');
+    const mime = (head.match(/data:([^;]+)/) || [, 'application/octet-stream'])[1];
+    const bin = atob(b64 || '');
+    const arr = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+    return new Blob([arr], { type: mime });
+}
+
+function comprobantesView(id) {
+    const item = appState.comprobantes.items.find(x => x.id === id);
+    if (!item) return;
+    try {
+        const url = URL.createObjectURL(comprobantesDataUrlToBlob(item.fileData));
+        window.open(url, '_blank');
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (e) {
+        showMessage('No se pudo abrir el comprobante', 'error');
+    }
+}
+
+async function comprobantesGenerate() {
+    comprobantesSyncInputs();
+    const c = appState.comprobantes;
+    if (!c.items.length) {
+        showMessage('Agregá al menos un comprobante', 'error');
+        return;
+    }
+    try {
+        showLoading(true);
+        const titleEl = document.getElementById('cmp-title');
+        const title = (titleEl ? titleEl.value : (c.title || '')).trim();
+        const payload = {
+            title,
+            logo: (appState.images && appState.images.logo) ? appState.images.logo.data : undefined,
+            company: {
+                phone: (companyData.companyPhone || '+54 9 11 5698-9263'),
+                instagram: VOUCHER_DEFAULT_INSTAGRAM,
+                email: 'travel@armansolutions.io',
+                address: 'Uriburu 592, CABA, CP 1027',
+                legajo: '20758',
+            },
+            items: c.items.map(it => ({
+                fileName: it.fileName,
+                mimeType: it.mimeType,
+                fileData: it.fileData,
+                type: it.type,
+                title: it.title,
+            })),
+        };
+        const res = await fetch('/api/comprobantes/combine', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+        if (!res.ok) {
+            const txt = await res.text();
+            throw new Error(`${res.status} - ${txt}`);
+        }
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Comprobantes_${(title || 'viaje').replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        showMessage('PDF combinado generado correctamente', 'success');
+    } catch (e) {
+        console.error('Error generando comprobantes:', e);
+        showMessage('Error al generar el PDF: ' + e.message, 'error');
+    } finally {
+        showLoading(false);
     }
 }

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Arman Tech — Cotizador</title>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <link rel="stylesheet" href="/_shared.css">
+  <script src="/_shared/auth.js"></script>
+  <script>ArmanAuth.requireSession({ vertical: 'tech' });</script>
+  <style>
+    /* Sobre _shared.css: marco dark + main panel claro para que el form del cotizador (legacy, light theme) sea legible */
+    body { background: #0d121e !important; }
+    .cotz-shell { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+    .cotz-side {
+      background: #101727; border-right: 1px solid #1f2a44; padding: 22px 16px;
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .cotz-side .brand { padding: 4px 8px 18px; border-bottom: 1px solid #1f2a44; margin-bottom: 14px; }
+    .cotz-side .brand small { color: #8ea0c2; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; }
+    .cotz-side .brand h1 { color: #e8edf5; font-size: 18px; font-weight: 600; margin-top: 4px; }
+    .cotz-side a, .cotz-side button {
+      display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 8px;
+      color: #a6b6d6; text-decoration: none; font-size: 14px; cursor: pointer;
+      background: transparent; border: 0; text-align: left; width: 100%; font-family: inherit;
+    }
+    .cotz-side a:hover, .cotz-side button:hover { background: #19223a; color: #fff; }
+    .cotz-side a.active { background: #1c2c52; color: #fff; }
+    .cotz-side .back { margin-top: auto; padding-top: 16px; border-top: 1px solid #1f2a44; }
+    .cotz-main { padding: 22px 26px; overflow: auto; min-width: 0; }
+    .cotz-card {
+      background: white; border-radius: 14px; box-shadow: 0 12px 40px rgba(0,0,0,.4), 0 0 0 1px #1f2a44;
+      overflow: hidden; min-height: calc(100vh - 44px);
+    }
+    /* Header dark dentro del card */
+    .cotz-header {
+      background: linear-gradient(135deg, #19233d, #111a2e); color: #e8edf5;
+      padding: 14px 24px; display: flex; align-items: center; gap: 16px; justify-content: space-between;
+      border-bottom: 3px solid #5b7bd6;
+    }
+    .cotz-header h1 { color: #e8edf5; font-size: 18px; font-weight: 600; margin: 0; }
+    .cotz-header p { color: #8ea0c2; font-size: 12px; margin: 0; }
+    .cotz-header .brand { display: flex; align-items: center; gap: 14px; }
+    .cotz-header .brand img { width: 40px; height: 40px; object-fit: contain; border-radius: 6px; }
+    /* Contenedor del form (lo llena app.js) */
+    #content { padding: 0; }
+  </style>
+</head>
+<body>
+  <div class="cotz-shell">
+    <aside class="cotz-side">
+      <div class="brand">
+        <small>Arman Tech</small>
+        <h1>Cotizador</h1>
+      </div>
+      <a href="/tech/cotizador.html" class="active">+ Nueva cotización</a>
+      <a href="/tech/" style="font-size:13px">CRM Tech</a>
+      <hr style="border:0;border-top:1px solid #1f2a44;margin:10px 0">
+      <div style="font-size:11px;color:#7d92bd;text-transform:uppercase;letter-spacing:1.2px;padding:6px 12px">Mis cotizaciones</div>
+      <div id="cotz-list" style="max-height:50vh;overflow:auto;display:flex;flex-direction:column;gap:2px;font-size:13px"></div>
+      <hr style="border:0;border-top:1px solid #1f2a44;margin:10px 0">
+      <a href="#" onclick="openClientsModal();return false;">👥 Clientes</a>
+      <a href="#" onclick="openCompanyModal();return false;">⚙️ Empresa</a>
+      <div class="back">
+        <a href="/" class="back-btn"><span class="arrow">←</span><span>Volver al hub</span></a>
+      </div>
+    </aside>
+
+    <main class="cotz-main">
+      <div class="cotz-card">
+        <div class="cotz-header" id="appHeader">
+          <div class="brand">
+            <img id="brandLogo" src="/Logo Arman Solutions.png" alt="Arman Solutions" onerror="this.style.display='none'">
+            <div>
+              <h1 id="brandTitle">Arman Tech</h1>
+              <p id="brandSubtitle">Cotizador de Proyectos Tecnológicos</p>
+            </div>
+          </div>
+        </div>
+        <!-- Tabs viejos del cotizador (los oculta el CSS, los necesita app.js para detectar el tab activo) -->
+        <div class="tabs" id="tabs" style="display:none">
+          <button class="tab-button active" data-tab="quote-tech">COTIZADOR TECH</button>
+        </div>
+        <div class="content" id="content"></div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Modales que app.js espera -->
+  <div id="companyModal" class="modal"><div class="modal-content"></div></div>
+  <div id="clientsModal"  class="modal"><div class="modal-content"></div></div>
+
+  <!-- Cargamos los estilos inline del index legacy (form del cotizador depende de ellos) -->
+  <script>
+    (async () => {
+      try {
+        const html = await fetch('/travel/').then(r => r.text());
+        const matches = html.match(/<style>([\s\S]*?)<\/style>/g) || [];
+        for (const block of matches) {
+          const css = block.replace(/<\/?style>/g, '');
+          const s = document.createElement('style');
+          s.textContent = css;
+          document.head.appendChild(s);
+        }
+        // Despues de inyectar todo, agregamos OVERRIDES para que la cotz-shell gane.
+        const fix = document.createElement('style');
+        fix.textContent = `
+          body { background: #0d121e !important; padding: 0 !important; }
+          .cotz-shell { display: grid !important; grid-template-columns: 240px 1fr !important; }
+          .cotz-card { background: white !important; border-radius: 14px !important; min-height: calc(100vh - 44px) !important; }
+          .cotz-card .container { max-width: 100% !important; margin: 0 !important; box-shadow: none !important; }
+          .arman-app { display: contents !important; }
+        `;
+        document.head.appendChild(fix);
+      } catch (e) { console.warn('No se pudieron cargar estilos del cotizador legacy', e); }
+    })();
+  </script>
+
+  <script src="/app.js?v=20260420b"></script>
+  <script>
+    // Forzar render del tab tech (no del default 'quote' travel)
+    document.addEventListener('DOMContentLoaded', async () => {
+      if (typeof renderTab === 'function') {
+        appState.currentTab = 'quote-tech';
+        renderTab('quote-tech');
+      }
+      // Cargar lista "Mis cotizaciones"
+      try {
+        const r = await fetch('/api/tech/cotizaciones');
+        if (!r.ok) return;
+        const items = await r.json();
+        const cur = new URLSearchParams(location.search).get('id');
+        const box = document.getElementById('cotz-list');
+        if (!box) return;
+        if (!items.length) { box.innerHTML = '<div style="color:#586a91;padding:6px 12px;font-size:12px">Sin cotizaciones aún</div>'; return; }
+        box.innerHTML = items.slice(0, 50).map(c => {
+          const name = (c.cliente_nombre || (c.cliente_snapshot && c.cliente_snapshot.nombre) || '—').toString().replace(/</g,'&lt;');
+          const total = Number(c.total || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 });
+          const active = String(c.id) === String(cur);
+          return `<a href="/tech/cotizador.html?id=${c.id}" style="padding:8px 12px;border-radius:6px;color:${active?'#fff':'#a6b6d6'};background:${active?'#1c2c52':'transparent'};text-decoration:none;display:block">
+            <div style="font-weight:600;font-size:12px">${c.numero || ('#'+c.id)}</div>
+            <div style="font-size:11px;color:#7d92bd;margin-top:2px">${name}</div>
+            <div style="font-size:11px;color:#7d92bd">${c.moneda||'USD'} ${total} · ${c.estado||'borrador'}</div>
+          </a>`;
+        }).join('');
+      } catch (e) { console.warn('No se pudo cargar lista de cotizaciones', e); }
+    });
+  </script>
+</body>
+</html>

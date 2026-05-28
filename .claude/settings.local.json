@@ -36,7 +36,13 @@
       "Bash(DATABASE_URL=postgresql://arman:arman@localhost:5435/arman_core .venv/Scripts/alembic upgrade head)",
       "Bash(netstat -ano)",
       "Bash(curl -s \"http://localhost:8001/v1/activity-logs?entity_id=cf9ad094-dee5-434a-80aa-3ca4067d083b&entity_type=lead&limit=100\")",
-      "Bash(curl -s \"http://localhost:8001/v1/activity-logs\")"
+      "Bash(curl -s \"http://localhost:8001/v1/activity-logs\")",
+      "Bash(node -c \"C:/Users/sanag/Downloads/arman/Github arman/business-docs/apps/business-docs/src/backend/routes/documents.js\")",
+      "Bash(node -c \"C:/Users/sanag/Downloads/arman/Github arman/business-docs/apps/business-docs/src/backend/utils/documentRenderer.js\")",
+      "Bash(node --check \"C:/Users/sanag/Downloads/arman/Github arman/business-docs/apps/business-docs/src/frontend/app.js\")",
+      "Bash(node -e \"const Handlebars = require\\('C:/Users/sanag/Downloads/arman/Github arman/business-docs/node_modules/handlebars'\\); const fs = require\\('fs'\\); const tpl = fs.readFileSync\\('C:/Users/sanag/Downloads/arman/Github arman/business-docs/apps/business-docs/templates/quote-tech.html','utf8'\\); try { Handlebars.compile\\(tpl\\); console.log\\('Template compiles OK'\\); } catch\\(e\\) { console.error\\('FAIL:', e.message\\); process.exit\\(1\\); }\")",
+      "Bash(node *)",
+      "Bash(git show *)"
     ]
   }
 }

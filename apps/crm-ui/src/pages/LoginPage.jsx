@@ -5,17 +5,22 @@ import { useAuth } from '../AuthContext.jsx';
 export default function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
+    setError('');
+    setLoading(true);
     try {
-      login(username, password);
+      await login(email, password);
       navigate('/contactos');
-    } catch {
-      setError('Usuario o contraseña incorrectos');
+    } catch (ex) {
+      setError(ex.message || 'Credenciales invalidas');
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -28,12 +33,12 @@ export default function LoginPage() {
         </div>
         <form onSubmit={handleSubmit} className="login-form">
           <div className="form-group">
-            <label>Usuario</label>
+            <label>Email</label>
             <input
-              type="text"
-              value={username}
-              onChange={e => setUsername(e.target.value)}
-              placeholder="nacho, agus, santi, gabi"
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              placeholder="usuario@arman.local"
               autoFocus
             />
           </div>
@@ -47,7 +52,7 @@ export default function LoginPage() {
             />
           </div>
           {error && <p className="form-error">{error}</p>}
-          <button type="submit" className="btn btn-primary btn-block">Ingresar</button>
+          <button type="submit" className="btn btn-primary btn-block" disabled={loading}>{loading ? 'Ingresando…' : 'Ingresar'}</button>
         </form>
       </div>
     </div>

@@ -332,8 +332,8 @@ class DocumentRenderer {
     const { type, format = 'pdf', data = {}, assets = {}, landscape = false } = options;
 
     // Validation
-    if (!type || !['invoice', 'receipt', 'quote'].includes(type)) {
-      throw new Error('Invalid document type. Must be: invoice, receipt, quote');
+    if (!type || !['invoice', 'receipt', 'quote', 'quote-tech', 'voucher'].includes(type)) {
+      throw new Error('Invalid document type. Must be: invoice, receipt, quote, quote-tech, voucher');
     }
 
     if (!['pdf', 'word'].includes(format)) {
