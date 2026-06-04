@@ -244,12 +244,16 @@ async function runMigrations() {
         cuerpo: 'Estimados,\n\nNos comunicamos para hacer seguimiento de un tema que quedo pendiente y necesitamos resolver:\n\n- Referencia:\n- Asunto:\n- Detalle:\n\nAgradecemos nos contacten a la brevedad para poder dar una respuesta a nuestro cliente.\n\nQuedamos a la espera,\nEquipo Arman Travel' },
     ];
     for (const t of mailFactory) {
-      await db.query(
-        `INSERT INTO mail_templates (nombre, asunto, cuerpo, categoria, audiencia, is_factory, orden, created_by)
-         SELECT $1, $2, $3, $4, $5, TRUE, $6, 'system'
-         WHERE NOT EXISTS (SELECT 1 FROM mail_templates WHERE nombre = $1 AND is_factory = TRUE)`,
-        [t.nombre, t.asunto, t.cuerpo, t.categoria, t.audiencia, t.orden]
-      );
+      try {
+        await db.query(
+          `INSERT INTO mail_templates (nombre, asunto, cuerpo, categoria, audiencia, is_factory, orden, created_by)
+           SELECT $1::text, $2::text, $3::text, $4::text, $5::text, TRUE, $6::int, 'system'
+           WHERE NOT EXISTS (SELECT 1 FROM mail_templates WHERE nombre = $1::text AND is_factory = TRUE)`,
+          [t.nombre, t.asunto, t.cuerpo, t.categoria, t.audiencia, t.orden]
+        );
+      } catch (e) {
+        console.warn('[migrate] mail_template seed failed for', t.nombre, ':', e.message);
+      }
     }
     console.log('[migrate] mail_templates ready (' + mailFactory.length + ' factory templates seeded)');
 
