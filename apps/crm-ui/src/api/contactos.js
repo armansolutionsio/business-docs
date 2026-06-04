@@ -64,3 +64,28 @@ export const borrarRecibo = (recId, body) => req('POST', `/api/recibos/${recId}/
 export const listCampanias = (id) => req('GET', `${BASE}/${id}/campanias`);
 export const updateCampania = (id, campId, body) => req('PATCH', `${BASE}/${id}/campanias/${campId}`, body);
 export const sendMail = (body) => req('POST', '/api/mail/send', body);
+
+// Documentos adjuntables (cotizaciones, recibos) del contacto
+export const listAttachableDocs = (contactoId) => req('GET', `/api/mail/attachable-docs/${contactoId}`);
+
+// Templates de mail
+export const listMailTemplates = (params = {}) => {
+  const q = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => v !== '' && v != null && q.append(k, v));
+  return req('GET', `/api/mail/templates?${q}`);
+};
+export const getMailTemplate = (id) => req('GET', `/api/mail/templates/${id}`);
+export const createMailTemplate = (body) => req('POST', '/api/mail/templates', body);
+export const updateMailTemplate = (id, body) => req('PATCH', `/api/mail/templates/${id}`, body);
+export const deleteMailTemplate = (id) => req('DELETE', `/api/mail/templates/${id}`);
+
+// Proveedores
+const PROV = '/api/proveedores';
+export const listProveedores = (params = {}) => {
+  const q = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => v !== '' && v != null && q.append(k, v));
+  return req('GET', `${PROV}?${q}`);
+};
+export const getProveedor = (id) => req('GET', `${PROV}/${id}`);
+export const createProveedor = (body) => req('POST', PROV, body);
+export const updateProveedor = (id, body) => req('PATCH', `${PROV}/${id}`, body);

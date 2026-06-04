@@ -82,7 +82,7 @@ export default function CampaniasPage() {
   return (
     <div className="page-container">
       <div className="page-header">
-        <h1 className="page-title">Campañas de Mail</h1>
+        <h1 className="page-title">Mails enviados</h1>
       </div>
 
       {/* Stats */}
@@ -163,7 +163,7 @@ export default function CampaniasPage() {
                     <td>
                       <span
                         style={{ color: 'var(--brand)', cursor: 'pointer', fontWeight: 600 }}
-                        onClick={e => { e.stopPropagation(); navigate(`/contactos/${camp.contacto_id}`); }}
+                        onClick={e => { e.stopPropagation(); navigate(`/clientes/${camp.contacto_id}`); }}
                       >
                         {camp.contacto_nombre || `#${camp.contacto_id}`}
                       </span>

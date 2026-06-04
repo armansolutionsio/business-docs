@@ -15,14 +15,17 @@ export default function Layout() {
       <header className="topbar">
         <div className="topbar-brand">
           <img src={import.meta.env.BASE_URL + 'logo-arman-travel.png'} alt="Arman Travel" className="topbar-logo-img" />
-          <span className="topbar-brand-name">CRM</span>
+          <span className="topbar-brand-name">Arman Travel</span>
         </div>
         <nav className="topbar-nav">
           <NavLink to="/dashboard" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
             Dashboard
           </NavLink>
-          <NavLink to="/contactos" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-            Contactos
+          <NavLink to="/clientes" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+            Clientes
+          </NavLink>
+          <NavLink to="/proveedores" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+            Proveedores
           </NavLink>
           <NavLink to="/pipeline" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
             Pipeline
@@ -31,11 +34,11 @@ export default function Layout() {
             <span style={{ width: 16, height: 16, borderRadius: '50%', background: '#25d366', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: '#fff', fontWeight: 700 }}>W</span>
             WhatsApp
           </NavLink>
-          <NavLink to="/campanias" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-            Campañas
+          <NavLink to="/mails" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+            Mails
           </NavLink>
-          <NavLink to="/proveedores" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-            Proveedores
+          <NavLink to="/templates" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+            Plantillas
           </NavLink>
         </nav>
         <div className="topbar-user">

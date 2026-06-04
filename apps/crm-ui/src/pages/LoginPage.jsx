@@ -16,7 +16,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await login(email, password);
-      navigate('/contactos');
+      navigate('/clientes');
     } catch (ex) {
       setError(ex.message || 'Credenciales invalidas');
     } finally {
