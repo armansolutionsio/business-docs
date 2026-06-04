@@ -282,7 +282,7 @@ export default function WhatsAppLeadsPage() {
             ) : !data.length ? (
               <tr><td colSpan={10} className="empty-msg">Sin leads WhatsApp. Importa tu primer CSV.</td></tr>
             ) : data.map(row => (
-              <tr key={row.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/contactos/${row.id}`)}>
+              <tr key={row.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/clientes/${row.id}`)}>
                 <td>
                   <span style={{
                     background: ESTADO_COLORS[row.estado] || '#64748b', color: '#fff',

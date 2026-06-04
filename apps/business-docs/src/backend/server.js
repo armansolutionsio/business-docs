@@ -93,6 +93,7 @@ const pagosRoutes          = require('./routes/contactos/pagos');
 const proveedoresRoutes    = require('./routes/proveedores');
 const campaniasRoutes      = require('./routes/contactos/campanias');
 const mailRoutes           = require('./routes/mail');
+const mailTemplatesRoutes  = require('./routes/mailTemplates');
 const dashboardRoutes      = require('./routes/dashboard');
 const whatsappSyncRoutes   = require('./routes/whatsappSync');
 const whatsappLeadsRoutes  = require('./routes/whatsappLeads');
@@ -242,6 +243,7 @@ app.get('/api/contactos/:contactoId/recibos', async (req, res, next) => {
     res.json(rows);
   } catch (err) { next(err); }
 });
+app.use('/api/mail/templates', mailTemplatesRoutes);
 app.use('/api/mail', mailRoutes);
 app.use('/api/proveedores', proveedoresRoutes);
 app.use('/api/dashboard', dashboardRoutes);

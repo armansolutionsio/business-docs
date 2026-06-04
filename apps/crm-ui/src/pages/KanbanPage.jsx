@@ -143,7 +143,7 @@ export default function KanbanPage() {
                     key={c.id}
                     draggable
                     onDragStart={e => handleDragStart(e, c.id)}
-                    onClick={() => navigate(`/contactos/${c.id}`)}
+                    onClick={() => navigate(`/clientes/${c.id}`)}
                     style={{
                       background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8,
                       padding: 10, cursor: 'grab', boxShadow: '0 1px 3px rgba(0,0,0,.08)',

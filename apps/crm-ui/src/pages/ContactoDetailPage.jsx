@@ -74,7 +74,7 @@ export default function ContactoDetailPage() {
     <div className="page-container">
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
-        <button className="btn-back" onClick={() => navigate('/contactos')}>
+        <button className="btn-back" onClick={() => navigate('/clientes')}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
           Volver
         </button>

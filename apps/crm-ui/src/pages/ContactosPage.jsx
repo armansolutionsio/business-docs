@@ -293,7 +293,7 @@ export default function ContactosPage() {
   return (
     <div className="page-container">
       <div className="page-header">
-        <h1 className="page-title">Contactos</h1>
+        <h1 className="page-title">Clientes</h1>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {selected.size > 0 && (
             <button className="btn btn-primary" onClick={() => setShowMailModal(true)}>
@@ -442,7 +442,7 @@ export default function ContactosPage() {
                           {ESTADOS.map(e => <option key={e} value={e} style={{ background: '#fff', color: '#333' }}>{ESTADO_LABELS[e]}</option>)}
                         </select>
                       </td>
-                      <td style={{ fontWeight: 600, cursor: 'pointer', color: 'var(--brand)' }} onClick={() => navigate(`/contactos/${row.id}`)}>{row.nombre || row.razon_social || 'Sin nombre'}</td>
+                      <td style={{ fontWeight: 600, cursor: 'pointer', color: 'var(--brand)' }} onClick={() => navigate(`/clientes/${row.id}`)}>{row.nombre || row.razon_social || 'Sin nombre'}</td>
                       <td>{row.telefono}</td>
                       <td style={{ fontSize: 12 }}>{row.email}</td>
                       <td>{row.localidad}</td>

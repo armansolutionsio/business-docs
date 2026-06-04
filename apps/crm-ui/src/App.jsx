@@ -11,6 +11,7 @@ import ProveedoresPage from './pages/ProveedoresPage.jsx';
 import CampaniasPage from './pages/CampaniasPage.jsx';
 import DashboardPage from './pages/DashboardPage.jsx';
 import WhatsAppLeadsPage from './pages/WhatsAppLeadsPage.jsx';
+import TemplatesPage from './pages/TemplatesPage.jsx';
 import Layout from './components/Layout.jsx';
 
 function PrivateRoute({ children }) {
@@ -35,12 +36,17 @@ export default function App() {
           >
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<DashboardPage />} />
-            <Route path="contactos" element={<ContactosPage />} />
+            <Route path="clientes" element={<ContactosPage />} />
+            <Route path="clientes/:id" element={<ContactoDetailPage />} />
+            {/* Compatibilidad: links viejos a /contactos siguen funcionando */}
+            <Route path="contactos" element={<Navigate to="/clientes" replace />} />
             <Route path="contactos/:id" element={<ContactoDetailPage />} />
             <Route path="pipeline" element={<KanbanPage />} />
             <Route path="whatsapp" element={<WhatsAppLeadsPage />} />
-            <Route path="campanias" element={<CampaniasPage />} />
+            <Route path="mails" element={<CampaniasPage />} />
+            <Route path="campanias" element={<Navigate to="/mails" replace />} />
             <Route path="proveedores" element={<ProveedoresPage />} />
+            <Route path="templates" element={<TemplatesPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>

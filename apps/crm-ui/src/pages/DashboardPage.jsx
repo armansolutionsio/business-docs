@@ -100,7 +100,7 @@ export default function DashboardPage() {
 
         {/* Pipeline Status */}
         <div className="dash-panel">
-          <h3 className="dash-panel-title">Contactos por Estado</h3>
+          <h3 className="dash-panel-title">Clientes por Estado</h3>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {stats_por_estado.map(s => (
               <div key={s.estado} style={{
@@ -224,7 +224,7 @@ export default function DashboardPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {recent_leads.map(l => (
               <div key={l.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid #f1f5f9', cursor: 'pointer' }}
-                onClick={() => navigate(`/contactos/${l.id}`)}>
+                onClick={() => navigate(`/clientes/${l.id}`)}>
                 <span style={{ width: 8, height: 8, borderRadius: '50%', background: ESTADO_COLORS[l.estado], flexShrink: 0 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -245,7 +245,7 @@ export default function DashboardPage() {
               const vencida = t.fecha_vencimiento && new Date(t.fecha_vencimiento) < new Date();
               return (
                 <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid #f1f5f9', cursor: 'pointer' }}
-                  onClick={() => navigate(`/contactos/${t.contacto_id}`)}>
+                  onClick={() => navigate(`/clientes/${t.contacto_id}`)}>
                   <span style={{
                     width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
                     background: vencida ? '#ef4444' : t.prioridad === 'alta' || t.prioridad === 'urgente' ? '#f59e0b' : '#3b82f6',
@@ -271,7 +271,7 @@ export default function DashboardPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {oportunidades_abiertas.map(o => (
               <div key={o.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid #f1f5f9', cursor: 'pointer' }}
-                onClick={() => navigate(`/contactos/${o.contacto_id}`)}>
+                onClick={() => navigate(`/clientes/${o.contacto_id}`)}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {o.titulo}
