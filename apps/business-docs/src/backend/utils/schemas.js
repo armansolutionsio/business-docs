@@ -264,6 +264,16 @@ const PAYBRIDGE_EXTRA = `
   ALTER TABLE paybridge.contactos ADD COLUMN IF NOT EXISTS dolarapp_estado VARCHAR(40) DEFAULT 'sin_onboardear';
   ALTER TABLE paybridge.contactos ADD COLUMN IF NOT EXISTS dolarapp_onboarding_at TIMESTAMPTZ;
   ALTER TABLE paybridge.contactos ADD COLUMN IF NOT EXISTS dolarapp_notas TEXT;
+  ALTER TABLE paybridge.contactos ADD COLUMN IF NOT EXISTS dolarapp_cvu             VARCHAR(40);
+  ALTER TABLE paybridge.contactos ADD COLUMN IF NOT EXISTS dolarapp_cbu             VARCHAR(40);
+  ALTER TABLE paybridge.contactos ADD COLUMN IF NOT EXISTS dolarapp_numero_cuenta   VARCHAR(60);
+  ALTER TABLE paybridge.contactos ADD COLUMN IF NOT EXISTS dolarapp_titular         VARCHAR(200);
+  ALTER TABLE paybridge.contactos ADD COLUMN IF NOT EXISTS apellido        VARCHAR(120);
+  ALTER TABLE paybridge.contactos ADD COLUMN IF NOT EXISTS origen          VARCHAR(40);
+  -- Match key normalizada (nombre.apellido lowercase, sin acentos) para hacer upsert
+  -- contra el campo product_names de los reportes Stripe.
+  ALTER TABLE paybridge.contactos ADD COLUMN IF NOT EXISTS product_key     VARCHAR(200);
+  CREATE INDEX IF NOT EXISTS idx_paybridge_contactos_pkey ON paybridge.contactos(product_key);
 
   CREATE TABLE IF NOT EXISTS paybridge.monedas (
     code        VARCHAR(8) PRIMARY KEY,
@@ -322,6 +332,67 @@ const PAYBRIDGE_EXTRA = `
   );
   CREATE INDEX IF NOT EXISTS idx_paybridge_tx_estado ON paybridge.transactions(estado);
   CREATE INDEX IF NOT EXISTS idx_paybridge_tx_link ON paybridge.transactions(payment_link_id);
+
+  -- Campos extra para reportes Stripe importados por CSV/XLSX
+  ALTER TABLE paybridge.transactions ADD COLUMN IF NOT EXISTS source           VARCHAR(40) DEFAULT 'manual';
+  ALTER TABLE paybridge.transactions ADD COLUMN IF NOT EXISTS available_on_at  TIMESTAMPTZ;
+  ALTER TABLE paybridge.transactions ADD COLUMN IF NOT EXISTS country          VARCHAR(80);
+  ALTER TABLE paybridge.transactions ADD COLUMN IF NOT EXISTS product_id_ext   VARCHAR(120);
+  ALTER TABLE paybridge.transactions ADD COLUMN IF NOT EXISTS product_names    VARCHAR(200);
+  ALTER TABLE paybridge.transactions ADD COLUMN IF NOT EXISTS exchange_rate    NUMERIC(18,8);
+  ALTER TABLE paybridge.transactions ADD COLUMN IF NOT EXISTS card_address_line1       VARCHAR(200);
+  ALTER TABLE paybridge.transactions ADD COLUMN IF NOT EXISTS card_address_postal_code VARCHAR(40);
+  ALTER TABLE paybridge.transactions ADD COLUMN IF NOT EXISTS card_address_country     VARCHAR(80);
+  ALTER TABLE paybridge.transactions ADD COLUMN IF NOT EXISTS card_brand       VARCHAR(40);
+  ALTER TABLE paybridge.transactions ADD COLUMN IF NOT EXISTS card_funding     VARCHAR(40);
+  ALTER TABLE paybridge.transactions ADD COLUMN IF NOT EXISTS card_country     VARCHAR(80);
+  ALTER TABLE paybridge.transactions ADD COLUMN IF NOT EXISTS statement_descriptor VARCHAR(200);
+  ALTER TABLE paybridge.transactions ADD COLUMN IF NOT EXISTS payment_intent_id    VARCHAR(120);
+  ALTER TABLE paybridge.transactions ADD COLUMN IF NOT EXISTS raw_row          JSONB;
+  CREATE UNIQUE INDEX IF NOT EXISTS uq_paybridge_tx_external_ref
+    ON paybridge.transactions(external_ref) WHERE external_ref IS NOT NULL;
+  CREATE UNIQUE INDEX IF NOT EXISTS uq_paybridge_tx_payment_intent
+    ON paybridge.transactions(payment_intent_id) WHERE payment_intent_id IS NOT NULL;
+  CREATE INDEX IF NOT EXISTS idx_paybridge_tx_contacto ON paybridge.transactions(contacto_id, completado_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_paybridge_tx_source   ON paybridge.transactions(source);
+
+  -- Campos extra en payment_links para soportar import desde Stripe
+  ALTER TABLE paybridge.payment_links ADD COLUMN IF NOT EXISTS external_id     VARCHAR(120);
+  ALTER TABLE paybridge.payment_links ADD COLUMN IF NOT EXISTS url             TEXT;
+  ALTER TABLE paybridge.payment_links ADD COLUMN IF NOT EXISTS source          VARCHAR(40) DEFAULT 'manual';
+  ALTER TABLE paybridge.payment_links ADD COLUMN IF NOT EXISTS raw_row         JSONB;
+  CREATE UNIQUE INDEX IF NOT EXISTS uq_paybridge_links_external_id
+    ON paybridge.payment_links(external_id) WHERE external_id IS NOT NULL;
+
+  -- Log de imports de archivos Stripe (transactions)
+  CREATE TABLE IF NOT EXISTS paybridge.stripe_imports (
+    id                SERIAL PRIMARY KEY,
+    file_name         VARCHAR(200),
+    rows_total        INTEGER DEFAULT 0,
+    rows_imported     INTEGER DEFAULT 0,
+    rows_duplicated   INTEGER DEFAULT 0,
+    rows_skipped      INTEGER DEFAULT 0,
+    contactos_creados INTEGER DEFAULT 0,
+    period_from       TIMESTAMPTZ,
+    period_to         TIMESTAMPTZ,
+    summary           JSONB,
+    usuario           VARCHAR(120),
+    created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
+
+  -- Log de imports de payment links de Stripe
+  CREATE TABLE IF NOT EXISTS paybridge.stripe_links_imports (
+    id                SERIAL PRIMARY KEY,
+    file_name         VARCHAR(200),
+    rows_total        INTEGER DEFAULT 0,
+    rows_imported     INTEGER DEFAULT 0,
+    rows_updated      INTEGER DEFAULT 0,
+    rows_skipped      INTEGER DEFAULT 0,
+    contactos_creados INTEGER DEFAULT 0,
+    summary           JSONB,
+    usuario           VARCHAR(120),
+    created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
 
   INSERT INTO paybridge.monedas (code, nombre, simbolo, es_cripto) VALUES
     ('ARS', 'Peso Argentino', '$', FALSE),

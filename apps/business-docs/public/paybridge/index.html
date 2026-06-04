@@ -11,11 +11,14 @@
 <body>
 <div class="app">
   <aside class="side">
-    <div class="brand"><small>Arman</small><h1>PayBridge</h1></div>
+    <div class="brand" style="padding:4px 0 14px">
+      <img src="/Logo%20PayBridge.png" alt="PayBridge" style="width:100%;max-width:170px;height:auto;display:block;margin:0 auto 4px"/>
+    </div>
     <a data-tab="dashboard" class="active">Dashboard</a>
     <a data-tab="links">Payment Links</a>
     <a data-tab="transactions">Transacciones</a>
     <a data-tab="contactos">Clientes</a>
+    <a data-tab="stripeImport">Importar Stripe</a>
     <a data-tab="tareas">Tareas</a>
     <a data-tab="notas">Notas</a>
     <a data-tab="fees">Fee rules</a>
@@ -40,46 +43,65 @@ function tag(estado) {
   return `<span class="tag ${m[estado]||''}">${estado||'—'}</span>`;
 }
 
-const state = { editingContacto: null };
+const state = { editingContacto: null, clienteId: null, txCache: [] };
 
 const tabs = {
   async dashboard() {
-    const d = await api('/dashboard');
-    const porMon = (d.por_moneda || []).map(m =>
-      `<tr><td>${m.moneda}</td><td>${m.cantidad}</td><td>${fmt(m.bruto, m.moneda)}</td><td>${fmt(m.fee, m.moneda)}</td></tr>`).join('');
+    const today = new Date().toISOString().slice(0, 10);
+    const monthAgo = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
     return `
       <div class="head"><h2>Dashboard PayBridge</h2></div>
-      <div class="row" style="gap:14px;flex-wrap:wrap">
-        <div class="kpi"><div class="lbl">Links activos</div><div class="val">${d.links_activos}</div></div>
-        <div class="kpi"><div class="lbl">Tx 30 días</div><div class="val">${d.tx_30d}</div></div>
-        <div class="kpi"><div class="lbl">Fees 30 días</div><div class="val">${fmt(d.fees_30d, 'USD')}</div></div>
-        <div class="kpi"><div class="lbl">Clientes</div><div class="val">${d.contactos}</div></div>
+      <div class="card" style="margin-bottom:12px">
+        <div class="row" style="gap:10px;flex-wrap:wrap;align-items:flex-end">
+          <div><label style="font-size:11px;color:#8ea0c2">Desde</label>
+            <input id="db-from" type="date" value="${monthAgo}" onchange="ui.applyDashboardFilter()" max="${today}"/>
+          </div>
+          <div><label style="font-size:11px;color:#8ea0c2">Hasta</label>
+            <input id="db-to" type="date" value="${today}" onchange="ui.applyDashboardFilter()" max="${today}"/>
+          </div>
+          <span id="db-loading" style="color:#7fb1ff;font-size:12px;display:none">cargando…</span>
+        </div>
+        <div class="row" style="gap:6px;flex-wrap:wrap;margin-top:10px">
+          <span style="font-size:11px;color:#8ea0c2;align-self:center;margin-right:4px">Atajos:</span>
+          <button class="btn ghost btn-preset" onclick="ui.setDashboardPreset('today')">Hoy</button>
+          <button class="btn ghost btn-preset" onclick="ui.setDashboardPreset('week')">Esta semana</button>
+          <button class="btn ghost btn-preset" onclick="ui.setDashboardPreset('month')">Este mes</button>
+          <button class="btn ghost btn-preset" onclick="ui.setDashboardPreset('lastMonth')">Mes pasado</button>
+          <button class="btn ghost btn-preset" onclick="ui.setDashboardPreset('30d')">Últimos 30d</button>
+          <button class="btn ghost btn-preset" onclick="ui.setDashboardPreset('90d')">Últimos 90d</button>
+          <button class="btn ghost btn-preset" onclick="ui.setDashboardPreset('ytd')">Año actual</button>
+          <button class="btn ghost btn-preset" onclick="ui.setDashboardPreset('all')">Todo el histórico</button>
+        </div>
       </div>
-      <div class="card" style="margin-top:16px">
-        <h3 style="margin-bottom:10px;font-size:15px">Cobros por moneda (30d)</h3>
-        <table><thead><tr><th>Moneda</th><th>Tx</th><th>Bruto</th><th>Fee</th></tr></thead>
-        <tbody>${porMon || `<tr><td colspan="4" class="empty">Sin transacciones</td></tr>`}</tbody></table>
-      </div>`;
+      <div id="db-body"><div class="card empty">Cargando…</div></div>
+    `;
   },
   async links() {
     const data = await api('/links');
     return `
-      <div class="head"><h2>Payment Links</h2><button class="btn" onclick="ui.newLink()">+ Nuevo link</button></div>
+      <div class="head"><h2>Payment Links</h2><button class="btn" onclick="ui.newLink()">+ Agregar link de Stripe</button></div>
       <div class="card">
-        <table><thead><tr><th>Slug</th><th>Cliente</th><th>Descripción</th><th>Monto</th>
-          <th>Fee</th><th>Neto</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>
-        ${data.map(l => `<tr>
-          <td><code>${l.slug}</code></td>
-          <td>${l.cliente_nombre || '—'}</td>
-          <td>${l.descripcion || '—'}</td>
-          <td>${fmt(l.monto, l.moneda)}</td>
-          <td>${fmt(l.fee_calculado, l.moneda)}</td>
-          <td><b>${fmt(l.monto_neto, l.moneda)}</b></td>
-          <td>${tag(l.estado)}</td>
-          <td>
-            <button class="btn ghost" onclick="navigator.clipboard.writeText(location.origin+'/pay/'+'${l.slug}');alert('URL copiada')">Copiar URL</button>
-            ${l.estado === 'activo' ? `<button class="btn success" onclick="ui.simularPago('${l.slug}')">Simular pago</button>` : ''}
-          </td></tr>`).join('') || `<tr><td colspan="8" class="empty">Sin links</td></tr>`}
+        <table><thead><tr><th>Link</th><th>Cliente</th><th>Descripción</th><th>Monto</th>
+          <th>Estado</th><th>Acciones</th></tr></thead><tbody>
+        ${data.map(l => {
+          const externalUrl = l.url || ('/pay/' + l.slug);
+          return `<tr>
+            <td>
+              ${l.external_id ? `<code style="font-size:11px">${l.external_id}</code>` : `<code>${l.slug}</code>`}
+            </td>
+            <td>${l.contacto_id
+              ? `<a href="javascript:void(0)" onclick="render('cliente', ${l.contacto_id})" style="color:#7fb1ff;text-decoration:none">${(l.cliente_nombre||'').replace(/</g,'&lt;')}</a>`
+              : '<span style="color:#6e82a9">—</span>'}</td>
+            <td>${(l.descripcion || '—').replace(/</g,'&lt;')}</td>
+            <td><b>${fmt(l.monto, l.moneda)}</b></td>
+            <td>${tag(l.estado)}</td>
+            <td style="white-space:nowrap">
+              <button class="btn ghost" onclick="ui.copyLinkUrl('${externalUrl.replace(/'/g,"\\'")}', this)">Copiar</button>
+              <a class="btn ghost" href="${externalUrl}" target="_blank" style="text-decoration:none">Abrir</a>
+              <button class="btn ghost" onclick='ui.editLink(${JSON.stringify(l).replace(/'/g,"&#39;")})'>Editar</button>
+              <button class="btn ghost" style="color:#ff8a8a" onclick="ui.deleteLink(${l.id})">Borrar</button>
+            </td></tr>`;
+        }).join('') || `<tr><td colspan="6" class="empty">Sin links. Generá uno en Stripe y agregalo con el botón de arriba.</td></tr>`}
         </tbody></table>
       </div>`;
   },
@@ -105,18 +127,209 @@ const tabs = {
       <div class="head"><h2>Clientes</h2><button class="btn" onclick="ui.newContacto()">+ Nuevo</button></div>
       <div class="card">
         <p style="color:#8ea0c2;font-size:12px;margin-bottom:10px">Cliente PayBridge: registramos sus datos, link de cobros generados, comisiones efectivas y datos de DolarApp para asesoramiento.</p>
-        <table><thead><tr><th>Nombre</th><th>Email</th><th>DolarApp alias</th><th>Estado DolarApp</th><th>País</th><th>Estado</th><th></th></tr></thead><tbody>
+        <table><thead><tr><th>Nombre</th><th>Email</th><th>DolarApp alias</th><th>País</th><th>Estado</th><th></th></tr></thead><tbody>
         ${data.map(c => `<tr>
-          <td><b>${(c.nombre||'').replace(/</g,'&lt;')}</b>${c.razon_social?'<br><small style="color:#6e82a9">'+(c.razon_social||'').replace(/</g,'&lt;')+'</small>':''}</td>
+          <td>
+            <a href="javascript:void(0)" onclick="render('cliente', ${c.id})" style="color:#7fb1ff;text-decoration:none;font-weight:600">
+              ${(c.nombre||'').replace(/</g,'&lt;')}
+            </a>
+            ${c.razon_social?'<br><small style="color:#6e82a9">'+(c.razon_social||'').replace(/</g,'&lt;')+'</small>':''}
+          </td>
           <td>${c.email||'—'}</td>
           <td>${c.dolarapp_alias||'—'}</td>
-          <td><span class="tag ${c.dolarapp_estado==='onboardeado'?'green':c.dolarapp_estado==='pendiente'?'amber':''}">${c.dolarapp_estado||'sin_onboardear'}</span></td>
           <td>${c.pais||'—'}</td>
           <td>${tag(c.estado)}</td>
-          <td><button class="btn ghost" onclick='ui.editContacto(${JSON.stringify(c).replace(/'/g,"&#39;")})'>Editar</button></td>
-        </tr>`).join('') || `<tr><td colspan="7" class="empty">Sin clientes</td></tr>`}
+          <td>
+            <button class="btn ghost" onclick="render('cliente', ${c.id})">Ver</button>
+            <button class="btn ghost" onclick='ui.editContacto(${JSON.stringify(c).replace(/'/g,"&#39;")})'>Editar</button>
+          </td>
+        </tr>`).join('') || `<tr><td colspan="6" class="empty">Sin clientes</td></tr>`}
         </tbody></table>
       </div>`;
+  },
+
+  async stripeImport() {
+    const [txImports, linkImports] = await Promise.all([
+      api('/stripe-imports').catch(() => []),
+      api('/stripe-links-imports').catch(() => []),
+    ]);
+    return `
+      <div class="head"><h2>Importar reportes Stripe</h2></div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:14px">
+
+        <div class="card">
+          <h3 style="font-size:14px;margin-bottom:8px;color:#cfe1ff">Reporte de transacciones</h3>
+          <p style="color:#8ea0c2;font-size:12px;margin-bottom:12px">
+            CSV/XLSX con los cobros del período. Asigna por <code>product_names</code> (formato <code>nombre.apellido</code>),
+            o por <code>product_ids</code> si no hay nombre. Dedupe por <code>charge_id</code> y <code>payment_intent_id</code>.
+          </p>
+          <input id="si-file" type="file" accept=".csv,.xlsx,.xls" style="margin-bottom:10px"/>
+          <div><button class="btn" onclick="ui.uploadStripe()">Importar transacciones</button>
+            <span id="si-status" style="margin-left:12px;color:#8ea0c2;font-size:12px"></span></div>
+          <div id="si-result" style="margin-top:14px"></div>
+        </div>
+
+        <div class="card">
+          <h3 style="font-size:14px;margin-bottom:8px;color:#cfe1ff">Reporte de Payment Links</h3>
+          <p style="color:#8ea0c2;font-size:12px;margin-bottom:12px">
+            CSV/XLSX con los links de pago de Stripe. Trae <code>id</code>, <code>url</code>, <code>active</code>, <code>amount</code>,
+            <code>currency</code>. Dedupe por <code>id</code> (Stripe). Si la fila trae <code>product_names</code>, se vincula al cliente.
+          </p>
+          <input id="sl-file" type="file" accept=".csv,.xlsx,.xls" style="margin-bottom:10px"/>
+          <div><button class="btn" onclick="ui.uploadStripeLinks()">Importar payment links</button>
+            <span id="sl-status" style="margin-left:12px;color:#8ea0c2;font-size:12px"></span></div>
+          <div id="sl-result" style="margin-top:14px"></div>
+        </div>
+
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <h3 style="font-size:14px;margin-bottom:10px">Imports de transacciones</h3>
+        <table><thead><tr><th>Fecha</th><th>Archivo</th><th>Total</th><th>Importadas</th>
+          <th>Duplicadas</th><th>Skip</th><th>Clientes nuevos</th><th>Período</th><th>Usuario</th></tr></thead>
+        <tbody>${txImports.map(i => `<tr>
+          <td>${fmtDate(i.created_at)}</td>
+          <td>${(i.file_name||'—').replace(/</g,'&lt;')}</td>
+          <td>${i.rows_total}</td>
+          <td><b>${i.rows_imported}</b></td>
+          <td>${i.rows_duplicated}</td>
+          <td>${i.rows_skipped}</td>
+          <td>${i.contactos_creados}</td>
+          <td>${i.period_from?fmtDate(i.period_from).split(',')[0]:'—'} → ${i.period_to?fmtDate(i.period_to).split(',')[0]:'—'}</td>
+          <td>${i.usuario||'—'}</td>
+        </tr>`).join('') || `<tr><td colspan="9" class="empty">Sin imports previos</td></tr>`}
+        </tbody></table>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <h3 style="font-size:14px;margin-bottom:10px">Imports de payment links</h3>
+        <table><thead><tr><th>Fecha</th><th>Archivo</th><th>Total</th><th>Nuevos</th>
+          <th>Actualizados</th><th>Skip</th><th>Clientes nuevos</th><th>Usuario</th></tr></thead>
+        <tbody>${linkImports.map(i => `<tr>
+          <td>${fmtDate(i.created_at)}</td>
+          <td>${(i.file_name||'—').replace(/</g,'&lt;')}</td>
+          <td>${i.rows_total}</td>
+          <td><b>${i.rows_imported}</b></td>
+          <td>${i.rows_updated}</td>
+          <td>${i.rows_skipped}</td>
+          <td>${i.contactos_creados}</td>
+          <td>${i.usuario||'—'}</td>
+        </tr>`).join('') || `<tr><td colspan="8" class="empty">Sin imports previos</td></tr>`}
+        </tbody></table>
+      </div>`;
+  },
+
+  async cliente(id) {
+    state.clienteId = id;
+    let c;
+    try { c = await api('/contactos/' + id); }
+    catch (e) { return `<div class="card"><b style="color:#ff8a8a">Cliente ${id} no encontrado.</b></div>`; }
+
+    const today = new Date().toISOString().slice(0, 10);
+    const monthAgo = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+
+    return `
+      <div class="head" style="align-items:center">
+        <div>
+          <button class="btn ghost" onclick="render('contactos')" style="margin-right:8px">← Volver</button>
+          <h2 style="display:inline-block;margin:0">${(c.nombre||'').replace(/</g,'&lt;')} ${(c.apellido||'').replace(/</g,'&lt;')}</h2>
+          <small style="color:#6e82a9;margin-left:8px">${c.email||''}${c.pais?' · '+c.pais:''}${c.dolarapp_alias?' · ARQ: '+c.dolarapp_alias:''}</small>
+        </div>
+        <div></div>
+      </div>
+
+      <div class="card" style="margin-bottom:12px">
+        <div class="row" style="gap:10px;flex-wrap:wrap;align-items:flex-end">
+          <div><label style="font-size:11px;color:#8ea0c2">Desde</label>
+            <input id="cl-from" type="date" value="${monthAgo}" onchange="ui.applyFilter()" max="${today}"/>
+          </div>
+          <div><label style="font-size:11px;color:#8ea0c2">Hasta</label>
+            <input id="cl-to" type="date" value="${today}" onchange="ui.applyFilter()" max="${today}"/>
+          </div>
+          <button class="btn success" onclick="ui.downloadStatementPdf()">Descargar PDF</button>
+          <button class="btn ghost" onclick="ui.togglePdfOptions()">Personalizar PDF</button>
+          <span id="cl-loading" style="color:#7fb1ff;font-size:12px;display:none">cargando…</span>
+        </div>
+        <div class="row" style="gap:6px;flex-wrap:wrap;margin-top:10px">
+          <span style="font-size:11px;color:#8ea0c2;align-self:center;margin-right:4px">Atajos:</span>
+          <button class="btn ghost btn-preset" onclick="ui.setPreset('today')">Hoy</button>
+          <button class="btn ghost btn-preset" onclick="ui.setPreset('week')">Esta semana</button>
+          <button class="btn ghost btn-preset" onclick="ui.setPreset('month')">Este mes</button>
+          <button class="btn ghost btn-preset" onclick="ui.setPreset('lastMonth')">Mes pasado</button>
+          <button class="btn ghost btn-preset" onclick="ui.setPreset('30d')">Últimos 30d</button>
+          <button class="btn ghost btn-preset" onclick="ui.setPreset('90d')">Últimos 90d</button>
+          <button class="btn ghost btn-preset" onclick="ui.setPreset('ytd')">Año actual</button>
+          <button class="btn ghost btn-preset" onclick="ui.setPreset('all')">Todo el histórico</button>
+        </div>
+
+        <div id="cl-pdf-opts" style="display:none;margin-top:14px;padding:12px 14px;background:#0f2235;border-radius:8px;border:1px solid #1f3358">
+          <div style="font-size:11px;color:#8ea0c2;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">
+            Fee PayBridge
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+            <label style="font-size:12px;color:#cfe1ff;text-transform:none;letter-spacing:0">
+              % a cobrar sobre el subtotal (post Stripe):
+            </label>
+            <input id="cl-fee-pct" type="number" step="0.1" min="0" max="100" placeholder="0"
+              style="width:90px;background:#0f1729;border:1px solid #1f3358;color:#e8eefc;padding:6px 8px;border-radius:6px"
+              value=""/>
+            <span style="font-size:11px;color:#8ea0c2">%</span>
+            <span style="font-size:11px;color:#8ea0c2;margin-left:6px">
+              · Vacío o 0 = sin Fee PayBridge en el PDF
+            </span>
+          </div>
+          <div style="font-size:11px;color:#8ea0c2;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">
+            Links de pago
+          </div>
+          <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px;font-size:12px">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;color:#cfe1ff;text-transform:none;letter-spacing:0">
+              <input type="checkbox" id="pdf-links-activos" style="width:auto;margin:0"/>Incluir links <b style="color:#7fe6b1">activos</b>
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;color:#cfe1ff;text-transform:none;letter-spacing:0">
+              <input type="checkbox" id="pdf-links-inactivos" style="width:auto;margin:0"/>Incluir links <b style="color:#ff8a8a">inactivos</b>
+            </label>
+          </div>
+          <div style="font-size:11px;color:#8ea0c2;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">
+            Agregar al PDF (opcional)
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:6px 14px;font-size:12px">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+              <input type="checkbox" class="pdf-opt" value="avg"/>Promedio bruto (moneda principal)
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+              <input type="checkbox" class="pdf-opt" value="topCurrency"/>Moneda dominante
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+              <input type="checkbox" class="pdf-opt" value="topCountry"/>País dominante
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+              <input type="checkbox" class="pdf-opt" value="peakMonth"/>Mes pico
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+              <input type="checkbox" class="pdf-opt" value="dailyAvg"/>Promedio diario
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+              <input type="checkbox" class="pdf-opt" value="trend"/>Variación vs período previo
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+              <input type="checkbox" class="pdf-opt" value="top3"/>Top 3 cobros del período
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+              <input type="checkbox" class="pdf-opt" value="cardBrand"/>Distribución por marca de tarjeta
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+              <input type="checkbox" class="pdf-opt" value="weekday"/>Cobros por día de la semana
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+              <input type="checkbox" class="pdf-opt" value="avgPerCurrency"/>Promedio y mediana por moneda
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div id="cl-body"><div class="card empty">Cargando…</div></div>
+    `;
   },
   async tareas() {
     const items = await api('/crm/tareas');
@@ -172,42 +385,108 @@ const tabs = {
 };
 
 const ui = {
-  modal(html) {
+  // modal({ title, body, footer }) — UX consistente con head/body/foot
+  modal(opts) {
+    const { title, body, footer } = (typeof opts === 'string') ? { title: '', body: opts, footer: '' } : opts;
     let bg = $('#mb');
     if (!bg) { bg = document.createElement('div'); bg.id='mb'; bg.className='modal-bg'; document.body.appendChild(bg); }
-    bg.innerHTML = `<div class="modal">${html}</div>`;
+    bg.innerHTML = `
+      <div class="modal" role="dialog" aria-modal="true">
+        <div class="modal-head">
+          <h3>${title || ''}</h3>
+          <button class="close" onclick="ui.closeModal()" aria-label="Cerrar">×</button>
+        </div>
+        <div class="modal-body">${body || ''}</div>
+        ${footer ? `<div class="modal-foot">${footer}</div>` : ''}
+      </div>`;
     bg.classList.add('open');
-    bg.onclick = e => { if (e.target===bg) bg.classList.remove('open'); };
+    bg.onclick = e => { if (e.target===bg) ui.closeModal(); };
+    document.addEventListener('keydown', ui._escClose);
   },
-  closeModal() { $('#mb').classList.remove('open'); },
+  _escClose(e) { if (e.key === 'Escape') ui.closeModal(); },
+  closeModal() {
+    $('#mb')?.classList.remove('open');
+    document.removeEventListener('keydown', ui._escClose);
+  },
 
-  async newLink() {
+  // newLink(opts?) — opts.contactoId pre-selecciona el cliente, opts.onSaved callback al guardar.
+  async newLink(opts = {}) {
     const [cs, ms] = await Promise.all([api('/contactos'), api('/monedas')]);
-    this.modal(`<h3>Nuevo link de cobro</h3>
-      <label>Cliente (opcional)</label>
-      <select id="f-cli"><option value="">—</option>${cs.map(c=>`<option value="${c.id}">${c.nombre}</option>`).join('')}</select>
-      <label style="margin-top:8px">Descripción</label><input id="f-desc"/>
-      <div class="grid2" style="margin-top:8px">
-        <div><label>Monto</label><input id="f-monto" type="number" step="0.01"/></div>
-        <div><label>Moneda</label>
-          <select id="f-mon">${ms.map(m=>`<option value="${m.code}">${m.code} — ${m.nombre}</option>`).join('')}</select></div>
-      </div>
-      <div class="row" style="margin-top:10px">
-        <input id="f-multi" type="checkbox" style="width:auto"/>
-        <label for="f-multi" style="margin:0;cursor:pointer">Multi-uso (no se cierra al primer pago)</label>
-      </div>
-      <hr/>
-      <div class="row" style="justify-content:flex-end">
+    const preCli = opts.contactoId || '';
+    this.modal({
+      title: 'Agregar link de pago',
+      body: `
+        <div style="background:#0f2235;border-left:3px solid #7fb1ff;padding:10px 12px;border-radius:6px;margin-bottom:14px;font-size:12px;color:#cfe1ff">
+          Pegá acá el link que generaste en Stripe. Si la URL contiene el id <code>plink_…</code> lo detectamos solo para deduplicar.
+        </div>
+
+        <label>URL del link Stripe</label>
+        <input id="f-url" placeholder="https://buy.stripe.com/..." oninput="ui._autofillExternalId()"/>
+        <label style="margin-top:10px">ID del link en Stripe (opcional)</label>
+        <input id="f-extid" placeholder="plink_xxx (se autocompleta si lo detectamos en la URL)"/>
+
+        <div class="section">
+          <div class="section-title">Datos del cobro</div>
+          <label>Descripción</label>
+          <input id="f-desc" placeholder="Concepto del cobro"/>
+          <div class="grid2" style="margin-top:10px">
+            <div><label>Monto</label><input id="f-monto" type="number" step="0.01" placeholder="0.00"/></div>
+            <div><label>Moneda</label>
+              <select id="f-mon">${ms.map(m=>`<option value="${m.code}" ${m.code==='USD'?'selected':''}>${m.code} — ${m.nombre}</option>`).join('')}</select></div>
+          </div>
+          <div class="grid2" style="margin-top:10px">
+            <div><label>Cliente (opcional)</label>
+              <select id="f-cli">
+                <option value="">—</option>
+                ${cs.map(c=>`<option value="${c.id}" ${String(c.id)===String(preCli)?'selected':''}>${(c.nombre||'').replace(/</g,'&lt;')}</option>`).join('')}
+              </select>
+            </div>
+            <div><label>Estado</label>
+              <select id="f-est">
+                <option value="activo" selected>Activo</option>
+                <option value="inactivo">Inactivo</option>
+              </select>
+            </div>
+          </div>
+          <div class="row" style="margin-top:14px;gap:8px;align-items:center">
+            <input id="f-multi" type="checkbox" style="width:auto;margin:0"/>
+            <label for="f-multi" style="margin:0;cursor:pointer;text-transform:none;letter-spacing:0;color:#cfe1ff;font-size:13px">Multi-uso (acepta más de un pago)</label>
+          </div>
+        </div>`,
+      footer: `
         <button class="btn ghost" onclick="ui.closeModal()">Cancelar</button>
-        <button class="btn" onclick="ui.saveLink()">Crear</button>
-      </div>`);
+        <button class="btn" onclick='ui.saveLink(${JSON.stringify({ contactoIdPrev: preCli, returnTo: opts.returnTo || null })})'>Guardar link</button>`,
+    });
   },
-  async saveLink() {
-    await api('/links', { method:'POST', body: JSON.stringify({
-      contacto_id: $('#f-cli').value || null, descripcion: $('#f-desc').value,
-      monto: $('#f-monto').value, moneda: $('#f-mon').value,
-      multi_uso: $('#f-multi').checked })});
-    this.closeModal(); render('links');
+
+  _autofillExternalId() {
+    const url = $('#f-url')?.value || '';
+    const ext = $('#f-extid');
+    if (!ext || ext.value) return;
+    const m = url.match(/(plink_[a-zA-Z0-9]+|prod_[a-zA-Z0-9]+|cs_[a-zA-Z0-9]+)/);
+    if (m) ext.value = m[1];
+  },
+
+  async saveLink(opts = {}) {
+    const monto = Number($('#f-monto').value || 0);
+    if (!monto) { alert('El monto es obligatorio'); return; }
+    try {
+      await api('/links', { method:'POST', body: JSON.stringify({
+        url: $('#f-url').value || null,
+        external_id: $('#f-extid').value || null,
+        contacto_id: $('#f-cli').value || null,
+        descripcion: $('#f-desc').value,
+        monto, moneda: $('#f-mon').value,
+        estado: $('#f-est').value,
+        multi_uso: $('#f-multi').checked,
+      })});
+      this.closeModal();
+      // Si volvemos al perfil de un cliente, recargá su perfil; si no, la tab de links.
+      if (opts.returnTo === 'cliente' && state.clienteId) render('cliente', state.clienteId);
+      else render('links');
+    } catch (e) {
+      alert(e.message);
+    }
   },
 
   async simularPago(slug) {
@@ -221,46 +500,58 @@ const ui = {
 
   newContacto() {
     state.editingContacto = null;
-    this.modal(this._contactoForm({}));
+    this.modal({
+      title: 'Nuevo cliente',
+      body: this._contactoBody({}),
+      footer: this._contactoFooter(),
+    });
   },
   editContacto(c) {
     state.editingContacto = c.id;
-    this.modal(this._contactoForm(c));
+    this.modal({
+      title: 'Editar cliente: ' + (c.nombre || ''),
+      body: this._contactoBody(c),
+      footer: this._contactoFooter(),
+    });
   },
-  _contactoForm(c) {
+  _contactoFooter() {
+    return `<button class="btn ghost" onclick="ui.closeModal()">Cancelar</button>
+            <button class="btn" onclick="ui.saveContacto()">Guardar</button>`;
+  },
+  _contactoBody(c) {
     const v = (k, def='') => (c[k] ?? def).toString().replace(/"/g,'&quot;');
-    return `<h3>${c.id?'Editar':'Nuevo'} cliente</h3>
-      <label>Nombre</label><input id="f-nom" value="${v('nombre')}"/>
-      <div class="grid2" style="margin-top:8px">
+    return `
+      <label>Nombre *</label><input id="f-nom" value="${v('nombre')}" placeholder="Nombre completo del cliente"/>
+      <div class="grid2" style="margin-top:10px">
         <div><label>Razón social</label><input id="f-rs" value="${v('razon_social')}"/></div>
         <div><label>CUIT</label><input id="f-cuit" value="${v('cuit')}"/></div>
       </div>
-      <div class="grid2" style="margin-top:8px">
+      <div class="grid2" style="margin-top:10px">
         <div><label>Email</label><input id="f-email" type="email" value="${v('email')}"/></div>
         <div><label>Teléfono</label><input id="f-tel" value="${v('telefono')}"/></div>
       </div>
-      <div class="grid2" style="margin-top:8px">
+      <div class="grid2" style="margin-top:10px">
         <div><label>País</label><input id="f-pais" value="${v('pais','Argentina')}"/></div>
         <div><label>Estado</label>
           <select id="f-est">${['activo','inactivo'].map(e=>`<option ${c.estado===e?'selected':''}>${e}</option>`).join('')}</select></div>
       </div>
-      <hr/>
-      <div style="font-size:12px;color:#8ea0c2;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">DolarApp</div>
-      <div class="grid2">
-        <div><label>Alias DolarApp</label><input id="f-da-alias" value="${v('dolarapp_alias')}"/></div>
-        <div><label>Email DolarApp</label><input id="f-da-email" value="${v('dolarapp_email')}"/></div>
-      </div>
-      <div class="grid2" style="margin-top:8px">
-        <div><label>Estado onboarding</label>
-          <select id="f-da-est">${['sin_onboardear','pendiente','onboardeado','rechazado'].map(e=>`<option ${c.dolarapp_estado===e?'selected':''}>${e}</option>`).join('')}</select></div>
-        <div><label>Fecha onboarding</label><input type="date" id="f-da-fecha" value="${c.dolarapp_onboarding_at?(c.dolarapp_onboarding_at).slice(0,10):''}"/></div>
-      </div>
-      <label style="margin-top:8px">Notas DolarApp / asesoramiento</label>
-      <textarea id="f-da-notas" rows="2">${v('dolarapp_notas')}</textarea>
-      <hr/>
-      <div class="row" style="justify-content:flex-end">
-        <button class="btn ghost" onclick="ui.closeModal()">Cancelar</button>
-        <button class="btn" onclick="ui.saveContacto()">Guardar</button>
+
+      <div class="section">
+        <div class="section-title">DolarApp / ARQ</div>
+        <div class="grid2">
+          <div><label>Titular de la cuenta</label><input id="f-da-tit" value="${v('dolarapp_titular')}"/></div>
+          <div><label>Alias</label><input id="f-da-alias" value="${v('dolarapp_alias')}"/></div>
+        </div>
+        <div class="grid2" style="margin-top:10px">
+          <div><label>CVU</label><input id="f-da-cvu" value="${v('dolarapp_cvu')}" placeholder="22 dígitos"/></div>
+          <div><label>CBU</label><input id="f-da-cbu" value="${v('dolarapp_cbu')}" placeholder="22 dígitos"/></div>
+        </div>
+        <div class="grid2" style="margin-top:10px">
+          <div><label>Nº cuenta</label><input id="f-da-num" value="${v('dolarapp_numero_cuenta')}"/></div>
+          <div><label>Email DolarApp</label><input id="f-da-email" value="${v('dolarapp_email')}"/></div>
+        </div>
+        <label style="margin-top:10px">Notas / asesoramiento</label>
+        <textarea id="f-da-notas" rows="2">${v('dolarapp_notas')}</textarea>
       </div>`;
   },
   async saveContacto() {
@@ -268,37 +559,43 @@ const ui = {
       nombre: $('#f-nom').value, razon_social: $('#f-rs').value || null,
       email: $('#f-email').value, telefono: $('#f-tel').value,
       pais: $('#f-pais').value, cuit: $('#f-cuit').value, estado: $('#f-est').value,
+      dolarapp_titular: $('#f-da-tit').value || null,
       dolarapp_alias: $('#f-da-alias').value || null,
+      dolarapp_cvu: $('#f-da-cvu').value || null,
+      dolarapp_cbu: $('#f-da-cbu').value || null,
+      dolarapp_numero_cuenta: $('#f-da-num').value || null,
       dolarapp_email: $('#f-da-email').value || null,
-      dolarapp_estado: $('#f-da-est').value,
-      dolarapp_onboarding_at: $('#f-da-fecha').value || null,
       dolarapp_notas: $('#f-da-notas').value || null,
     };
+    if (!body.nombre || !body.nombre.trim()) { alert('El nombre es obligatorio'); return; }
     try {
       const id = state.editingContacto;
       await api('/contactos' + (id?'/'+id:''), { method: id?'PATCH':'POST', body: JSON.stringify(body) });
-      this.closeModal(); render('contactos');
+      this.closeModal();
+      // Si estábamos en el detalle del cliente, recargar; si no, ir a la lista.
+      if (state.clienteId === id) render('cliente', id);
+      else render('contactos');
     } catch (e) { alert(e.message); }
   },
 
   // ── CRM handlers (tareas / notas) ────────────────────────────
   newTarea() {
     api('/contactos').then(cs => {
-      this.modal(`<h3>Nueva tarea</h3>
-        <label>Título</label><input id="t-titulo"/>
-        <label style="margin-top:8px">Cliente</label>
-        <select id="t-cid"><option value="">—</option>${cs.map(c=>`<option value="${c.id}">${(c.nombre||'').replace(/</g,'&lt;')}</option>`).join('')}</select>
-        <div class="grid2" style="margin-top:8px">
-          <div><label>Prioridad</label><select id="t-prio"><option>baja</option><option selected>normal</option><option>alta</option></select></div>
-          <div><label>Fecha límite</label><input type="date" id="t-fecha"/></div>
-        </div>
-        <label style="margin-top:8px">Asignado a</label><input id="t-asig"/>
-        <label style="margin-top:8px">Descripción</label><textarea id="t-desc" rows="2"></textarea>
-        <hr/>
-        <div class="row" style="justify-content:flex-end">
-          <button class="btn ghost" onclick="ui.closeModal()">Cancelar</button>
-          <button class="btn" onclick="ui.saveTarea()">Crear</button>
-        </div>`);
+      this.modal({
+        title: 'Nueva tarea',
+        body: `
+          <label>Título *</label><input id="t-titulo" placeholder="¿Qué hay que hacer?"/>
+          <label style="margin-top:10px">Cliente</label>
+          <select id="t-cid"><option value="">—</option>${cs.map(c=>`<option value="${c.id}">${(c.nombre||'').replace(/</g,'&lt;')}</option>`).join('')}</select>
+          <div class="grid2" style="margin-top:10px">
+            <div><label>Prioridad</label><select id="t-prio"><option>baja</option><option selected>normal</option><option>alta</option></select></div>
+            <div><label>Fecha límite</label><input type="date" id="t-fecha"/></div>
+          </div>
+          <label style="margin-top:10px">Asignado a</label><input id="t-asig"/>
+          <label style="margin-top:10px">Descripción</label><textarea id="t-desc" rows="3"></textarea>`,
+        footer: `<button class="btn ghost" onclick="ui.closeModal()">Cancelar</button>
+                 <button class="btn" onclick="ui.saveTarea()">Crear tarea</button>`,
+      });
     });
   },
   async saveTarea() {
@@ -339,19 +636,19 @@ const ui = {
 
   async newFee() {
     const ms = await api('/monedas');
-    this.modal(`<h3>Nueva fee rule</h3>
-      <label>Nombre</label><input id="f-nom"/>
-      <div class="grid3" style="margin-top:8px">
-        <div><label>Moneda</label>
-          <select id="f-mon">${ms.map(m=>`<option value="${m.code}">${m.code}</option>`).join('')}</select></div>
-        <div><label>% Fee</label><input id="f-pct" type="number" step="0.1"/></div>
-        <div><label>Fee fijo</label><input id="f-fix" type="number" step="0.01"/></div>
-      </div>
-      <hr/>
-      <div class="row" style="justify-content:flex-end">
-        <button class="btn ghost" onclick="ui.closeModal()">Cancelar</button>
-        <button class="btn" onclick="ui.saveFee()">Crear</button>
-      </div>`);
+    this.modal({
+      title: 'Nueva regla de comisión',
+      body: `
+        <label>Nombre</label><input id="f-nom" placeholder="Ej: Default USD"/>
+        <div class="grid3" style="margin-top:10px">
+          <div><label>Moneda</label>
+            <select id="f-mon">${ms.map(m=>`<option value="${m.code}">${m.code}</option>`).join('')}</select></div>
+          <div><label>% Fee</label><input id="f-pct" type="number" step="0.1" placeholder="2.9"/></div>
+          <div><label>Fee fijo</label><input id="f-fix" type="number" step="0.01" placeholder="0.30"/></div>
+        </div>`,
+      footer: `<button class="btn ghost" onclick="ui.closeModal()">Cancelar</button>
+               <button class="btn" onclick="ui.saveFee()">Crear regla</button>`,
+    });
   },
   async saveFee() {
     await api('/fee-rules', { method:'POST', body: JSON.stringify({
@@ -359,12 +656,669 @@ const ui = {
       fee_pct: $('#f-pct').value, fee_fijo: $('#f-fix').value })});
     this.closeModal(); render('fees');
   },
+
+  // ── Stripe import ───────────────────────────────────────────────
+  async uploadStripe() {
+    const f = $('#si-file').files[0];
+    if (!f) { alert('Elegí un archivo CSV/XLSX'); return; }
+    $('#si-status').textContent = 'Procesando ' + f.name + '…';
+    try {
+      const fileData = await new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(r.result.split(',')[1]);
+        r.onerror = reject;
+        r.readAsDataURL(f);
+      });
+      const r = await api('/stripe-import', { method:'POST',
+        body: JSON.stringify({ fileName: f.name, fileData })});
+      const s = r.stats;
+      $('#si-status').textContent = 'Listo';
+      $('#si-result').innerHTML = `
+        <div class="card" style="background:#0f2235">
+          <h3 style="font-size:14px;margin-bottom:10px">Resumen del import</h3>
+          <div class="row" style="gap:10px;flex-wrap:wrap">
+            <div class="kpi"><div class="lbl">Filas totales</div><div class="val">${s.rows_total}</div></div>
+            <div class="kpi"><div class="lbl">Importadas</div><div class="val">${s.rows_imported}</div></div>
+            <div class="kpi"><div class="lbl">Duplicadas (skip)</div><div class="val">${s.rows_duplicated}</div></div>
+            <div class="kpi"><div class="lbl">Skipped</div><div class="val">${s.rows_skipped}</div></div>
+            <div class="kpi"><div class="lbl">Clientes nuevos</div><div class="val">${s.contactos_creados}</div></div>
+            <div class="kpi"><div class="lbl">Clientes actualizados</div><div class="val">${s.contactos_actualizados}</div></div>
+          </div>
+          ${s.sin_product_name ? `<p style="color:#f59e0b;font-size:12px;margin-top:10px">${s.sin_product_name} filas sin <code>product_names</code>: las que tenían <code>product_ids</code> se asignaron a un cliente provisorio "Link &lt;id&gt;", las demás fueron salteadas.</p>` : ''}
+          ${s.errors?.length ? `<p style="color:#ff8a8a;font-size:12px;margin-top:8px">Primeros errores: ${s.errors.slice(0,3).join(' | ')}</p>` : ''}
+        </div>`;
+      // Refrescar lista de imports
+      setTimeout(() => render('stripeImport'), 800);
+    } catch (e) {
+      $('#si-status').textContent = '';
+      alert('Error: ' + e.message);
+    }
+  },
+
+  async uploadStripeLinks() {
+    const f = $('#sl-file').files[0];
+    if (!f) { alert('Elegí un archivo CSV/XLSX'); return; }
+    $('#sl-status').textContent = 'Procesando ' + f.name + '…';
+    try {
+      const fileData = await new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(r.result.split(',')[1]);
+        r.onerror = reject;
+        r.readAsDataURL(f);
+      });
+      const r = await api('/stripe-links-import', { method:'POST',
+        body: JSON.stringify({ fileName: f.name, fileData })});
+      const s = r.stats;
+      $('#sl-status').textContent = 'Listo';
+      $('#sl-result').innerHTML = `
+        <div class="card" style="background:#0f2235">
+          <h3 style="font-size:14px;margin-bottom:10px">Resumen del import</h3>
+          <div class="row" style="gap:10px;flex-wrap:wrap">
+            <div class="kpi"><div class="lbl">Filas totales</div><div class="val">${s.rows_total}</div></div>
+            <div class="kpi"><div class="lbl">Nuevos</div><div class="val">${s.rows_imported}</div></div>
+            <div class="kpi"><div class="lbl">Duplicados</div><div class="val">${s.rows_duplicated || 0}</div></div>
+            <div class="kpi"><div class="lbl">Skipped</div><div class="val">${s.rows_skipped}</div></div>
+            <div class="kpi"><div class="lbl">Clientes nuevos</div><div class="val">${s.contactos_creados}</div></div>
+          </div>
+          ${s.sin_id ? `<p style="color:#f59e0b;font-size:12px;margin-top:10px">${s.sin_id} filas sin <code>id</code> de Stripe fueron salteadas.</p>` : ''}
+          ${s.errors?.length ? `<p style="color:#ff8a8a;font-size:12px;margin-top:8px">Primeros errores: ${s.errors.slice(0,3).join(' | ')}</p>` : ''}
+        </div>`;
+      // Popup con detalle de duplicados (si hubo)
+      if (s.duplicates && s.duplicates.length) {
+        ui.showDuplicatesModal(s.duplicates);
+      }
+      setTimeout(() => render('stripeImport'), 1200);
+    } catch (e) {
+      $('#sl-status').textContent = '';
+      alert('Error: ' + e.message);
+    }
+  },
+
+  showDuplicatesModal(duplicates) {
+    const rows = duplicates.map(d => `<tr>
+      <td><code style="font-size:11px">${(d.external_id||'').replace(/</g,'&lt;')}</code></td>
+      <td>${(d.name || d.existing_descripcion || '—').replace(/</g,'&lt;')}</td>
+      <td>${d.existing_monto ? fmt(d.existing_monto, d.existing_moneda) : '—'}</td>
+      <td>${d.existing_estado === 'activo'
+          ? '<span class="tag green">activo</span>'
+          : `<span class="tag red">${d.existing_estado || '—'}</span>`}</td>
+      <td><button class="btn ghost" onclick="ui.closeModal();ui.editLink({id:${d.existing_id},external_id:'${d.external_id}',descripcion:${JSON.stringify(d.existing_descripcion||'')},monto:${d.existing_monto||0},moneda:'${d.existing_moneda||'USD'}',estado:'${d.existing_estado||'activo'}',url:'${d.url||''}'})">Ver / editar</button></td>
+    </tr>`).join('');
+    this.modal({
+      title: `${duplicates.length} link${duplicates.length===1?'':'s'} ya existente${duplicates.length===1?'':'s'}`,
+      body: `
+        <p style="font-size:12px;color:#cfe1ff;margin-bottom:12px">
+          Los siguientes links del archivo ya estaban cargados (mismo <code>id</code> de Stripe).
+          No se modificaron. Si querés actualizarlos, hacelo manualmente.
+        </p>
+        <div style="max-height:50vh;overflow:auto;border:1px solid #1f2a44;border-radius:8px">
+          <table style="margin:0">
+            <thead><tr><th>ID Stripe</th><th>Nombre</th><th>Monto guardado</th><th>Estado</th><th></th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>`,
+      footer: `<button class="btn" onclick="ui.closeModal()">Entendido</button>`,
+    });
+  },
+
+  // ── Cliente detalle ─────────────────────────────────────────────
+  _filterQs() {
+    const from = $('#cl-from')?.value || '';
+    const to = $('#cl-to')?.value || '';
+    const parts = [];
+    if (from) parts.push('from=' + encodeURIComponent(from));
+    if (to)   parts.push('to=' + encodeURIComponent(to + 'T23:59:59'));
+    return parts.length ? '?' + parts.join('&') : '';
+  },
+
+  applyFilter() {
+    if (state.clienteId) ui.loadClienteStats(state.clienteId);
+  },
+
+  setPreset(kind) {
+    const from = $('#cl-from'), to = $('#cl-to');
+    if (!from || !to) return;
+    const now = new Date();
+    const fmt = d => d.toISOString().slice(0, 10);
+    const today = fmt(now);
+    if (kind === 'all') {
+      from.value = '';
+      to.value = '';
+    } else if (kind === 'today') {
+      from.value = today; to.value = today;
+    } else if (kind === 'week') {
+      const dow = (now.getDay() + 6) % 7; // lun=0
+      const wkStart = new Date(now); wkStart.setDate(now.getDate() - dow);
+      from.value = fmt(wkStart); to.value = today;
+    } else if (kind === 'month') {
+      from.value = fmt(new Date(now.getFullYear(), now.getMonth(), 1));
+      to.value = today;
+    } else if (kind === 'lastMonth') {
+      from.value = fmt(new Date(now.getFullYear(), now.getMonth() - 1, 1));
+      to.value = fmt(new Date(now.getFullYear(), now.getMonth(), 0));
+    } else if (kind === '30d') {
+      from.value = fmt(new Date(Date.now() - 30 * 86400000)); to.value = today;
+    } else if (kind === '90d') {
+      from.value = fmt(new Date(Date.now() - 90 * 86400000)); to.value = today;
+    } else if (kind === 'ytd') {
+      from.value = fmt(new Date(now.getFullYear(), 0, 1)); to.value = today;
+    }
+    ui.applyFilter();
+  },
+
+  async loadClienteStats(id) {
+    state.clienteId = id;
+    const qs = ui._filterQs();
+    const loading = $('#cl-loading');
+    if (loading) loading.style.display = 'inline';
+    try {
+      const [stats, txs, links] = await Promise.all([
+        api('/contactos/' + id + '/stats' + qs),
+        api('/contactos/' + id + '/transactions' + qs),
+        api('/contactos/' + id + '/links'),  // links no se filtran por fecha
+      ]);
+      state.txCache = txs;
+      $('#cl-body').innerHTML = ui.renderClienteBody(stats, txs, links);
+    } catch (e) {
+      $('#cl-body').innerHTML = `<div class="card"><b style="color:#ff8a8a">Error:</b> ${e.message}</div>`;
+    } finally {
+      if (loading) loading.style.display = 'none';
+    }
+  },
+
+  // ── Dashboard interactivo ───────────────────────────────────────
+  _dashboardQs() {
+    const from = $('#db-from')?.value || '';
+    const to = $('#db-to')?.value || '';
+    const parts = [];
+    if (from) parts.push('from=' + encodeURIComponent(from));
+    if (to)   parts.push('to=' + encodeURIComponent(to + 'T23:59:59'));
+    return parts.length ? '?' + parts.join('&') : '';
+  },
+
+  applyDashboardFilter() {
+    ui.loadDashboard();
+  },
+
+  setDashboardPreset(kind) {
+    const from = $('#db-from'), to = $('#db-to');
+    if (!from || !to) return;
+    const now = new Date();
+    const fmtD = d => d.toISOString().slice(0, 10);
+    const today = fmtD(now);
+    if (kind === 'all') { from.value = ''; to.value = ''; }
+    else if (kind === 'today') { from.value = today; to.value = today; }
+    else if (kind === 'week') {
+      const dow = (now.getDay() + 6) % 7;
+      const wkStart = new Date(now); wkStart.setDate(now.getDate() - dow);
+      from.value = fmtD(wkStart); to.value = today;
+    }
+    else if (kind === 'month') {
+      from.value = fmtD(new Date(now.getFullYear(), now.getMonth(), 1));
+      to.value = today;
+    }
+    else if (kind === 'lastMonth') {
+      from.value = fmtD(new Date(now.getFullYear(), now.getMonth() - 1, 1));
+      to.value = fmtD(new Date(now.getFullYear(), now.getMonth(), 0));
+    }
+    else if (kind === '30d') { from.value = fmtD(new Date(Date.now() - 30 * 86400000)); to.value = today; }
+    else if (kind === '90d') { from.value = fmtD(new Date(Date.now() - 90 * 86400000)); to.value = today; }
+    else if (kind === 'ytd') { from.value = fmtD(new Date(now.getFullYear(), 0, 1)); to.value = today; }
+    ui.applyDashboardFilter();
+  },
+
+  async loadDashboard() {
+    const loading = $('#db-loading');
+    if (loading) loading.style.display = 'inline';
+    try {
+      const d = await api('/dashboard' + ui._dashboardQs());
+      $('#db-body').innerHTML = ui.renderDashboardBody(d);
+    } catch (e) {
+      $('#db-body').innerHTML = `<div class="card"><b style="color:#ff8a8a">Error:</b> ${e.message}</div>`;
+    } finally {
+      if (loading) loading.style.display = 'none';
+    }
+  },
+
+  renderDashboardBody(d) {
+    const t = d.totales || { tx_count: 0, clientes_activos: 0, monedas_count: 0 };
+    const porMon = d.por_moneda || [];
+    const porMes = d.por_mes || [];
+    const topCli = d.top_clientes || [];
+    const topPais = d.top_paises || [];
+
+    const kpisByCurrency = porMon.map(m => {
+      const feePct = Number(m.bruto) > 0 ? (Number(m.fee) / Number(m.bruto) * 100).toFixed(2) : '0.00';
+      return `
+      <div class="card" style="flex:1;min-width:220px">
+        <div style="font-size:11px;color:#8ea0c2;letter-spacing:1px">${m.moneda}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+          <div><div class="lbl" style="font-size:10px;color:#6e82a9">Bruto</div><b>${fmt(m.bruto, m.moneda)}</b></div>
+          <div><div class="lbl" style="font-size:10px;color:#6e82a9">Fee Stripe</div><b style="color:#f59e0b">${fmt(m.fee, m.moneda)}</b></div>
+          <div><div class="lbl" style="font-size:10px;color:#6e82a9">% Fee efectivo</div><b style="color:#f59e0b">${feePct}%</b></div>
+          <div><div class="lbl" style="font-size:10px;color:#6e82a9">Subtotal</div><b style="color:#7fe6b1">${fmt(m.neto, m.moneda)}</b></div>
+          <div><div class="lbl" style="font-size:10px;color:#6e82a9">Promedio</div><b>${fmt(m.promedio, m.moneda)}</b></div>
+          <div><div class="lbl" style="font-size:10px;color:#6e82a9">Cobros</div><b>${m.cantidad}</b></div>
+        </div>
+      </div>`;
+    }).join('') || '<div class="card empty" style="flex:1">Sin cobros en el período</div>';
+
+    const monedasUnicas = [...new Set(porMes.map(r => r.moneda))];
+    const chartsHtml = monedasUnicas.map(mon => {
+      const serie = porMes.filter(r => r.moneda === mon);
+      return ui.renderBarChart(serie, mon);
+    }).join('') || '';
+
+    const topCliRows = topCli.map((c, i) => `
+      <tr>
+        <td><span style="color:#6e82a9;font-size:11px">#${i + 1}</span></td>
+        <td><a href="javascript:void(0)" onclick="render('cliente', ${c.id})" style="color:#7fb1ff;text-decoration:none">${(c.nombre||'').replace(/</g,'&lt;')}</a></td>
+        <td style="font-size:11px;color:#8ea0c2">${c.email || '—'}</td>
+        <td>${c.moneda}</td>
+        <td>${c.cantidad}</td>
+        <td><b>${fmt(c.bruto, c.moneda)}</b></td>
+      </tr>`).join('');
+
+    const topPaisRows = topPais.map(p => `
+      <tr><td>${p.pais}</td><td>${p.moneda}</td><td>${p.cantidad}</td><td>${fmt(p.bruto, p.moneda)}</td></tr>
+    `).join('');
+
+    return `
+      <div class="row" style="gap:14px;flex-wrap:wrap;margin-bottom:12px">
+        <div class="kpi"><div class="lbl">Transacciones</div><div class="val">${t.tx_count}</div></div>
+        <div class="kpi"><div class="lbl">Clientes con cobros</div><div class="val">${t.clientes_activos}</div></div>
+        <div class="kpi"><div class="lbl">Monedas</div><div class="val">${t.monedas_count}</div></div>
+        <div class="kpi"><div class="lbl">Links activos (total)</div><div class="val">${d.links_activos}</div></div>
+        <div class="kpi"><div class="lbl">Clientes (total)</div><div class="val">${d.contactos_total}</div></div>
+      </div>
+
+      <h3 style="font-size:14px;margin:14px 0 8px;color:#cfe1ff">Cobros por moneda</h3>
+      <div class="row" style="gap:10px;flex-wrap:wrap">${kpisByCurrency}</div>
+
+      ${chartsHtml ? `<h3 style="font-size:14px;margin:18px 0 8px;color:#cfe1ff">Evolución mensual</h3>${chartsHtml}` : ''}
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:14px;margin-top:18px">
+        <div>
+          <h3 style="font-size:14px;margin:0 0 8px;color:#cfe1ff">Top 10 clientes del período</h3>
+          <div class="card">
+            <table><thead><tr><th>#</th><th>Cliente</th><th>Email</th><th>Mon.</th><th>Tx</th><th>Bruto</th></tr></thead>
+            <tbody>${topCliRows || `<tr><td colspan="6" class="empty">Sin cobros</td></tr>`}</tbody></table>
+          </div>
+        </div>
+        <div>
+          <h3 style="font-size:14px;margin:0 0 8px;color:#cfe1ff">Top países pagadores</h3>
+          <div class="card">
+            <table><thead><tr><th>País</th><th>Mon.</th><th>Tx</th><th>Bruto</th></tr></thead>
+            <tbody>${topPaisRows || `<tr><td colspan="4" class="empty">Sin datos</td></tr>`}</tbody></table>
+          </div>
+        </div>
+      </div>
+    `;
+  },
+
+  copyLink(slug) {
+    ui.copyLinkUrl(location.origin + '/pay/' + slug);
+  },
+  copyLinkUrl(url, btn) {
+    const target = btn || event?.target;
+    navigator.clipboard.writeText(url).then(() => {
+      if (target) {
+        const orig = target.textContent;
+        target.textContent = 'Copiado';
+        setTimeout(() => { target.textContent = orig; }, 1500);
+      }
+    }).catch(() => alert('URL: ' + url));
+  },
+
+  async editLink(l) {
+    const [cs, ms] = await Promise.all([api('/contactos'), api('/monedas')]);
+    state.editingLinkId = l.id;
+    this.modal({
+      title: 'Editar link de pago',
+      body: `
+        <label>URL del link Stripe</label>
+        <input id="f-url" value="${(l.url||'').replace(/"/g,'&quot;')}"/>
+        <label style="margin-top:10px">ID Stripe (plink_…)</label>
+        <input id="f-extid" value="${(l.external_id||'').replace(/"/g,'&quot;')}"/>
+
+        <div class="section">
+          <div class="section-title">Datos del cobro</div>
+          <label>Descripción</label>
+          <input id="f-desc" value="${(l.descripcion||'').replace(/"/g,'&quot;')}"/>
+          <div class="grid2" style="margin-top:10px">
+            <div><label>Monto</label><input id="f-monto" type="number" step="0.01" value="${l.monto||0}"/></div>
+            <div><label>Moneda</label>
+              <select id="f-mon">${ms.map(m=>`<option value="${m.code}" ${m.code===l.moneda?'selected':''}>${m.code} — ${m.nombre}</option>`).join('')}</select></div>
+          </div>
+          <div class="grid2" style="margin-top:10px">
+            <div><label>Cliente</label>
+              <select id="f-cli">
+                <option value="">—</option>
+                ${cs.map(c=>`<option value="${c.id}" ${String(c.id)===String(l.contacto_id)?'selected':''}>${(c.nombre||'').replace(/</g,'&lt;')}</option>`).join('')}
+              </select>
+            </div>
+            <div><label>Estado</label>
+              <select id="f-est">
+                <option value="activo" ${l.estado==='activo'?'selected':''}>Activo</option>
+                <option value="inactivo" ${l.estado!=='activo'?'selected':''}>Inactivo</option>
+              </select>
+            </div>
+          </div>
+          <div class="row" style="margin-top:14px;gap:8px;align-items:center">
+            <input id="f-multi" type="checkbox" style="width:auto;margin:0" ${l.multi_uso?'checked':''}/>
+            <label for="f-multi" style="margin:0;cursor:pointer;text-transform:none;letter-spacing:0;color:#cfe1ff;font-size:13px">Multi-uso</label>
+          </div>
+        </div>`,
+      footer: `
+        <button class="btn ghost" onclick="ui.closeModal()">Cancelar</button>
+        <button class="btn" onclick="ui.saveLinkEdit()">Guardar cambios</button>`,
+    });
+  },
+
+  async saveLinkEdit() {
+    const id = state.editingLinkId;
+    if (!id) return;
+    try {
+      await api('/links/' + id, { method:'PATCH', body: JSON.stringify({
+        url: $('#f-url').value || null,
+        external_id: $('#f-extid').value || null,
+        contacto_id: $('#f-cli').value || null,
+        descripcion: $('#f-desc').value,
+        monto: Number($('#f-monto').value || 0),
+        moneda: $('#f-mon').value,
+        estado: $('#f-est').value,
+        multi_uso: $('#f-multi').checked,
+      })});
+      this.closeModal();
+      state.editingLinkId = null;
+      if (state.clienteId) render('cliente', state.clienteId);
+      else render('links');
+    } catch (e) { alert(e.message); }
+  },
+
+  async deleteLink(id) {
+    if (!confirm('¿Borrar este link de pago? Las transacciones asociadas no se borran.')) return;
+    try {
+      await api('/links/' + id, { method:'DELETE' });
+      if (state.clienteId) render('cliente', state.clienteId);
+      else render('links');
+    } catch (e) { alert(e.message); }
+  },
+
+  togglePdfOptions() {
+    const box = $('#cl-pdf-opts');
+    if (!box) return;
+    box.style.display = box.style.display === 'none' ? 'block' : 'none';
+  },
+
+  _pdfIncludeQs() {
+    const checked = [...document.querySelectorAll('.pdf-opt:checked')].map(c => c.value);
+    return checked.length ? 'include=' + encodeURIComponent(checked.join(',')) : '';
+  },
+
+  async downloadStatementPdf() {
+    const id = state.clienteId;
+    if (!id) { alert('Cliente no cargado'); return; }
+    const filterQs = ui._filterQs();
+    const includeQs = ui._pdfIncludeQs();
+    const feePctRaw = $('#cl-fee-pct')?.value;
+    const linksFlags = [];
+    if ($('#pdf-links-activos')?.checked) linksFlags.push('activos');
+    if ($('#pdf-links-inactivos')?.checked) linksFlags.push('inactivos');
+    let qs = filterQs;
+    const extra = [];
+    if (includeQs) extra.push(includeQs);
+    // Si el campo tiene cualquier valor (incluido "0") → incluir la línea Fee PayBridge en el PDF.
+    if (feePctRaw !== '' && feePctRaw != null) extra.push('fee_pct=' + Number(feePctRaw));
+    if (linksFlags.length) extra.push('links=' + linksFlags.join(','));
+    if (extra.length) qs = qs ? qs + '&' + extra.join('&') : '?' + extra.join('&');
+    const url = '/api/paybridge/contactos/' + id + '/statement.pdf' + qs;
+    const status = $('#cl-loading');
+    if (status) { status.textContent = 'generando PDF…'; status.style.display = 'inline'; }
+    try {
+      const r = await fetch(url);  // wrapper inyecta Authorization
+      if (!r.ok) {
+        const txt = await r.text().catch(() => '');
+        throw new Error(`HTTP ${r.status}: ${txt.slice(0, 200)}`);
+      }
+      const blob = await r.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      // Disparar descarga + abrir en pestaña nueva
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = `estado-cuenta-${id}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.open(blobUrl, '_blank');
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+    } catch (e) {
+      alert('Error generando PDF: ' + e.message);
+    } finally {
+      if (status) { status.textContent = 'cargando…'; status.style.display = 'none'; }
+    }
+  },
+
+  filterTxTable() {
+    const filters = [...document.querySelectorAll('.tx-col-filter')]
+      .map(i => ({ idx: Number(i.dataset.col), q: i.value.toLowerCase().trim() }))
+      .filter(f => f.q);
+    const rows = document.querySelectorAll('#tx-tbody tr[data-row="1"]');
+    let visible = 0;
+    rows.forEach(tr => {
+      const cells = tr.querySelectorAll('td');
+      const show = filters.every(f => {
+        const cell = cells[f.idx];
+        return cell && cell.textContent.toLowerCase().includes(f.q);
+      });
+      tr.style.display = show ? '' : 'none';
+      if (show) visible++;
+    });
+    const counter = $('#tx-count');
+    if (counter) counter.textContent = `${visible} de ${rows.length}`;
+  },
+
+  clearTxFilters() {
+    document.querySelectorAll('.tx-col-filter').forEach(i => i.value = '');
+    ui.filterTxTable();
+  },
+
+  renderClienteBody(stats, txs, links = []) {
+    const t = stats.totales || { cantidad: 0 };
+    const porMon = (stats.por_moneda || []);
+    const porMes = (stats.por_mes || []);
+    const porPais = (stats.por_pais || []);
+
+    const kpiByCurrency = porMon.map(m => {
+      const feePct = Number(m.bruto) > 0 ? (Number(m.fee) / Number(m.bruto) * 100).toFixed(2) : '0.00';
+      return `
+      <div class="card" style="flex:1;min-width:220px">
+        <div style="font-size:11px;color:#8ea0c2;letter-spacing:1px">${m.moneda}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+          <div><div class="lbl" style="font-size:10px;color:#6e82a9">Bruto</div><b>${fmt(m.bruto, m.moneda)}</b></div>
+          <div><div class="lbl" style="font-size:10px;color:#6e82a9">Fee Stripe</div><b style="color:#f59e0b">${fmt(m.fee, m.moneda)}</b></div>
+          <div><div class="lbl" style="font-size:10px;color:#6e82a9">% Fee efectivo</div><b style="color:#f59e0b">${feePct}%</b></div>
+          <div><div class="lbl" style="font-size:10px;color:#6e82a9">Subtotal</div><b style="color:#7fe6b1">${fmt(m.neto, m.moneda)}</b></div>
+          <div><div class="lbl" style="font-size:10px;color:#6e82a9">Promedio</div><b>${fmt(m.promedio, m.moneda)}</b></div>
+          <div><div class="lbl" style="font-size:10px;color:#6e82a9">Cobros</div><b>${m.cantidad}</b></div>
+        </div>
+      </div>`;
+    }).join('') || '<div class="card empty" style="flex:1">Sin movimientos en el período</div>';
+
+    // Agrupar por_mes por moneda para serie de gráficos
+    const monedasUnicas = [...new Set(porMes.map(r => r.moneda))];
+    const chartsHtml = monedasUnicas.map(mon => {
+      const serie = porMes.filter(r => r.moneda === mon);
+      return ui.renderBarChart(serie, mon);
+    }).join('') || '<div class="card empty">Sin datos para graficar</div>';
+
+    const txRows = txs.map(t => {
+      const feePct = Number(t.monto_bruto) > 0
+        ? (Number(t.fee) / Number(t.monto_bruto) * 100).toFixed(2)
+        : '0.00';
+      return `<tr data-row="1">
+        <td>${fmtDate(t.completado_at || t.created_at)}</td>
+        <td>${fmtDate(t.available_on_at)}</td>
+        <td>${t.moneda}</td>
+        <td><b>${fmt(t.monto_bruto, t.moneda)}</b></td>
+        <td style="color:#f59e0b">${fmt(t.fee, t.moneda)}</td>
+        <td style="color:#f59e0b">${feePct}%</td>
+        <td style="color:#7fe6b1"><b>${fmt(t.monto_neto, t.moneda)}</b></td>
+        <td>${t.card_address_country || t.country || '—'}</td>
+        <td>${t.card_brand || '—'}</td>
+        <td><code style="font-size:10px">${t.product_id_ext || '—'}</code></td>
+        <td><code style="font-size:10px">${t.external_ref || '—'}</code></td>
+      </tr>`;
+    }).join('');
+
+    const filterInputs = [
+      'Fecha','Disp.','Moneda','Bruto','Fee','% Fee','Neto','País','Tarjeta','Link','Charge'
+    ].map((_, idx) =>
+      `<th><input class="tx-col-filter" data-col="${idx}" oninput="ui.filterTxTable()" placeholder="filtrar…" style="width:100%;padding:4px 6px;font-size:11px;background:#0f2235;border:1px solid #1f3358;border-radius:4px;color:#cfe1ff"/></th>`
+    ).join('');
+
+    return `
+      <div class="card" style="margin-bottom:12px">
+        <h3 style="font-size:14px;margin-bottom:10px">Resumen</h3>
+        <div class="row" style="gap:10px;flex-wrap:wrap">
+          <div class="kpi"><div class="lbl">Transacciones</div><div class="val">${t.cantidad}</div></div>
+          <div class="kpi"><div class="lbl">Monedas</div><div class="val">${t.monedas_count||0}</div></div>
+          <div class="kpi"><div class="lbl">Países</div><div class="val">${t.paises_count||0}</div></div>
+        </div>
+      </div>
+
+      <h3 style="font-size:14px;margin:14px 0 8px;color:#cfe1ff">Por moneda</h3>
+      <div class="row" style="gap:10px;flex-wrap:wrap">${kpiByCurrency}</div>
+
+      <h3 style="font-size:14px;margin:18px 0 8px;color:#cfe1ff">Evolución mensual</h3>
+      ${chartsHtml}
+
+      ${porPais.length ? `
+        <h3 style="font-size:14px;margin:18px 0 8px;color:#cfe1ff">Top países</h3>
+        <div class="card">
+          <table><thead><tr><th>País</th><th>Moneda</th><th>Cant.</th><th>Bruto</th></tr></thead><tbody>
+          ${porPais.map(p => `<tr><td>${p.pais}</td><td>${p.moneda}</td><td>${p.cantidad}</td><td>${fmt(p.bruto, p.moneda)}</td></tr>`).join('')}
+          </tbody></table>
+        </div>` : ''}
+
+      <div style="display:flex;justify-content:space-between;align-items:center;margin:18px 0 8px">
+        <h3 style="font-size:14px;color:#cfe1ff;margin:0">
+          Links de pago <span style="color:#6e82a9;font-weight:400;font-size:12px">(${links.length})</span>
+        </h3>
+        <button class="btn" onclick="ui.newLink({ contactoId: state.clienteId, returnTo: 'cliente' })">
+          + Agregar link
+        </button>
+      </div>
+      <div class="card">
+        ${links.length ? `
+          <table>
+            <thead><tr><th>Link</th><th>Descripción</th><th>Monto</th><th>Estado</th>
+              <th>Cobros</th><th>Bruto acumulado</th><th>Creado</th><th></th></tr></thead>
+            <tbody>
+            ${links.map((l, idx) => {
+              const externalUrl = l.url ? l.url : '/pay/' + l.slug;
+              return `<tr>
+                <td><b>Link ${idx + 1}</b>${l.external_id ? `<br><code style="font-size:10px;color:#6e82a9">${l.external_id}</code>` : ''}</td>
+                <td>${(l.descripcion || '—').replace(/</g,'&lt;')}${l.multi_uso ? ' <span class="tag" style="font-size:9px">multi</span>' : ''}</td>
+                <td><b>${fmt(l.monto, l.moneda)}</b></td>
+                <td>${l.estado === 'activo'
+                    ? '<span class="tag green">activo</span>'
+                    : `<span class="tag red">${l.estado}</span>`}</td>
+                <td>${l.cobros_completados || 0}</td>
+                <td>${fmt(l.bruto_acumulado || 0, l.moneda)}</td>
+                <td style="font-size:11px;color:#8ea0c2">${fmtDate(l.created_at)}</td>
+                <td style="white-space:nowrap">
+                  <button class="btn ghost" onclick="ui.copyLinkUrl('${externalUrl.replace(/'/g,"\\'")}', this)" title="Copiar URL">Copiar</button>
+                  <a class="btn ghost" href="${externalUrl}" target="_blank" style="text-decoration:none">Abrir</a>
+                  <button class="btn ghost" onclick='ui.editLink(${JSON.stringify(l).replace(/'/g,"&#39;")})'>Editar</button>
+                  <button class="btn ghost" style="color:#ff8a8a" onclick="ui.deleteLink(${l.id})">Borrar</button>
+                </td>
+              </tr>`;
+            }).join('')}
+            </tbody>
+          </table>
+        ` : `<div class="empty" style="padding:24px;text-align:center">
+          Este cliente no tiene links de pago todavía. <br>
+          <button class="btn" style="margin-top:12px" onclick="ui.newLink({ contactoId: state.clienteId, returnTo: 'cliente' })">+ Crear el primero</button>
+        </div>`}
+      </div>
+
+      <h3 style="font-size:14px;margin:18px 0 8px;color:#cfe1ff">Movimientos</h3>
+      <div class="card">
+        <div class="row" style="gap:10px;margin-bottom:8px;align-items:center;flex-wrap:wrap">
+          <span style="color:#8ea0c2;font-size:11px">Filtrá por cualquier columna escribiendo abajo del header.</span>
+          <button class="btn ghost" onclick="ui.clearTxFilters()">Limpiar filtros</button>
+          <span id="tx-count" style="color:#8ea0c2;font-size:11px;margin-left:auto">${txs.length} de ${txs.length}</span>
+        </div>
+        <table>
+          <thead>
+            <tr><th>Fecha</th><th>Disp.</th><th>Moneda</th><th>Bruto</th>
+              <th>Fee</th><th>% Fee</th><th>Neto</th><th>País tarjeta</th><th>Tarjeta</th><th>Link</th><th>Charge</th></tr>
+            <tr>${filterInputs}</tr>
+          </thead>
+          <tbody id="tx-tbody">${txRows || `<tr><td colspan="11" class="empty">Sin movimientos</td></tr>`}</tbody>
+        </table>
+      </div>`;
+  },
+
+  renderBarChart(serie, moneda) {
+    if (!serie.length) return '';
+    const W = 720, H = 200, padL = 50, padB = 26, padT = 14, padR = 12;
+    const maxBruto = Math.max(...serie.map(r => Number(r.bruto)));
+    const maxFee   = Math.max(...serie.map(r => Number(r.fee)));
+    const max = Math.max(maxBruto, maxFee, 1);
+    const innerW = W - padL - padR;
+    const innerH = H - padT - padB;
+    const bw = innerW / serie.length;
+    const y = v => padT + innerH - (Number(v) / max) * innerH;
+    const fmtY = v => {
+      try { return new Intl.NumberFormat('es-AR', { notation:'compact' }).format(Number(v||0)); }
+      catch { return Math.round(v).toString(); }
+    };
+    const ticks = [0, max/2, max].map(v => `
+      <line x1="${padL}" x2="${W-padR}" y1="${y(v)}" y2="${y(v)}" stroke="#1f2a44" stroke-dasharray="2,3"/>
+      <text x="${padL-6}" y="${y(v)+3}" text-anchor="end" font-size="9" fill="#6e82a9">${fmtY(v)}</text>`).join('');
+
+    const bars = serie.map((r, i) => {
+      const cx = padL + i * bw;
+      const gw = bw * 0.36;
+      const fy = y(r.bruto);
+      const fy2 = y(r.fee);
+      return `
+        <rect x="${cx + bw*0.10}" y="${fy}" width="${gw}" height="${padT+innerH-fy}" fill="#3b82f6" opacity="0.85"><title>${r.mes} bruto: ${fmt(r.bruto, moneda)}</title></rect>
+        <rect x="${cx + bw*0.54}" y="${fy2}" width="${gw}" height="${padT+innerH-fy2}" fill="#f59e0b" opacity="0.85"><title>${r.mes} fee: ${fmt(r.fee, moneda)}</title></rect>
+        <text x="${cx + bw/2}" y="${H-8}" text-anchor="middle" font-size="9" fill="#8ea0c2">${r.mes.slice(2)}</text>
+      `;
+    }).join('');
+
+    return `
+      <div class="card" style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <b style="font-size:12px;color:#cfe1ff">${moneda} · bruto vs comisión por mes</b>
+          <div style="font-size:11px;color:#8ea0c2">
+            <span style="display:inline-block;width:10px;height:10px;background:#3b82f6;border-radius:2px;vertical-align:middle"></span> Bruto
+            &nbsp;&nbsp;
+            <span style="display:inline-block;width:10px;height:10px;background:#f59e0b;border-radius:2px;vertical-align:middle"></span> Fee
+          </div>
+        </div>
+        <svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" style="display:block">
+          ${ticks}
+          ${bars}
+          <line x1="${padL}" x2="${W-padR}" y1="${padT+innerH}" y2="${padT+innerH}" stroke="#3b4d77"/>
+        </svg>
+      </div>`;
+  },
 };
 
-async function render(n) {
+async function render(n, ...args) {
   document.querySelectorAll('.side a').forEach(a => a.classList.toggle('active', a.dataset.tab === n));
-  try { $('#main').innerHTML = await tabs[n](); }
-  catch (e) { $('#main').innerHTML = `<div class="card"><b style="color:#ff8a8a">Error:</b> ${e.message}</div>`; }
+  try {
+    $('#main').innerHTML = await tabs[n](...args);
+    if (n === 'cliente' && args[0]) ui.loadClienteStats(args[0]);
+    if (n === 'dashboard') ui.loadDashboard();
+  } catch (e) {
+    $('#main').innerHTML = `<div class="card"><b style="color:#ff8a8a">Error:</b> ${e.message}</div>`;
+  }
 }
 document.querySelectorAll('.side a[data-tab]').forEach(a => a.addEventListener('click', () => render(a.dataset.tab)));
 render('dashboard');
