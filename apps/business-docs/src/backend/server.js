@@ -309,7 +309,8 @@ app.post('/api/wa-import', async (req, res, next) => {
     }
 
     const stats = { contacts_created: 0, contacts_updated: 0, messages_imported: 0,
-                    files_imported: 0, duplicates_skipped: 0, errors: 0, campaigns: {} };
+                    files_imported: 0, duplicates_skipped: 0, errors: 0, campaigns: {},
+                    duplicates: [] };
 
     for (const row of rows) {
       try {
@@ -371,13 +372,26 @@ app.post('/api/wa-import', async (req, res, next) => {
         const cl = parsed.campaign_label || 'Mensaje directo';
         stats.campaigns[cl] = (stats.campaigns[cl] || 0) + 1;
 
-        // Skip if duplicate message
-        if (parsed.wa_id) {
+        // Skip if duplicate message (mismo contacto + mismo contenido + misma fecha/hora al minuto)
+        if (contenido) {
           const { rows: dup } = await dbPool.query(
-            "SELECT id FROM conversaciones WHERE contacto_id = $1 AND contenido LIKE $2 LIMIT 1",
-            [contactoId, `%${parsed.wa_id.substring(0, 25)}%`]
+            `SELECT id, created_at FROM conversaciones
+             WHERE contacto_id = $1
+               AND contenido = $2
+               AND date_trunc('minute', created_at) = date_trunc('minute', $3::timestamptz)
+             LIMIT 1`,
+            [contactoId, contenido, fecha]
           );
-          if (dup.length) { stats.duplicates_skipped++; continue; }
+          if (dup.length) {
+            stats.duplicates_skipped++;
+            stats.duplicates.push({
+              telefono: parsed.phone,
+              nombre: nombre || existing[0]?.nombre || '',
+              contenido,
+              fecha: dup[0].created_at,
+            });
+            continue;
+          }
         }
 
         // Insert message
