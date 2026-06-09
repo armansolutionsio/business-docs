@@ -1,4 +1,5 @@
 const db = require('./db');
+const log = require('./logger');
 
 async function runMigrations() {
   try {
@@ -28,7 +29,7 @@ async function runMigrations() {
         created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
     `);
-    console.log('[migrate] New tables ready');
+    log.debug('migrate_new_tables_ready');
 
     // Add estado to recibos if missing
     await db.query(`ALTER TABLE recibos ADD COLUMN IF NOT EXISTS estado VARCHAR(20) DEFAULT 'activo'`);
@@ -65,7 +66,7 @@ async function runMigrations() {
       CREATE INDEX IF NOT EXISTS idx_docborr_contacto ON documentos_borrados (contacto_id);
     `);
 
-    console.log('[migrate] Anulacion + JSONB + historial columns ready');
+    log.debug('migrate_anulacion_columns_ready');
 
     // ─── Admin IA: templates de extracción de comprobantes ───────────────
     await db.query(`
@@ -179,7 +180,7 @@ async function runMigrations() {
          JSON.stringify(t.extractors), t.notas]
       );
     }
-    console.log('[migrate] admin_ia_templates ready (' + factory.length + ' factory templates seeded)');
+    log.debug('migrate_admin_ia_templates_ready', { seeded: factory.length });
 
     // ─── mail_templates: plantillas de mail editables ────────────────────
     await db.query(`
@@ -252,28 +253,28 @@ async function runMigrations() {
           [t.nombre, t.asunto, t.cuerpo, t.categoria, t.audiencia, t.orden]
         );
       } catch (e) {
-        console.warn('[migrate] mail_template seed failed for', t.nombre, ':', e.message);
+        log.warn('migrate_mail_template_seed_failed', { template: t.nombre, error: e.message });
       }
     }
-    console.log('[migrate] mail_templates ready (' + mailFactory.length + ' factory templates seeded)');
+    log.debug('migrate_mail_templates_ready', { seeded: mailFactory.length });
 
     // ─── pgcrypto (necesario para gen_random_uuid; tolerar fallo de permisos) ──
     try { await db.query(`CREATE EXTENSION IF NOT EXISTS "pgcrypto"`); }
-    catch (e) { console.warn('[migrate] pgcrypto no disponible, customers_global UUID requerira otro mecanismo:', e.message); }
+    catch (e) { log.warn('migrate_pgcrypto_unavailable', { error: e.message }); }
 
     // ─── Multi-vertical bootstrap (tech / paybridge / admin_core) ─────────
     try {
       const { bootstrapVerticalSchemas } = require('./schemas');
       await bootstrapVerticalSchemas();
     } catch (e) {
-      console.error('[migrate] bootstrapVerticalSchemas FAILED:', e.message);
+      log.error('migrate_bootstrap_verticals_failed', { error: e.message, stack: e.stack });
     }
 
     // ─── Identidad global de cliente cross-vertical ───────────────────────
     try {
       await db.query(`ALTER TABLE public.contactos ADD COLUMN IF NOT EXISTS global_customer_id UUID`);
       await db.query(`CREATE INDEX IF NOT EXISTS idx_public_contactos_global ON public.contactos(global_customer_id)`);
-    } catch (e) { console.warn('[migrate] alter public.contactos:', e.message); }
+    } catch (e) { log.warn('migrate_alter_public_contactos_failed', { error: e.message }); }
 
     // ─── Seed admin inicial si no existe ningun usuario ──────────────────
     const bcrypt = require('bcryptjs');
@@ -288,11 +289,11 @@ async function runMigrations() {
          ON CONFLICT (email) DO NOTHING`,
         [email, hash]
       );
-      console.log(`[migrate] Admin sembrado: ${email} / password en SEED_ADMIN_PASSWORD (cambiar al primer login)`);
+      log.info('migrate_admin_seeded', { email, hint: 'password en SEED_ADMIN_PASSWORD, cambiar al primer login' });
     }
 
   } catch (e) {
-    console.error('[migrate] Error (non-fatal):', e.message);
+    log.error('migrate_failed_non_fatal', { error: e.message, stack: e.stack });
   }
 }
 

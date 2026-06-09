@@ -301,13 +301,14 @@ router.post('/generate-pdf', async (req, res) => {
     }
     const totals = type === 'quote-tech' ? computeTechTotals(data) : computeTotals(data);
 
-    // DEBUG: log pack data to find rendering issue
     if (data.categoryDetails && data.categoryDetails.packs) {
-      console.log('[PDF Debug] Packs received:', JSON.stringify(data.categoryDetails.packs.map(p => ({
-        name: p.packName,
-        subItemCount: (p.subItems || []).length,
-        subItemTypes: (p.subItems || []).map(s => s._serviceType || 'NO_TYPE'),
-      })), null, 2));
+      log.debug('pdf_packs_received', {
+        packs: data.categoryDetails.packs.map(p => ({
+          name: p.packName,
+          subItemCount: (p.subItems || []).length,
+          subItemTypes: (p.subItems || []).map(s => s._serviceType || 'NO_TYPE'),
+        })),
+      });
     }
 
     const clientName = data.clientName || data.payerName || 'Sin nombre';

@@ -5,6 +5,7 @@
 const Handlebars = require('handlebars');
 const fs = require('fs');
 const path = require('path');
+const log = require('../utils/logger');
 
 // Logo PayBridge cargado una sola vez como data URI para embeber en el PDF.
 let _logoPayBridge = '';
@@ -12,9 +13,9 @@ try {
   // __dirname = .../apps/business-docs/src/backend/services → subir 3 a apps/business-docs/
   const logoPath = path.join(__dirname, '../../../public/Logo PayBridge.png');
   _logoPayBridge = 'data:image/png;base64,' + fs.readFileSync(logoPath).toString('base64');
-  console.log('[pdfRenderer] Logo PayBridge cargado (' + Math.round(_logoPayBridge.length / 1024) + ' KB base64)');
+  log.debug('paybridge_logo_loaded', { kb: Math.round(_logoPayBridge.length / 1024) });
 } catch (e) {
-  console.warn('[pdfRenderer] No pude cargar Logo PayBridge.png:', e.message);
+  log.warn('paybridge_logo_load_failed', { error: e.message });
 }
 
 let _browserPromise = null;
