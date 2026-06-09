@@ -3,6 +3,7 @@
 // secuencias propias, aislamiento lógico. Comparten cluster y conexión.
 
 const db = require('./db');
+const log = require('./logger');
 
 const VERTICALS = ['tech', 'paybridge', 'admin_core'];
 
@@ -529,15 +530,15 @@ const ADMIN_EXTRA = `
 async function bootstrapVerticalSchemas() {
   for (const v of VERTICALS) {
     try { await db.query(COMMON_DOC_TABLES(v)); }
-    catch (e) { console.error(`[schemas] common ${v} FAILED:`, e.message); }
+    catch (e) { log.error('schemas_common_failed', { vertical: v, error: e.message, stack: e.stack }); }
   }
   try { await db.query(TECH_EXTRA); }
-  catch (e) { console.error('[schemas] TECH_EXTRA FAILED:', e.message); }
+  catch (e) { log.error('schemas_tech_extra_failed', { error: e.message, stack: e.stack }); }
   try { await db.query(PAYBRIDGE_EXTRA); }
-  catch (e) { console.error('[schemas] PAYBRIDGE_EXTRA FAILED:', e.message); }
+  catch (e) { log.error('schemas_paybridge_extra_failed', { error: e.message, stack: e.stack }); }
   try { await db.query(ADMIN_EXTRA); }
-  catch (e) { console.error('[schemas] ADMIN_EXTRA FAILED:', e.message); }
-  console.log('[schemas] verticals ready: tech, paybridge, admin_core (travel = public)');
+  catch (e) { log.error('schemas_admin_extra_failed', { error: e.message, stack: e.stack }); }
+  log.debug('schemas_verticals_ready');
 }
 
 module.exports = { bootstrapVerticalSchemas, VERTICALS };

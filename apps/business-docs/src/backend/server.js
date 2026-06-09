@@ -22,13 +22,16 @@ app.use((req, res, next) => {
 });
 
 // ── Request logger ────────────────────────────────────────────────────────────
+const SKIP_LOG_PATHS = /^\/(health|favicon\.ico|assets\/|static\/|.*\.(css|js|map|png|jpg|jpeg|gif|svg|ico|woff2?|ttf))/;
 app.use((req, res, next) => {
+  if (SKIP_LOG_PATHS.test(req.path)) return next();
   const start = Date.now();
   res.on('finish', () => {
-    log.info(req, 'http', {
-      status: res.statusCode,
-      ms: Date.now() - start,
-    });
+    const ms = Date.now() - start;
+    const fields = { status: res.statusCode, ms };
+    if (res.statusCode >= 500)      log.error(req, 'http', fields);
+    else if (res.statusCode >= 400) log.warn(req, 'http', fields);
+    else                            log.info(req, 'http', fields);
   });
   next();
 });
@@ -310,9 +313,10 @@ app.post('/api/wa-import', async (req, res, next) => {
 
     const stats = { contacts_created: 0, contacts_updated: 0, messages_imported: 0,
                     files_imported: 0, duplicates_skipped: 0, errors: 0, campaigns: {},
-                    duplicates: [] };
+                    duplicates: [], error_samples: [] };
 
-    for (const row of rows) {
+    for (let rowIdx = 0; rowIdx < rows.length; rowIdx++) {
+      const row = rows[rowIdx];
       try {
         // Parse the webhook payload from the "telefono" field
         const parsed = parseWAWebhook(row.telefono || '');
@@ -416,6 +420,26 @@ app.post('/api/wa-import', async (req, res, next) => {
         }
       } catch (rowErr) {
         stats.errors++;
+        log.error(req, 'wa_import_row_failed', {
+          row_index: rowIdx,
+          error: rowErr.message,
+          code: rowErr.code,
+          detail_pg: rowErr.detail,
+          constraint: rowErr.constraint,
+          table: rowErr.table,
+          column: rowErr.column,
+          row_sample: JSON.stringify(row).slice(0, 300),
+          stack: rowErr.stack,
+        });
+        if (stats.error_samples.length < 5) {
+          stats.error_samples.push({
+            row_index: rowIdx,
+            error: rowErr.message,
+            code: rowErr.code,
+            detail: rowErr.detail || null,
+            row_preview: JSON.stringify(row).slice(0, 200),
+          });
+        }
       }
     }
 
@@ -521,10 +545,7 @@ function normalizePhone(p) {
 
 // ── Error handler ─────────────────────────────────────────────────────────────
 app.use((err, req, res, next) => {
-  // Log con detalle: method, path, query, body (acotado), stack
-  const detail = {
-    method: req.method,
-    path: req.path,
+  log.error(req, 'unhandled_error', {
     query: req.query,
     body: typeof req.body === 'object' ? JSON.stringify(req.body).slice(0, 500) : undefined,
     error: err.message,
@@ -533,10 +554,7 @@ app.use((err, req, res, next) => {
     table: err.table,
     constraint: err.constraint,
     stack: err.stack,
-  };
-  log.error(req, 'unhandled_error', detail);
-  // Tambien imprimir a stderr para que aparezca en docker logs sin parsing
-  console.error('\n[ERROR]', req.method, req.path, '\n', err.stack || err.message, '\n');
+  });
   res.status(500).json({ error: err.message, code: err.code });
 });
 

@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const log = require('./logger');
 
 const DATA_DIR = path.join(__dirname, '../../../data');
 const CLIENTS_FILE = path.join(DATA_DIR, 'clients.json');
@@ -19,7 +20,7 @@ function readClients() {
     const data = fs.readFileSync(CLIENTS_FILE, 'utf8');
     return JSON.parse(data);
   } catch (error) {
-    console.error('Error reading clients:', error);
+    log.error('clients_read_failed', { error: error.message, file: CLIENTS_FILE });
     return [];
   }
 }
@@ -29,7 +30,7 @@ function writeClients(clients) {
     fs.writeFileSync(CLIENTS_FILE, JSON.stringify(clients, null, 2));
     return true;
   } catch (error) {
-    console.error('Error writing clients:', error);
+    log.error('clients_write_failed', { error: error.message, file: CLIENTS_FILE });
     return false;
   }
 }

@@ -3,12 +3,13 @@
 
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const log = require('./logger');
 
 const SECRET = process.env.JWT_SECRET;
 const EXPIRES_IN = process.env.JWT_EXPIRES_IN || '12h';
 
 if (!SECRET || SECRET === 'change-me-in-production-please-use-a-long-random-string') {
-  console.warn('[auth] ATENCION: JWT_SECRET no seteado o usa valor por defecto. Configurar antes de exponer a produccion.');
+  log.warn('jwt_secret_missing_or_default', { hint: 'configurar JWT_SECRET antes de produccion' });
 }
 
 const EFFECTIVE_SECRET = SECRET || 'dev-only-insecure-secret-change-me';

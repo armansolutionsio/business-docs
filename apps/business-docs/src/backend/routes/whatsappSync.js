@@ -6,6 +6,7 @@ const multer = require('multer');
 const fs = require('fs');
 const db = require('../utils/db');
 const { logAudit } = require('../utils/auditLog');
+const log = require('../utils/logger');
 
 // Upload config for CSV/XLSX files
 const uploadDir = path.join(__dirname, '../../../uploads/wa-imports');
@@ -174,7 +175,7 @@ router.post('/import', async (req, res, next) => {
       try { fs.unlinkSync(newPath); } catch (_) {}
 
       if (err) {
-        console.error('[wa-pipeline] Error:', err.message, stderr);
+        log.error('wa_pipeline_failed', { error: err.message, stderr });
         return res.status(500).json({
           error: 'Error ejecutando pipeline',
           details: stderr || err.message,

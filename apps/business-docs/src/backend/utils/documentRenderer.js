@@ -4,6 +4,7 @@ const Handlebars = require('handlebars');
 const DataValidator = require('./dataValidator');
 const AssetProcessor = require('./assetProcessor');
 const HTMLtoPDFRenderer = require('./htmltoPdfRenderer');
+const log = require('./logger');
 const { branding } = require('@arman/sdk');
 
 // Register Handlebars helpers
@@ -165,7 +166,7 @@ class DocumentRenderer {
     // SIEMPRE recargar template en desarrollo (no cachear)
     const templateContent = fs.readFileSync(templatePath, 'utf-8');
     this.templates[templateName] = Handlebars.compile(templateContent);
-    console.log(`[DocumentRenderer] Template loaded: ${templateName} (${templatePath})`);
+    log.debug('template_loaded', { template: templateName, path: templatePath });
 
     return this.templates[templateName];
   }
@@ -245,7 +246,7 @@ class DocumentRenderer {
       // Process travel images (flight, hotel, transfer)
       if (assets.images && typeof assets.images === 'object') {
         processed.images = {};
-        console.log('[AssetProcessor] Processing travel images:', Object.keys(assets.images));
+        log.debug('asset_processing_travel_images', { keys: Object.keys(assets.images) });
 
         if (assets.images.flight) {
           try {
@@ -253,10 +254,10 @@ class DocumentRenderer {
             if (flightBuffer) {
               const processed_flight = await AssetProcessor.processPhoto(flightBuffer);
               processed.images.flight = AssetProcessor.bufferToDataUrl(processed_flight.buffer, processed_flight.format);
-              console.log('[AssetProcessor] Flight image processed successfully');
+              log.debug('asset_flight_image_ok');
             }
           } catch (err) {
-            console.error('[AssetProcessor] Error processing flight image:', err.message);
+            log.error('asset_flight_image_failed', { error: err.message });
           }
         }
 
@@ -266,10 +267,10 @@ class DocumentRenderer {
             if (hotelBuffer) {
               const processed_hotel = await AssetProcessor.processPhoto(hotelBuffer);
               processed.images.hotel = AssetProcessor.bufferToDataUrl(processed_hotel.buffer, processed_hotel.format);
-              console.log('[AssetProcessor] Hotel image processed successfully');
+              log.debug('asset_hotel_image_ok');
             }
           } catch (err) {
-            console.error('[AssetProcessor] Error processing hotel image:', err.message);
+            log.error('asset_hotel_image_failed', { error: err.message });
           }
         }
 
@@ -279,10 +280,10 @@ class DocumentRenderer {
             if (transferBuffer) {
               const processed_transfer = await AssetProcessor.processPhoto(transferBuffer);
               processed.images.transfer = AssetProcessor.bufferToDataUrl(processed_transfer.buffer, processed_transfer.format);
-              console.log('[AssetProcessor] Transfer image processed successfully');
+              log.debug('asset_transfer_image_ok');
             }
           } catch (err) {
-            console.error('[AssetProcessor] Error processing transfer image:', err.message);
+            log.error('asset_transfer_image_failed', { error: err.message });
           }
         }
       }
@@ -290,7 +291,7 @@ class DocumentRenderer {
       // Process category images (dynamic sections)
       if (assets.categoryImages && typeof assets.categoryImages === 'object') {
         processed.categoryImages = {};
-        console.log('[AssetProcessor] Processing category images:', Object.keys(assets.categoryImages));
+        log.debug('asset_processing_category_images', { keys: Object.keys(assets.categoryImages) });
 
         for (const [slug, imgObj] of Object.entries(assets.categoryImages)) {
           try {
@@ -303,15 +304,15 @@ class DocumentRenderer {
                 data: AssetProcessor.bufferToDataUrl(processedImg.buffer, processedImg.format),
                 size: imgSize
               };
-              console.log(`[AssetProcessor] Category image '${slug}' processed successfully`);
+              log.debug('asset_category_image_ok', { slug });
             }
           } catch (err) {
-            console.error(`[AssetProcessor] Error processing category image '${slug}':`, err.message);
+            log.error('asset_category_image_failed', { slug, error: err.message });
           }
         }
       }
     } catch (error) {
-      console.error('Error processing assets:', error);
+      log.error('asset_processing_failed', { error: error.message, stack: error.stack });
       // Continue without the problematic asset
     }
 
@@ -448,7 +449,7 @@ class DocumentRenderer {
   async renderWord(type, data) {
     // Fallback: generar como PDF si se solicita Word
     // (La implementación completa de Word requiere plantillas .docx diseñadas)
-    console.warn('Word generation not fully implemented, generating PDF instead');
+    log.warn('word_generation_fallback_to_pdf');
     return await this.renderPDF(type, data, false);
   }
 }

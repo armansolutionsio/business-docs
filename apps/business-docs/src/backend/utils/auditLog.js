@@ -1,4 +1,5 @@
 const db = require('./db');
+const log = require('./logger');
 
 async function logAudit({ tabla, registro_id, accion, campo, valor_anterior, valor_nuevo, usuario }) {
   try {
@@ -8,7 +9,7 @@ async function logAudit({ tabla, registro_id, accion, campo, valor_anterior, val
       [tabla, registro_id, accion, campo, valor_anterior, valor_nuevo, usuario || 'system']
     );
   } catch (e) {
-    console.error('audit_log error:', e.message);
+    log.error('audit_log_insert_failed', { tabla, registro_id, accion, error: e.message });
   }
 }
 
