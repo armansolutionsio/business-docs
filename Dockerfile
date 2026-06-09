@@ -67,7 +67,7 @@ EXPOSE 3000
 
 WORKDIR /app/apps/business-docs
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3000/health', r => { if (r.statusCode !== 200) process.exit(1) })"
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=5 \
+  CMD wget --quiet --tries=1 --spider http://localhost:3000/health || exit 1
 
 CMD ["npm", "start"]

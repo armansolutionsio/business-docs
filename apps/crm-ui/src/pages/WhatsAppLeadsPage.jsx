@@ -68,6 +68,7 @@ export default function WhatsAppLeadsPage() {
   const [importResult, setImportResult] = useState(null);
   const [syncLog, setSyncLog] = useState([]);
   const [dragOver, setDragOver] = useState(false);
+  const [showDuplicatesModal, setShowDuplicatesModal] = useState(false);
   const fileInputRef = useRef(null);
   const PAGE_SIZE = 50;
 
@@ -144,7 +145,17 @@ export default function WhatsAppLeadsPage() {
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || 'Error en importacion');
       setImportResult(result);
-      toast(`Importacion OK: ${result.stats?.contactos_creados || 0} contactos creados, ${result.stats?.mensajes_importados || 0} mensajes`, 'success');
+      const dupCount = result.stats?.duplicates_skipped || 0;
+      const created = result.stats?.contacts_created ?? result.stats?.contactos_creados ?? 0;
+      const imported = result.stats?.messages_imported ?? result.stats?.mensajes_importados ?? 0;
+      toast(
+        `Importacion OK: ${created} contactos creados, ${imported} mensajes` +
+          (dupCount > 0 ? `, ${dupCount} duplicados omitidos` : ''),
+        'success'
+      );
+      if (dupCount > 0 && Array.isArray(result.stats?.duplicates) && result.stats.duplicates.length > 0) {
+        setShowDuplicatesModal(true);
+      }
       fetchData();
       fetchStats();
       loadSyncLog();
@@ -429,21 +440,27 @@ export default function WhatsAppLeadsPage() {
             {importResult && !importResult.error && (
               <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: 14, marginBottom: 16 }}>
                 <div style={{ fontSize: 14, fontWeight: 700, color: '#166534', marginBottom: 8 }}>Importacion completada</div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8 }}>
                   <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: 20, fontWeight: 700, color: '#10b981' }}>{importResult.stats?.contactos_creados || 0}</div>
+                    <div style={{ fontSize: 20, fontWeight: 700, color: '#10b981' }}>{importResult.stats?.contacts_created ?? importResult.stats?.contactos_creados ?? 0}</div>
                     <div style={{ fontSize: 10, color: '#64748b' }}>Contactos creados</div>
                   </div>
                   <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: 20, fontWeight: 700, color: '#3b82f6' }}>{importResult.stats?.contactos_existentes || 0}</div>
+                    <div style={{ fontSize: 20, fontWeight: 700, color: '#3b82f6' }}>{importResult.stats?.contacts_updated ?? importResult.stats?.contactos_existentes ?? 0}</div>
                     <div style={{ fontSize: 10, color: '#64748b' }}>Existentes</div>
                   </div>
                   <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: 20, fontWeight: 700, color: '#8b5cf6' }}>{importResult.stats?.mensajes_importados || 0}</div>
+                    <div style={{ fontSize: 20, fontWeight: 700, color: '#8b5cf6' }}>{importResult.stats?.messages_imported ?? importResult.stats?.mensajes_importados ?? 0}</div>
                     <div style={{ fontSize: 10, color: '#64748b' }}>Mensajes</div>
                   </div>
+                  <div style={{ textAlign: 'center', cursor: (importResult.stats?.duplicates_skipped > 0) ? 'pointer' : 'default' }}
+                       onClick={() => { if (importResult.stats?.duplicates?.length > 0) setShowDuplicatesModal(true); }}
+                       title={importResult.stats?.duplicates_skipped > 0 ? 'Ver duplicados' : ''}>
+                    <div style={{ fontSize: 20, fontWeight: 700, color: importResult.stats?.duplicates_skipped > 0 ? '#f59e0b' : '#94a3b8' }}>{importResult.stats?.duplicates_skipped || 0}</div>
+                    <div style={{ fontSize: 10, color: '#64748b', textDecoration: importResult.stats?.duplicates_skipped > 0 ? 'underline' : 'none' }}>Duplicados</div>
+                  </div>
                   <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: 20, fontWeight: 700, color: importResult.stats?.errores > 0 ? '#ef4444' : '#10b981' }}>{importResult.stats?.errores || 0}</div>
+                    <div style={{ fontSize: 20, fontWeight: 700, color: (importResult.stats?.errors ?? importResult.stats?.errores ?? 0) > 0 ? '#ef4444' : '#10b981' }}>{importResult.stats?.errors ?? importResult.stats?.errores ?? 0}</div>
                     <div style={{ fontSize: 10, color: '#64748b' }}>Errores</div>
                   </div>
                 </div>
@@ -490,6 +507,54 @@ export default function WhatsAppLeadsPage() {
 
             <div className="modal-footer">
               <button className="btn btn-secondary" onClick={() => setShowImportModal(false)} disabled={importing}>Cerrar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Duplicates Popup */}
+      {showDuplicatesModal && importResult?.stats?.duplicates?.length > 0 && (
+        <div className="modal-overlay" onClick={() => setShowDuplicatesModal(false)}>
+          <div className="modal modal-lg" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ background: '#f59e0b', color: '#fff', width: 24, height: 24, borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700 }}>!</span>
+                Mensajes repetidos detectados
+              </h2>
+              <button className="modal-close" onClick={() => setShowDuplicatesModal(false)}>&times;</button>
+            </div>
+            <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: 12, marginBottom: 12 }}>
+              <div style={{ fontSize: 13, color: '#92400e' }}>
+                Se detectaron <strong>{importResult.stats.duplicates_skipped}</strong> mensajes que ya existian en el CRM
+                (mismo contacto, mismo contenido y misma fecha/hora). No se guardaron para evitar duplicados.
+              </div>
+            </div>
+            <div style={{ maxHeight: 400, overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: 8 }}>
+              <table className="data-table" style={{ fontSize: 12, width: '100%' }}>
+                <thead style={{ position: 'sticky', top: 0, background: '#f8fafc' }}>
+                  <tr>
+                    <th style={{ width: '18%' }}>Telefono</th>
+                    <th style={{ width: '18%' }}>Nombre</th>
+                    <th style={{ width: '44%' }}>Mensaje</th>
+                    <th style={{ width: '20%' }}>Fecha / Hora</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {importResult.stats.duplicates.map((d, i) => (
+                    <tr key={i}>
+                      <td style={{ fontFamily: 'monospace', fontSize: 11 }}>{d.telefono || '-'}</td>
+                      <td>{d.nombre || <span style={{ color: '#94a3b8' }}>-</span>}</td>
+                      <td style={{ maxWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={d.contenido}>
+                        {d.contenido}
+                      </td>
+                      <td style={{ fontSize: 11 }}>{fmtDate(d.fecha)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-primary" onClick={() => setShowDuplicatesModal(false)}>Entendido</button>
             </div>
           </div>
         </div>
