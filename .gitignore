@@ -16,3 +16,6 @@ apps/**/.env
 apps/**/.env.local
 services/**/.env
 services/**/.env.local
+
+# Archivos de prueba con datos reales de pasajeros
+prueba-voucher/

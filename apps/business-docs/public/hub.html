@@ -37,6 +37,7 @@
     .tile.travel   {border-top:3px solid #ffb86b}
     .tile.paybridge{border-top:3px solid #6affb1}
     .tile.admin    {border-top:3px solid #d985ff}
+    .tile.infra    {border-top:3px solid #ef7a4c}
     footer{margin-top:56px;color:#586a91;font-size:12px}
     footer a{color:#8aa0c8;text-decoration:none;margin:0 8px;cursor:pointer}
     .userbar{position:absolute;top:18px;right:24px;font-size:13px;color:#a6b6d6;display:flex;gap:14px;align-items:center}
@@ -79,6 +80,12 @@
       <h2>Arman Admin</h2>
       <p>Métricas globales, usuarios, audit log y <b>Arman IA</b> — asistente operativo cross-vertical.</p>
     </a>
+
+    <a class="tile infra" href="/infra/">
+      <span class="tag">Servidores</span>
+      <h2>Infraestructura</h2>
+      <p>CPU y memoria del servidor Oracle, consumo por proyecto y créditos/uso de GPU en RunPod.</p>
+    </a>
   </div>
 
 
@@ -95,7 +102,8 @@
           const v = t.classList.contains('tech') ? 'tech'
                   : t.classList.contains('travel') ? 'travel'
                   : t.classList.contains('paybridge') ? 'paybridge'
-                  : t.classList.contains('admin') ? 'admin' : null;
+                  : t.classList.contains('admin') ? 'admin'
+                  : t.classList.contains('infra') ? 'infra' : null;
           if (v && !allowed.includes(v)) t.style.display = 'none';
         });
       }

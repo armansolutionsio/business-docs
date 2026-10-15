@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Arman — Infraestructura</title>
+  <link rel="icon" href="/favicon.ico" />
+  <style>
+    :root{
+      --bg:#0b0f1a; --panel:#111a2e; --panel-2:#19233d; --line:#2a3656; --rail:#1d2843;
+      --ink:#e8edf5; --ink-2:#a6b6d6; --muted:#7d92bd;
+      --app:#3987e5; --db:#19b47f; --sys:#ef7a4c; --svc:#9085e9; --other:#7d92bd;
+      --good:#16b816; --warn:#fab219; --crit:#e66767; --gpu:#d985ff;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+      background:radial-gradient(1200px 600px at 20% 0%,#1f2a44,var(--bg) 70%) fixed;color:var(--ink);min-height:100vh}
+    .wrap{max-width:1040px;margin:0 auto;padding:28px 20px 48px}
+    .top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:22px}
+    .top a.back{color:var(--muted);text-decoration:none;font-size:13px}
+    .top a.back:hover{color:var(--ink)}
+    h1{font-size:26px;font-weight:600;margin:6px 0 4px}
+    .sub{color:var(--ink-2);font-size:13.5px}
+    .actions{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+    button.refresh{background:var(--panel-2);border:1px solid var(--line);color:var(--ink);padding:9px 16px;border-radius:9px;
+      cursor:pointer;font-size:13px;display:inline-flex;align-items:center;gap:8px}
+    button.refresh:hover{border-color:#5b7bd6}
+    button.refresh:disabled{opacity:.6;cursor:progress}
+    button.refresh:focus-visible{outline:2px solid #5b7bd6;outline-offset:2px}
+    .stamp{color:var(--muted);font-size:12px;text-align:right}
+    .spin{width:12px;height:12px;border:2px solid var(--ink-2);border-top-color:transparent;border-radius:50%;animation:s 1s linear infinite;display:none}
+    button.loading .spin{display:inline-block}
+    @keyframes s{to{transform:rotate(360deg)}}
+    @media (prefers-reduced-motion: reduce){.spin{animation:none}}
+
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin-bottom:18px}
+    .card{background:linear-gradient(135deg,var(--panel-2),var(--panel));border:1px solid var(--line);border-radius:14px;padding:18px}
+    .card .lbl{font-size:11px;text-transform:uppercase;letter-spacing:1.4px;color:var(--muted)}
+    .card .big{font-size:28px;font-weight:700;margin-top:6px;font-variant-numeric:tabular-nums}
+    .card .big small{font-size:14px;color:var(--ink-2);font-weight:500}
+    .card .cap{color:var(--ink-2);font-size:12.5px;margin-top:3px}
+    .meter{height:9px;background:var(--rail);border-radius:6px;overflow:hidden;margin-top:12px}
+    .meter span{display:block;height:100%;border-radius:6px}
+
+    .panel{background:linear-gradient(135deg,var(--panel-2),var(--panel));border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:18px}
+    .panel h2{font-size:16px;font-weight:600}
+    .panel .hint{color:var(--muted);font-size:12.5px;margin:3px 0 14px}
+    .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--ink-2);margin-bottom:14px}
+    .dot{width:9px;height:9px;border-radius:3px;display:inline-block;margin-right:6px}
+
+    .rows{display:flex;flex-direction:column;gap:7px}
+    .row{display:grid;grid-template-columns:170px 1fr 64px;gap:10px;align-items:center}
+    .rl{font-size:12.5px;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .rl small{display:block;color:var(--muted);font-size:10.5px}
+    .track{height:20px;background:var(--rail);border-radius:0 5px 5px 0;position:relative}
+    .fill{height:100%;border-radius:0 5px 5px 0;min-width:2px}
+    .rv{font-size:11.5px;color:var(--ink-2);font-variant-numeric:tabular-nums;white-space:nowrap}
+    .cpu{font-size:10.5px;color:var(--muted)}
+    @media (max-width:560px){.row{grid-template-columns:110px 1fr 56px}}
+
+    .gpu-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+    .pod{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
+    .pod h3{font-size:14px;font-weight:600;display:flex;justify-content:space-between;gap:8px}
+    .pill{font-size:10.5px;padding:2px 8px;border-radius:20px;border:1px solid var(--line);color:var(--ink-2);font-weight:500}
+    .pill.run{color:var(--good);border-color:rgba(22,184,22,.4)}
+    .kv{display:grid;grid-template-columns:1fr auto;gap:4px 10px;font-size:12.5px;margin-top:10px;color:var(--ink-2)}
+    .kv b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums;text-align:right}
+    .empty{color:var(--ink-2);font-size:13px;line-height:1.55;background:var(--panel);border:1px dashed var(--line);border-radius:12px;padding:16px}
+    .empty code{background:var(--rail);padding:1px 6px;border-radius:5px;font-size:12px}
+    .err{color:var(--warn);font-size:12.5px;margin-top:8px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div>
+        <a class="back" href="/">← Arman Suite</a>
+        <h1>Infraestructura</h1>
+        <div class="sub" id="sub">Servidor Oracle Cloud y GPU</div>
+      </div>
+      <div class="actions">
+        <button class="refresh" id="refresh" type="button"><span class="spin"></span>Actualizar ahora</button>
+        <div class="stamp" id="stamp">Cargando…</div>
+      </div>
+    </div>
+
+    <div class="grid" id="hostCards"></div>
+
+    <section class="panel">
+      <h2>Memoria por proyecto</h2>
+      <p class="hint">Contenedores activos ordenados por consumo de RAM. A la derecha, CPU en % de un núcleo.</p>
+      <div class="legend">
+        <span><span class="dot" style="background:var(--app)"></span>Aplicación</span>
+        <span><span class="dot" style="background:var(--db)"></span>Base de datos</span>
+        <span><span class="dot" style="background:var(--svc)"></span>Servicio</span>
+        <span><span class="dot" style="background:var(--sys)"></span>Sistema (Coolify)</span>
+      </div>
+      <div class="rows" id="rows"></div>
+      <div class="err" id="dockerErr" hidden></div>
+    </section>
+
+    <section class="panel">
+      <h2>GPU · RunPod</h2>
+      <p class="hint">Créditos disponibles, gasto por hora y uso de cada pod.</p>
+      <div id="gpu"></div>
+    </section>
+  </div>
+
+  <script src="/_shared/auth.js"></script>
+  <script>
+    const user = ArmanAuth.requireSession();
+    if (user && user.rol !== 'admin') { window.location.href = '/'; }
+
+    const $ = (id) => document.getElementById(id);
+    const GB = 1024 ** 3, MB = 1024 ** 2;
+    const fmtBytes = (b) => b == null ? '—' : b >= GB ? (b / GB).toFixed(2) + ' GB' : Math.round(b / MB) + ' MB';
+    const fmtTime = (iso) => new Date(iso).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+    const fmtUsd = (n) => n == null ? '—' : 'US$ ' + Number(n).toFixed(2);
+    const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const level = (p) => p >= 85 ? 'var(--crit)' : p >= 65 ? 'var(--warn)' : 'var(--good)';
+    const TYPE = { app: 'Aplicación', db: 'Base de datos', service: 'Servicio', sys: 'Sistema', other: 'Otro' };
+    const COLOR = { app: 'var(--app)', db: 'var(--db)', service: 'var(--svc)', sys: 'var(--sys)', other: 'var(--other)' };
+
+    function card(lbl, big, cap, pct) {
+      return `<div class="card"><div class="lbl">${lbl}</div><div class="big">${big}</div><div class="cap">${cap}</div>` +
+        (pct != null ? `<div class="meter"><span style="width:${Math.min(100, pct).toFixed(1)}%;background:${level(pct)}"></span></div>` : '') +
+        `</div>`;
+    }
+
+    function renderHost(h, containers) {
+      if (!h) { $('hostCards').innerHTML = '<div class="empty">No se pudieron leer las métricas del servidor.</div>'; return; }
+      const memPct = h.memUsed / h.memTotal * 100;
+      const ctrMem = containers.reduce((a, c) => a + (c.memUsed || 0), 0);
+      $('sub').textContent = `${h.hostname} · ${h.arch === 'arm64' ? 'ARM Ampere' : h.arch} · ${containers.length} contenedores activos`;
+      $('hostCards').innerHTML =
+        card('CPU', `${h.cores} <small>núcleos</small>`,
+          `${h.cpuPct == null ? '—' : h.cpuPct.toFixed(1) + '% en uso'} · carga ${h.load[0]} / ${h.cores}`, h.cpuPct) +
+        card('Memoria RAM', `${(h.memTotal / GB).toFixed(1)} <small>GB</small>`,
+          `${fmtBytes(h.memUsed)} en uso · ${fmtBytes(h.memAvailable)} libres`, memPct) +
+        card('Contenedores', `${containers.length}`,
+          `${fmtBytes(ctrMem)} de RAM entre todos`, null);
+    }
+
+    function renderContainers(list, err) {
+      $('dockerErr').hidden = !err;
+      if (err) $('dockerErr').textContent = 'No se pudo consultar Docker (' + err + '). Verificá que el contenedor docker-socket-proxy esté corriendo.';
+      const max = Math.max(1, ...list.map((c) => c.memUsed || 0));
+      $('rows').innerHTML = list.map((c) => {
+        const pct = (c.memUsed || 0) / max * 100;
+        return `<div class="row" title="${esc(c.name)} · ${esc(c.status || '')}">
+          <div class="rl">${esc(c.project)}<small>${TYPE[c.type] || ''}</small></div>
+          <div class="track"><div class="fill" style="width:${pct.toFixed(1)}%;background:${COLOR[c.type] || COLOR.other}"></div></div>
+          <div class="rv">${c.error ? 'sin datos' : fmtBytes(c.memUsed)}<div class="cpu">CPU ${c.cpuPct == null ? '—' : c.cpuPct.toFixed(1) + '%'}</div></div>
+        </div>`;
+      }).join('') || '<div class="empty">Sin datos de contenedores.</div>';
+    }
+
+    function renderGpu(g) {
+      if (!g.configured) {
+        $('gpu').innerHTML = `<div class="empty">RunPod todavía no está conectado. Para ver créditos y uso de GPU, agregá la variable
+          <code>RUNPOD_API_KEY</code> en las variables de entorno de business-docs en Coolify y redeployá.
+          La key se genera en runpod.io → Settings → API Keys (con permiso de solo lectura alcanza).</div>`;
+        return;
+      }
+      if (g.error || !g.data) { $('gpu').innerHTML = `<div class="err">No se pudo consultar RunPod: ${esc(g.error || 'sin respuesta')}</div>`; return; }
+      const d = g.data;
+      const running = d.pods.filter((p) => p.status === 'RUNNING');
+      const hoursLeft = d.spendPerHr > 0 ? d.balance / d.spendPerHr : null;
+      let html = `<div class="grid" style="margin-bottom:14px">` +
+        card('Créditos', fmtUsd(d.balance), hoursLeft == null ? 'Sin gasto activo' : `≈ ${hoursLeft.toFixed(0)} h al ritmo actual`, null) +
+        card('Gasto actual', `${fmtUsd(d.spendPerHr)} <small>/ hora</small>`, `≈ ${fmtUsd(d.spendPerHr * 24 * 30)} / mes si queda prendido`, null) +
+        card('Pods', `${running.length} <small>de ${d.pods.length} encendidos</small>`, 'Los pods apagados solo cobran disco', null) +
+        `</div>`;
+      html += d.pods.length ? `<div class="gpu-grid">` + d.pods.map((p) => {
+        const gpu = p.gpus[0] || {};
+        return `<div class="pod">
+          <h3>${esc(p.name)} <span class="pill ${p.status === 'RUNNING' ? 'run' : ''}">${p.status === 'RUNNING' ? 'Encendido' : 'Apagado'}</span></h3>
+          <div class="kv">
+            <span>GPU</span><b>${p.gpuCount || 1}× ${esc(p.gpu || '—')}</b>
+            <span>Uso GPU</span><b>${gpu.gpuUtilPercent != null ? gpu.gpuUtilPercent + '%' : '—'}</b>
+            <span>VRAM</span><b>${gpu.memoryUtilPercent != null ? gpu.memoryUtilPercent + '%' : '—'}</b>
+            <span>vCPU / RAM</span><b>${p.vcpu ?? '—'} / ${p.ramGb ?? '—'} GB</b>
+            <span>Costo</span><b>${fmtUsd(p.costPerHr)}/h</b>
+            <span>Encendido hace</span><b>${p.uptimeSec ? (p.uptimeSec / 3600).toFixed(1) + ' h' : '—'}</b>
+          </div></div>`;
+      }).join('') + `</div>` : '<div class="empty">No hay pods creados en la cuenta.</div>';
+      $('gpu').innerHTML = html;
+    }
+
+    async function load(force) {
+      const btn = $('refresh');
+      btn.disabled = true; btn.classList.add('loading');
+      try {
+        const res = await fetch('/api/sysmetrics' + (force ? '?refresh=1' : ''));
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const d = await res.json();
+        renderHost(d.host, d.containers);
+        renderContainers(d.containers, d.dockerError);
+        renderGpu(d.gpu);
+        $('stamp').textContent = `Lectura ${fmtTime(d.collectedAt)} · próxima ${fmtTime(d.nextRefreshAt)}`;
+      } catch (e) {
+        $('stamp').textContent = 'No se pudo actualizar: ' + e.message;
+      } finally {
+        btn.disabled = false; btn.classList.remove('loading');
+      }
+    }
+
+    if (user && user.rol === 'admin') {
+      $('refresh').addEventListener('click', () => load(true));
+      load(false);
+      setInterval(() => load(false), 60 * 60 * 1000); // se refresca solo cada hora
+    }
+  </script>
+</body>
+</html>
