@@ -31,6 +31,14 @@ async function runMigrations() {
     `);
     log.debug('migrate_new_tables_ready');
 
+    // Add wa-import / campaign tracking columns to contactos if missing
+    await db.query(`ALTER TABLE contactos ADD COLUMN IF NOT EXISTS campana_publicitaria TEXT`);
+    await db.query(`ALTER TABLE contactos ADD COLUMN IF NOT EXISTS campana_source_url   TEXT`);
+    await db.query(`ALTER TABLE contactos ADD COLUMN IF NOT EXISTS campana_tipo         VARCHAR(40)`);
+    await db.query(`ALTER TABLE contactos ADD COLUMN IF NOT EXISTS wa_message_id        TEXT`);
+    await db.query(`ALTER TABLE contactos ADD COLUMN IF NOT EXISTS wa_first_message     TEXT`);
+    await db.query(`ALTER TABLE contactos ADD COLUMN IF NOT EXISTS wa_forwarded         BOOLEAN DEFAULT FALSE`);
+
     // Add estado to recibos if missing
     await db.query(`ALTER TABLE recibos ADD COLUMN IF NOT EXISTS estado VARCHAR(20) DEFAULT 'activo'`);
     await db.query(`ALTER TABLE recibos ADD COLUMN IF NOT EXISTS anulado_at TIMESTAMPTZ`);

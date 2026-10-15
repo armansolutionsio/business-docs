@@ -70,6 +70,7 @@ app.get(['/travel', '/travel/'],       (req, res) => res.sendFile(path.join(PUBL
 app.get(['/tech', '/tech/'],           (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'tech', 'index.html')));
 app.get(['/paybridge', '/paybridge/'], (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'paybridge', 'index.html')));
 app.get(['/admin', '/admin/'],         (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'admin', 'index.html')));
+app.get(['/infra', '/infra/'],         (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'infra', 'index.html')));
 
 app.use(express.static(PUBLIC_DIR, { etag: false, maxAge: 0, index: false }));
 
@@ -107,6 +108,7 @@ const techRoutes           = require('./routes/tech');
 const paybridgeRoutes      = require('./routes/paybridge');
 const adminCoreRoutes      = require('./routes/adminCore');
 const arcaRoutes           = require('./routes/arca');
+const sysmetricsRoutes     = require('./routes/sysmetrics');
 
 // Quick cotizacion estado update (used by cotizador frontend)
 const dbPool = require('./utils/db');
@@ -261,6 +263,7 @@ app.use('/api/tech',      techRoutes);
 app.use('/api/paybridge', paybridgeRoutes);
 app.use('/api/admin',     adminCoreRoutes);
 app.use('/api/arca',      arcaRoutes);
+app.use('/api/sysmetrics', sysmetricsRoutes);
 
 // ── WA Import — receives file as base64 or rows as JSON ──────────────────────
 app.post('/api/wa-import', async (req, res, next) => {
