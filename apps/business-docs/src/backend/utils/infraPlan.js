@@ -1,6 +1,6 @@
-// Plan de infraestructura contratado (licencia / free tier) que muestra /infra.
+// Limites de la cuenta (licencia / free tier) que muestra /infra, cargados a mano.
 // Se guarda en admin_core.infra_plan (una sola fila) y se edita desde el dashboard,
-// asi un cambio de plan no requiere tocar codigo. DEFAULT_PLAN solo siembra la tabla.
+// asi un cambio de plan no requiere tocar codigo.
 //
 // Cada item puede tener `metric` para compararlo con lo medido en el servidor:
 //   cores -> nucleos del host, memTotal -> RAM total (GB), diskTotal -> disco total (GB).
@@ -9,30 +9,9 @@ const db = require('./db');
 
 const METRICS = ['cores', 'memTotal', 'diskTotal'];
 
-const DEFAULT_PLAN = {
-  provider: 'Oracle Cloud',
-  name: 'Always Free',
-  reviewedAt: '2026-10-16',
-  source: 'https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier_topic-Always_Free_Resources.htm',
-  items: [
-    { key: 'a1_ocpu', label: 'Ampere A1 · OCPU', limit: 2, unit: 'OCPU', metric: 'cores',
-      note: 'Total entre todas las instancias A1 de la cuenta. Reportado como reducido de 4 a 2 en ago-2026.' },
-    { key: 'a1_ram', label: 'Ampere A1 · Memoria', limit: 12, unit: 'GB', metric: 'memTotal',
-      note: 'Total entre todas las instancias A1. Reportado como reducido de 24 a 12 GB en ago-2026.' },
-    { key: 'block', label: 'Block volume', limit: 200, unit: 'GB', metric: 'diskTotal',
-      note: 'Boot + block volumes de toda la cuenta. Cada boot volume ocupa minimo 47 GB.' },
-    { key: 'amd_micro', label: 'VM AMD Micro', limit: 2, unit: 'instancias', metric: null,
-      note: '1/8 OCPU y 1 GB de RAM cada una.' },
-    { key: 'object', label: 'Object Storage', limit: 20, unit: 'GB', metric: null,
-      note: '20 GB entre los tres tiers en cuentas solo Always Free (10 GB por tier en cuentas pagas). 50.000 requests/mes.' },
-    { key: 'egress', label: 'Transferencia saliente', limit: 10, unit: 'TB/mes', metric: null,
-      note: 'Datos que salen de OCI hacia internet.' },
-    { key: 'lb', label: 'Load balancer flexible', limit: 1, unit: 'instancia', metric: null,
-      note: 'Ancho de banda fijo de 10 Mbps.' },
-    { key: 'adb', label: 'Autonomous Database', limit: 2, unit: 'instancias', metric: null,
-      note: 'Oracle DB administrada, 20 GB cada una.' },
-  ],
-};
+// Vacio a proposito: los limites se cargan a mano desde la consola de Oracle
+// (Limits, Quotas and Usage) hasta que la API de Limits este autorizada.
+const DEFAULT_PLAN = { provider: '', name: '', reviewedAt: '', source: '', items: [] };
 
 async function ensureTable() {
   await db.query(`
@@ -81,7 +60,6 @@ function sanitizePlan(input) {
       };
     }),
   };
-  if (!plan.name) throw bad('El plan necesita un nombre');
   if (plan.source && !/^https?:\/\//i.test(plan.source)) throw bad('La fuente debe ser un link http(s)');
   return plan;
 }
