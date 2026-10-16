@@ -1,6 +1,9 @@
 // Monitor de recursos del servidor (solo admin).
 // - Host: CPU / RAM / carga leyendo /proc (el contenedor ve los valores del host).
-//   Disco: statfs sobre / (el overlay del contenedor vive en el disco del host).
+//   Disco: statfs sobre / (el overlay del contenedor vive en el disco del host) y
+//   tamano de cada volumen en /sys/block.
+// - Instancia: forma, OCPU, memoria y region desde el servicio de metadatos de OCI.
+//   Son los recursos asignados a esta VM, no los limites de la cuenta.
 // - Contenedores: stats via docker-socket-proxy de solo lectura (DOCKER_PROXY_URL).
 // - Postgres: tamano del volumen de cada contenedor postgres (GET /system/df del proxy)
 //   y tamano de cada base del cluster al que se conecta business-docs.
@@ -88,6 +91,40 @@ function readDisk() {
   }
 }
 
+// Discos fisicos (sin loop/ram/device-mapper) con su tamano en bytes.
+function readBlockDevices() {
+  try {
+    return fs.readdirSync('/sys/block')
+      .filter((n) => !/^(loop|ram|dm-|zram|sr|md)/.test(n))
+      .map((n) => ({ name: n, size: Number(fs.readFileSync(`/sys/block/${n}/size`, 'utf8')) * 512 }))
+      .filter((d) => d.size > 0);
+  } catch (e) {
+    return [];
+  }
+}
+
+// Solo campos descriptivos: el bloque `metadata` trae las llaves SSH y no se expone.
+function pickInstance(d) {
+  if (!d || !d.shape) return null;
+  return {
+    displayName: d.displayName,
+    shape: d.shape,
+    ocpus: d.shapeConfig?.ocpus ?? null,
+    memoryGb: d.shapeConfig?.memoryInGBs ?? null,
+    bandwidthGbps: d.shapeConfig?.networkingBandwidthInGbps ?? null,
+    region: d.canonicalRegionName || d.region,
+    availabilityDomain: d.availabilityDomain,
+    faultDomain: d.faultDomain,
+    state: d.state,
+    createdAt: d.timeCreated ? new Date(d.timeCreated).toISOString() : null,
+  };
+}
+
+const IMDS_URL = 'http://169.254.169.254/opc/v2/instance/';
+async function instanceMetadata() {
+  return pickInstance(await requestJson(IMDS_URL, { headers: { Authorization: 'Bearer Oracle' }, timeout: 3000 }));
+}
+
 const isPostgres = (image) => /postgres|postgis|timescale|pgvector/i.test(image || '');
 
 // ── host ─────────────────────────────────────────────────────────────
@@ -115,6 +152,7 @@ async function hostMetrics() {
     memUsed: mem.total - mem.available,
     memAvailable: mem.available,
     ...readDisk(),
+    blockDevices: readBlockDevices(),
   };
 }
 
@@ -200,7 +238,9 @@ const REMOTE_SCRIPT = [
   // por cada contenedor postgres: nombre|estado|volumen|bytes (du sobre el volumen)
   'sudo docker ps -a --no-trunc --format "{{.Names}}|{{.Image}}|{{.State}}|{{.Mounts}}" | grep -iE "postgres|postgis|timescale|pgvector" | '
     + 'while IFS="|" read n i st m; do for v in $(echo "$m" | tr "," " "); do '
-    + 's=$(sudo du -sb "/var/lib/docker/volumes/$v/_data" 2>/dev/null | cut -f1); echo "$n|$st|$v|${s:--1}"; done; done',
+    + 's=$(sudo du -sb "/var/lib/docker/volumes/$v/_data" 2>/dev/null | cut -f1); echo "$n|$st|$v|${s:--1}"; done; done', 'echo @@',
+  `curl -s -m 5 -H "Authorization: Bearer Oracle" ${IMDS_URL}`, 'echo', 'echo @@',
+  'lsblk -b -dn -o NAME,SIZE,TYPE',
 ].join('; ');
 
 const UNITS = { B: 1, KB: 1e3, MB: 1e6, GB: 1e9, KIB: 1024, MIB: 1024 ** 2, GIB: 1024 ** 3 };
@@ -218,7 +258,7 @@ function sshRun(host) {
 }
 
 async function sshMetrics(host) {
-  const [cpu, mem, sys, stats, ps, disk, pg = ''] = (await sshRun(host)).split('@@\n');
+  const [cpu, mem, sys, stats, ps, disk, pg = '', imds = '', lsblk = ''] = (await sshRun(host)).split('@@\n');
   const [c1, c2] = cpu.trim().split('\n');
   const [loadLine, nproc, hostname, arch] = sys.trim().split('\n');
   const mi = parseMeminfo(mem);
@@ -252,7 +292,12 @@ async function sshMetrics(host) {
     e.volumes.push(vol);
     if (Number(bytes) >= 0) e.size = (e.size || 0) + Number(bytes);
   }
+  let instance = null;
+  try { instance = pickInstance(JSON.parse(imds)); } catch (e) { /* sin metadatos */ }
+  const blockDevices = lsblk.trim().split('\n').map((l) => l.trim().split(/\s+/))
+    .filter(([, , type]) => type === 'disk').map(([name, size]) => ({ name, size: Number(size) }));
   return {
+    instance,
     host: {
       hostname: hostname.trim(),
       arch: arch.trim() === 'aarch64' ? 'arm64' : arch.trim(),
@@ -265,6 +310,7 @@ async function sshMetrics(host) {
       diskTotal: dTotal,
       diskUsed: dUsed,
       diskFree: dAvail,
+      blockDevices,
     },
     containers,
     postgres: Object.values(pgMap).sort((a, b) => (b.size || 0) - (a.size || 0)),
@@ -319,12 +365,13 @@ async function runpodMetrics() {
 // ── recolector ───────────────────────────────────────────────────────
 async function collect() {
   const remote = SSH_HOST ? sshMetrics(SSH_HOST) : null;
-  const [host, containers, gpu, pgVolumes, pgDbs] = await Promise.allSettled([
+  const [host, containers, gpu, pgVolumes, pgDbs, instance] = await Promise.allSettled([
     remote ? remote.then((r) => r.host) : hostMetrics(),
     remote ? remote.then((r) => r.containers) : containerMetrics(),
     RUNPOD_API_KEY ? runpodMetrics() : Promise.resolve(null),
     remote ? remote.then((r) => r.postgres) : postgresVolumes(),
     ownDatabases(),
+    remote ? remote.then((r) => r.instance) : instanceMetadata(),
   ]);
   if (containers.status === 'rejected') log.warn('sysmetrics_docker_error', { error: containers.reason?.message });
   if (pgVolumes.status === 'rejected') log.warn('sysmetrics_pg_volumes_error', { error: pgVolumes.reason?.message });
@@ -334,6 +381,7 @@ async function collect() {
     collectedAt: new Date().toISOString(),
     nextRefreshAt: new Date(Date.now() + CACHE_TTL_MS).toISOString(),
     host: host.status === 'fulfilled' ? host.value : null,
+    instance: instance.status === 'fulfilled' ? instance.value : null,
     containers: containers.status === 'fulfilled' ? containers.value : [],
     dockerError: containers.status === 'rejected' ? containers.reason?.message : null,
     postgres: {

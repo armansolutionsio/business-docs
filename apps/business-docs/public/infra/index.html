@@ -110,10 +110,17 @@
     <section class="panel">
       <div class="panel-h">
         <div>
-          <h2 id="planTitle">Plan contratado</h2>
-          <p class="hint">Límites de la licencia y lo que usa este servidor.</p>
+          <h2>Instancia</h2>
+          <p class="hint">Recursos asignados a esta VM, leídos del servicio de metadatos de Oracle.</p>
         </div>
-        <button class="ghost" id="planEdit" type="button" hidden>Editar plan</button>
+      </div>
+      <div id="instance"></div>
+      <div class="panel-h" style="margin-top:20px">
+        <div>
+          <h2 id="planTitle" style="font-size:14px">Límites de la cuenta</h2>
+          <p class="hint">Cupo total de la licencia, compartido entre todas las instancias.</p>
+        </div>
+        <button class="ghost" id="planEdit" type="button" hidden>Editar límites</button>
       </div>
       <div id="plan"></div>
     </section>
@@ -158,7 +165,6 @@
     const level = (p) => p >= 85 ? 'var(--crit)' : p >= 65 ? 'var(--warn)' : 'var(--good)';
     const TYPE = { app: 'Aplicación', db: 'Base de datos', service: 'Servicio', sys: 'Sistema', other: 'Otro' };
     const COLOR = { app: 'var(--app)', db: 'var(--db)', service: 'var(--svc)', sys: 'var(--sys)', other: 'var(--other)' };
-    const FREE_TIER_GB = 200; // Oracle Always Free: 200 GB de block storage entre todos los volumenes de la cuenta
 
     function card(lbl, big, cap, pct) {
       return `<div class="card"><div class="lbl">${lbl}</div><div class="big">${big}</div><div class="cap">${cap}</div>` +
@@ -194,12 +200,31 @@
     }
     const fmtNum = (n) => n == null ? '—' : Number.isInteger(n) ? String(n) : n.toFixed(1);
 
+    function renderInstance(i) {
+      if (!i) { $('instance').innerHTML = '<div class="empty">No se pudieron leer los metadatos de la instancia.</div>'; return; }
+      const kv = [
+        ['Nombre', i.displayName], ['Forma', i.shape],
+        ['OCPU', i.ocpus], ['Memoria', i.memoryGb != null ? i.memoryGb + ' GB' : null],
+        ['Red', i.bandwidthGbps != null ? i.bandwidthGbps + ' Gbps' : null], ['Región', i.region],
+        ['Dominio de disponibilidad', i.availabilityDomain], ['Fault domain', i.faultDomain],
+        ['Estado', i.state], ['Creada', i.createdAt ? new Date(i.createdAt).toLocaleDateString('es-AR') : null],
+      ].filter(([, v]) => v != null && v !== '');
+      $('instance').innerHTML = `<div class="kv" style="max-width:560px">${kv.map(([k, v]) => `<span>${k}</span><b>${esc(v)}</b>`).join('')}</div>`;
+    }
+
     function renderPlan() {
       const p = planData;
       $('planEdit').hidden = !p || editing;
       if (!p) { $('plan').innerHTML = '<div class="err">No se pudo leer el plan.</div>'; return; }
-      $('planTitle').textContent = `Plan contratado · ${p.provider ? p.provider + ' ' : ''}${p.name}`;
+      const named = [p.provider, p.name].filter(Boolean).join(' ');
+      $('planTitle').textContent = 'Límites de la cuenta' + (named ? ' · ' + named : '');
       if (editing) return renderPlanForm(p);
+      if (!(p.items || []).length) {
+        $('plan').innerHTML = `<div class="empty">Sin datos. El servidor no tiene permiso para leer la API de Limits de Oracle
+          (respuesta <code>NotAuthorizedOrNotFound</code>), así que no se pueden traer automáticamente.
+          Se pueden cargar a mano con <b>Editar límites</b>, copiándolos de la consola de Oracle → Governance → Limits, Quotas and Usage.</div>`;
+        return;
+      }
       const over = [];
       const rows = (p.items || []).map((it) => {
         const m = it.metric ? measured(it.metric, hostData) : null;
@@ -217,7 +242,7 @@
       $('plan').innerHTML =
         (over.length ? `<div class="err" style="margin:0 0 12px">Este servidor supera el plan en: ${over.map(esc).join(', ')}. Revisá si la cuenta sigue en ese plan o actualizá los límites.</div>` : '') +
         `<div class="plan-wrap"><table class="plan"><thead><tr><th>Recurso</th><th>Límite</th><th>Este servidor</th><th class="hide-sm">Detalle</th></tr></thead><tbody>${rows}</tbody></table></div>` +
-        `<p class="note">Los límites de cuenta (block volume, OCPU, RAM) se comparten entre todas las instancias; acá se compara solo este servidor.` +
+        `<p class="note">Cargados a mano. Los límites de cuenta se comparten entre todas las instancias; acá se compara solo este servidor.` +
         (p.reviewedAt ? ` Revisado ${esc(p.reviewedAt)}.` : '') +
         (p.source ? ` <a href="${esc(p.source)}" target="_blank" rel="noopener">Fuente</a>.` : '') +
         (p.updatedBy && p.updatedBy !== 'seed' ? ` Editado por ${esc(p.updatedBy)} el ${new Date(p.updatedAt).toLocaleDateString('es-AR')}.` : '') +
@@ -278,11 +303,10 @@
     function diskCard(h) {
       if (!h.diskTotal) return card('Disco', '—', 'No se pudo leer el disco', null);
       const pct = h.diskUsed / h.diskTotal * 100;
-      const totalGb = h.diskTotal / GB;
-      return card('Disco', `${totalGb.toFixed(1)} <small>GB</small>`,
-        `${fmtBytes(h.diskUsed)} en uso · ${fmtBytes(h.diskFree)} libres<br>` +
-        `Free tier Oracle: ${FREE_TIER_GB} GB por cuenta` +
-        (totalGb < FREE_TIER_GB * 0.95 ? ` · este disco usa ~${totalGb.toFixed(0)} GB de esos ${FREE_TIER_GB}` : ''), pct);
+      const vols = h.blockDevices || [];
+      return card('Disco', `${(h.diskTotal / GB).toFixed(1)} <small>GB</small>`,
+        `${fmtBytes(h.diskUsed)} en uso · ${fmtBytes(h.diskFree)} libres` +
+        (vols.length ? `<br>Volumen${vols.length > 1 ? 'es' : ''}: ${vols.map((v) => `${esc(v.name)} ${fmtBytes(v.size)}`).join(' · ')}` : ''), pct);
     }
 
     function renderPostgres(pg, h) {
@@ -385,6 +409,7 @@
         renderContainers(d.containers, d.dockerError);
         renderPostgres(d.postgres || {}, d.host);
         hostData = d.host; planData = d.plan;
+        renderInstance(d.instance);
         if (!editing) renderPlan();
         renderGpu(d.gpu);
         $('stamp').textContent = `Lectura ${fmtTime(d.collectedAt)} · próxima ${fmtTime(d.nextRefreshAt)}`;
