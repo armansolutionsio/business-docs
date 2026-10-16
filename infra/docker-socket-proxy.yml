@@ -1,6 +1,7 @@
 # Proxy de solo lectura al socket de Docker, para el monitor /infra de business-docs.
-# Expone solo GET /containers/* (listado y stats). Sin POST: no puede crear,
-# borrar ni reiniciar contenedores. No publica puertos al exterior.
+# Expone solo GET /containers/* (listado y stats) y GET /system/df (tamano de
+# volumenes, para medir las bases Postgres). Sin POST: no puede crear, borrar
+# ni reiniciar nada. No publica puertos al exterior.
 #
 # Levantar en el servidor (una sola vez):
 #   docker compose -f docker-socket-proxy.yml up -d
@@ -13,6 +14,7 @@ services:
     restart: unless-stopped
     environment:
       CONTAINERS: 1
+      SYSTEM: 1
       POST: 0
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
