@@ -68,6 +68,27 @@
     .empty{color:var(--ink-2);font-size:13px;line-height:1.55;background:var(--panel);border:1px dashed var(--line);border-radius:12px;padding:16px}
     .empty code{background:var(--rail);padding:1px 6px;border-radius:5px;font-size:12px}
     .err{color:var(--warn);font-size:12.5px;margin-top:8px}
+    .sub-h{font-size:13px;font-weight:600;color:var(--ink-2);margin:18px 0 10px}
+    .note{color:var(--muted);font-size:12px;margin-top:8px;line-height:1.5}
+    .note a{color:var(--ink-2)}
+    .panel-h{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+    button.ghost{background:transparent;border:1px solid var(--line);color:var(--ink-2);padding:6px 12px;border-radius:8px;cursor:pointer;font-size:12.5px}
+    button.ghost:hover{color:var(--ink);border-color:#5b7bd6}
+    button.primary{background:#3d5fc4;border:1px solid #5b7bd6;color:#fff;padding:7px 14px;border-radius:8px;cursor:pointer;font-size:12.5px}
+    button:focus-visible{outline:2px solid #5b7bd6;outline-offset:2px}
+    .plan{width:100%;border-collapse:collapse;font-size:12.5px}
+    .plan th{text-align:left;font-weight:500;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:1px;padding:0 10px 8px 0}
+    .plan td{padding:9px 10px 9px 0;border-top:1px solid var(--line);vertical-align:top;color:var(--ink-2)}
+    .plan td.r{font-weight:600;color:var(--ink);white-space:nowrap;font-variant-numeric:tabular-nums}
+    .plan td b{color:var(--ink);font-weight:600}
+    .plan .over{color:var(--crit);font-weight:600}
+    .plan .ok{color:var(--good)}
+    .plan input,.plan select,.plan-meta input{width:100%;background:var(--rail);border:1px solid var(--line);color:var(--ink);border-radius:6px;padding:5px 7px;font:inherit;font-size:12.5px}
+    .plan-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:14px}
+    .plan-meta label{font-size:11px;color:var(--muted);display:flex;flex-direction:column;gap:4px}
+    .plan-actions{display:flex;gap:8px;margin-top:12px;align-items:center;flex-wrap:wrap}
+    .plan-wrap{overflow-x:auto}
+    @media (max-width:640px){.plan .hide-sm{display:none}}
   </style>
 </head>
 <body>
@@ -87,6 +108,17 @@
     <div class="grid" id="hostCards"></div>
 
     <section class="panel">
+      <div class="panel-h">
+        <div>
+          <h2 id="planTitle">Plan contratado</h2>
+          <p class="hint">Límites de la licencia y lo que usa este servidor.</p>
+        </div>
+        <button class="ghost" id="planEdit" type="button" hidden>Editar plan</button>
+      </div>
+      <div id="plan"></div>
+    </section>
+
+    <section class="panel">
       <h2>Memoria por proyecto</h2>
       <p class="hint">Contenedores activos ordenados por consumo de RAM. A la derecha, CPU en % de un núcleo.</p>
       <div class="legend">
@@ -97,6 +129,12 @@
       </div>
       <div class="rows" id="rows"></div>
       <div class="err" id="dockerErr" hidden></div>
+    </section>
+
+    <section class="panel">
+      <h2>Bases de datos Postgres</h2>
+      <p class="hint">Espacio en disco de cada contenedor Postgres. No tienen cuota propia: todas crecen sobre el espacio libre del disco del servidor.</p>
+      <div id="pg"></div>
     </section>
 
     <section class="panel">
@@ -120,6 +158,7 @@
     const level = (p) => p >= 85 ? 'var(--crit)' : p >= 65 ? 'var(--warn)' : 'var(--good)';
     const TYPE = { app: 'Aplicación', db: 'Base de datos', service: 'Servicio', sys: 'Sistema', other: 'Otro' };
     const COLOR = { app: 'var(--app)', db: 'var(--db)', service: 'var(--svc)', sys: 'var(--sys)', other: 'var(--other)' };
+    const FREE_TIER_GB = 200; // Oracle Always Free: 200 GB de block storage entre todos los volumenes de la cuenta
 
     function card(lbl, big, cap, pct) {
       return `<div class="card"><div class="lbl">${lbl}</div><div class="big">${big}</div><div class="cap">${cap}</div>` +
@@ -137,8 +176,156 @@
           `${h.cpuPct == null ? '—' : h.cpuPct.toFixed(1) + '% en uso'} · carga ${h.load[0]} / ${h.cores}`, h.cpuPct) +
         card('Memoria RAM', `${(h.memTotal / GB).toFixed(1)} <small>GB</small>`,
           `${fmtBytes(h.memUsed)} en uso · ${fmtBytes(h.memAvailable)} libres`, memPct) +
+        diskCard(h) +
         card('Contenedores', `${containers.length}`,
           `${fmtBytes(ctrMem)} de RAM entre todos`, null);
+    }
+
+    // ── Plan contratado ──
+    const METRIC_LABEL = { '': 'No se mide', cores: 'Núcleos del servidor', memTotal: 'RAM del servidor (GB)', diskTotal: 'Disco del servidor (GB)' };
+    let planData = null, hostData = null, editing = false;
+
+    function measured(metric, h) {
+      if (!h) return null;
+      if (metric === 'cores') return h.cores;
+      if (metric === 'memTotal') return h.memTotal / GB;
+      if (metric === 'diskTotal') return h.diskTotal ? h.diskTotal / GB : null;
+      return null;
+    }
+    const fmtNum = (n) => n == null ? '—' : Number.isInteger(n) ? String(n) : n.toFixed(1);
+
+    function renderPlan() {
+      const p = planData;
+      $('planEdit').hidden = !p || editing;
+      if (!p) { $('plan').innerHTML = '<div class="err">No se pudo leer el plan.</div>'; return; }
+      $('planTitle').textContent = `Plan contratado · ${p.provider ? p.provider + ' ' : ''}${p.name}`;
+      if (editing) return renderPlanForm(p);
+      const over = [];
+      const rows = (p.items || []).map((it) => {
+        const m = it.metric ? measured(it.metric, hostData) : null;
+        // RAM y disco reportan un poco menos que lo nominal; 3% de margen antes de marcar exceso
+        const isOver = m != null && it.limit != null && m > it.limit * 1.03;
+        if (isOver) over.push(it.label);
+        const use = !it.metric ? '<span title="No se mide automáticamente">—</span>'
+          : m == null ? 'sin datos'
+          : `<span class="${isOver ? 'over' : 'ok'}">${fmtNum(m)} ${esc(it.unit)}</span>`;
+        return `<tr><td><b>${esc(it.label)}</b></td>
+          <td class="r">${it.limit == null ? '—' : fmtNum(it.limit) + ' ' + esc(it.unit)}</td>
+          <td class="r">${use}</td>
+          <td class="hide-sm">${esc(it.note)}</td></tr>`;
+      }).join('');
+      $('plan').innerHTML =
+        (over.length ? `<div class="err" style="margin:0 0 12px">Este servidor supera el plan en: ${over.map(esc).join(', ')}. Revisá si la cuenta sigue en ese plan o actualizá los límites.</div>` : '') +
+        `<div class="plan-wrap"><table class="plan"><thead><tr><th>Recurso</th><th>Límite</th><th>Este servidor</th><th class="hide-sm">Detalle</th></tr></thead><tbody>${rows}</tbody></table></div>` +
+        `<p class="note">Los límites de cuenta (block volume, OCPU, RAM) se comparten entre todas las instancias; acá se compara solo este servidor.` +
+        (p.reviewedAt ? ` Revisado ${esc(p.reviewedAt)}.` : '') +
+        (p.source ? ` <a href="${esc(p.source)}" target="_blank" rel="noopener">Fuente</a>.` : '') +
+        (p.updatedBy && p.updatedBy !== 'seed' ? ` Editado por ${esc(p.updatedBy)} el ${new Date(p.updatedAt).toLocaleDateString('es-AR')}.` : '') +
+        `</p>`;
+    }
+
+    function renderPlanForm(p) {
+      const opt = (sel) => Object.entries(METRIC_LABEL).map(([k, v]) => `<option value="${k}" ${k === (sel || '') ? 'selected' : ''}>${v}</option>`).join('');
+      const row = (it) => `<tr data-key="${esc(it.key || '')}">
+        <td><input name="label" value="${esc(it.label)}" aria-label="Recurso"></td>
+        <td style="width:90px"><input name="limit" type="number" step="any" value="${it.limit ?? ''}" aria-label="Límite"></td>
+        <td style="width:100px"><input name="unit" value="${esc(it.unit)}" aria-label="Unidad"></td>
+        <td style="width:170px"><select name="metric" aria-label="Comparar con">${opt(it.metric)}</select></td>
+        <td><input name="note" value="${esc(it.note)}" aria-label="Detalle"></td>
+        <td style="width:30px"><button class="ghost" type="button" data-del aria-label="Quitar">×</button></td></tr>`;
+      $('plan').innerHTML = `
+        <div class="plan-meta">
+          <label>Proveedor<input id="pProvider" value="${esc(p.provider)}"></label>
+          <label>Plan<input id="pName" value="${esc(p.name)}"></label>
+          <label>Revisado<input id="pReviewed" type="date" value="${esc(p.reviewedAt)}"></label>
+          <label>Fuente (link)<input id="pSource" value="${esc(p.source)}"></label>
+        </div>
+        <div class="plan-wrap"><table class="plan"><thead><tr><th>Recurso</th><th>Límite</th><th>Unidad</th><th>Comparar con</th><th>Detalle</th><th></th></tr></thead>
+        <tbody id="planRows">${(p.items || []).map(row).join('')}</tbody></table></div>
+        <div class="plan-actions">
+          <button class="ghost" type="button" id="planAdd">+ Agregar recurso</button>
+          <span style="flex:1"></span>
+          <button class="ghost" type="button" id="planCancel">Cancelar</button>
+          <button class="primary" type="button" id="planSave">Guardar plan</button>
+        </div>
+        <div class="err" id="planErr" hidden></div>`;
+      $('planRows').addEventListener('click', (e) => { if (e.target.closest('[data-del]')) e.target.closest('tr').remove(); });
+      $('planAdd').onclick = () => $('planRows').insertAdjacentHTML('beforeend', row({ label: '', unit: '', note: '' }));
+      $('planCancel').onclick = () => { editing = false; renderPlan(); };
+      $('planSave').onclick = savePlan;
+    }
+
+    async function savePlan() {
+      const body = {
+        provider: $('pProvider').value, name: $('pName').value, reviewedAt: $('pReviewed').value, source: $('pSource').value,
+        items: [...$('planRows').querySelectorAll('tr')].map((tr) => {
+          const v = (n) => tr.querySelector(`[name="${n}"]`).value;
+          return { key: tr.dataset.key, label: v('label'), limit: v('limit'), unit: v('unit'), metric: v('metric') || null, note: v('note') };
+        }),
+      };
+      const btn = $('planSave'); btn.disabled = true;
+      try {
+        const res = await fetch('/api/sysmetrics/plan', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        const d = await res.json();
+        if (!res.ok) throw new Error(d.error || 'HTTP ' + res.status);
+        planData = d; editing = false; renderPlan();
+      } catch (e) {
+        $('planErr').hidden = false; $('planErr').textContent = 'No se pudo guardar: ' + e.message;
+        btn.disabled = false;
+      }
+    }
+
+    function diskCard(h) {
+      if (!h.diskTotal) return card('Disco', '—', 'No se pudo leer el disco', null);
+      const pct = h.diskUsed / h.diskTotal * 100;
+      const totalGb = h.diskTotal / GB;
+      return card('Disco', `${totalGb.toFixed(1)} <small>GB</small>`,
+        `${fmtBytes(h.diskUsed)} en uso · ${fmtBytes(h.diskFree)} libres<br>` +
+        `Free tier Oracle: ${FREE_TIER_GB} GB por cuenta` +
+        (totalGb < FREE_TIER_GB * 0.95 ? ` · este disco usa ~${totalGb.toFixed(0)} GB de esos ${FREE_TIER_GB}` : ''), pct);
+    }
+
+    function renderPostgres(pg, h) {
+      let html = '';
+      const vols = pg.volumes || [];
+      const total = vols.reduce((a, v) => a + (v.size || 0), 0);
+      html += `<div class="grid" style="margin-bottom:14px">` +
+        card('Total en Postgres', fmtBytes(total), `${vols.length} contenedor${vols.length === 1 ? '' : 'es'} Postgres`, null) +
+        card('Libre para crecer', h && h.diskFree ? fmtBytes(h.diskFree) : '—',
+          h && h.diskTotal ? `Compartido con apps, imágenes y logs (${(h.diskUsed / h.diskTotal * 100).toFixed(0)}% del disco usado)` : '',
+          h && h.diskTotal ? h.diskUsed / h.diskTotal * 100 : null) +
+        `</div>`;
+      if (pg.volumesError) {
+        html += `<div class="err">No se pudo leer el tamaño de los volúmenes (${esc(pg.volumesError)}). ` +
+          `Verificá que docker-socket-proxy tenga <code>SYSTEM: 1</code>.</div>`;
+      } else if (!vols.length) {
+        html += '<div class="empty">No se encontraron contenedores Postgres.</div>';
+      } else {
+        const max = Math.max(1, ...vols.map((v) => v.size || 0));
+        html += `<div class="rows">` + vols.map((v) => {
+          const share = h && h.diskTotal && v.size != null ? ` · ${(v.size / h.diskTotal * 100).toFixed(1)}% del disco` : '';
+          return `<div class="row" title="${esc(v.name)} · ${esc(v.volumes.join(', '))}">
+            <div class="rl">${esc(v.project)}<small>${v.running ? 'Activa' : 'Detenida'}${share}</small></div>
+            <div class="track"><div class="fill" style="width:${((v.size || 0) / max * 100).toFixed(1)}%;background:var(--db)"></div></div>
+            <div class="rv">${v.size == null ? 'sin datos' : fmtBytes(v.size)}</div>
+          </div>`;
+        }).join('') + `</div>`;
+      }
+
+      const dbs = pg.databases || [];
+      html += `<div class="sub-h">Bases dentro del Postgres de business-docs</div>`;
+      if (pg.databasesError) {
+        html += `<div class="err">No se pudo consultar Postgres: ${esc(pg.databasesError)}</div>`;
+      } else {
+        const max = Math.max(1, ...dbs.map((d) => d.size));
+        html += `<div class="rows">` + dbs.map((d) => `<div class="row">
+            <div class="rl">${esc(d.name)}<small>${d.current ? 'En uso por business-docs' : ''}</small></div>
+            <div class="track"><div class="fill" style="width:${(d.size / max * 100).toFixed(1)}%;background:var(--db);opacity:.7"></div></div>
+            <div class="rv">${fmtBytes(d.size)}</div>
+          </div>`).join('') + `</div>`;
+        html += `<p class="note">El volumen incluye además el WAL y archivos internos de Postgres, por eso puede ser mayor que la suma de las bases.</p>`;
+      }
+      $('pg').innerHTML = html;
     }
 
     function renderContainers(list, err) {
@@ -196,6 +383,9 @@
         const d = await res.json();
         renderHost(d.host, d.containers);
         renderContainers(d.containers, d.dockerError);
+        renderPostgres(d.postgres || {}, d.host);
+        hostData = d.host; planData = d.plan;
+        if (!editing) renderPlan();
         renderGpu(d.gpu);
         $('stamp').textContent = `Lectura ${fmtTime(d.collectedAt)} · próxima ${fmtTime(d.nextRefreshAt)}`;
       } catch (e) {
@@ -207,6 +397,7 @@
 
     if (user && user.rol === 'admin') {
       $('refresh').addEventListener('click', () => load(true));
+      $('planEdit').addEventListener('click', () => { editing = true; renderPlan(); });
       load(false);
       setInterval(() => load(false), 60 * 60 * 1000); // se refresca solo cada hora
     }

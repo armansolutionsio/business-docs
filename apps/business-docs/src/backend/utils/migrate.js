@@ -278,6 +278,10 @@ async function runMigrations() {
       log.error('migrate_bootstrap_verticals_failed', { error: e.message, stack: e.stack });
     }
 
+    // ─── Plan de infraestructura (dashboard /infra) ───────────────────────
+    try { await require('./infraPlan').ensureTable(); }
+    catch (e) { log.warn('migrate_infra_plan_failed', { error: e.message }); }
+
     // ─── Identidad global de cliente cross-vertical ───────────────────────
     try {
       await db.query(`ALTER TABLE public.contactos ADD COLUMN IF NOT EXISTS global_customer_id UUID`);
