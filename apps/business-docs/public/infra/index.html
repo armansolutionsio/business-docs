@@ -56,7 +56,10 @@
     .fill{height:100%;border-radius:0 5px 5px 0;min-width:2px}
     .rv{font-size:11.5px;color:var(--ink-2);font-variant-numeric:tabular-nums;white-space:nowrap}
     .cpu{font-size:10.5px;color:var(--muted)}
-    @media (max-width:560px){.row{grid-template-columns:110px 1fr 56px}}
+    .row.c4{grid-template-columns:170px 1fr 64px 84px}
+    .rc{font-size:11.5px;color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right}
+    .rc small{display:block;color:var(--muted);font-size:10.5px}
+    @media (max-width:560px){.row{grid-template-columns:110px 1fr 56px}.row.c4{grid-template-columns:96px 1fr 52px 64px}}
 
     .gpu-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
     .pod{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
@@ -140,8 +143,9 @@
     </section>
 
     <section class="panel">
-      <h2>Memoria por proyecto</h2>
-      <p class="hint">Contenedores activos ordenados por consumo de RAM. A la derecha, CPU en % de un núcleo.</p>
+      <h2>Memoria y costo por proyecto</h2>
+      <p class="hint">Contenedores activos ordenados por consumo de RAM, con su CPU (en % de un núcleo) y su costo estimado por mes.</p>
+      <div id="costs"></div>
       <div class="legend">
         <span><span class="dot" style="background:var(--app)"></span>Aplicación</span>
         <span><span class="dot" style="background:var(--db)"></span>Base de datos</span>
@@ -264,6 +268,7 @@
     }
 
     function renderPlanForm(p) {
+      const pr = p.pricing || {};
       const opt = (sel) => Object.entries(METRIC_LABEL).map(([k, v]) => `<option value="${k}" ${k === (sel || '') ? 'selected' : ''}>${v}</option>`).join('');
       const row = (it) => `<tr data-key="${esc(it.key || '')}">
         <td><input name="label" value="${esc(it.label)}" aria-label="Recurso"></td>
@@ -278,6 +283,14 @@
           <label>Plan<input id="pName" value="${esc(p.name)}"></label>
           <label>Revisado<input id="pReviewed" type="date" value="${esc(p.reviewedAt)}"></label>
           <label>Fuente (link)<input id="pSource" value="${esc(p.source)}"></label>
+        </div>
+        <div class="sub-h" style="margin-top:4px">Precios para el costo estimado (US$)</div>
+        <div class="plan-meta">
+          <label>OCPU por hora<input id="prOcpu" type="number" step="any" min="0" value="${pr.ocpuHour}"></label>
+          <label>GB de RAM por hora<input id="prMem" type="number" step="any" min="0" value="${pr.memGbHour}"></label>
+          <label>Cupo gratuito (OCPU)<input id="prFreeOcpu" type="number" step="any" min="0" value="${pr.freeOcpus}"></label>
+          <label>Cupo gratuito (GB RAM)<input id="prFreeMem" type="number" step="any" min="0" value="${pr.freeMemGb}"></label>
+          <label>Fuente de precios (link)<input id="prSource" value="${esc(pr.source)}"></label>
         </div>
         <div class="plan-wrap"><table class="plan"><thead><tr><th>Recurso</th><th>Límite</th><th>Unidad</th><th>Comparar con</th><th>Detalle</th><th></th></tr></thead>
         <tbody id="planRows">${(p.items || []).map(row).join('')}</tbody></table></div>
@@ -297,6 +310,7 @@
     async function savePlan() {
       const body = {
         provider: $('pProvider').value, name: $('pName').value, reviewedAt: $('pReviewed').value, source: $('pSource').value,
+        pricing: { ocpuHour: $('prOcpu').value, memGbHour: $('prMem').value, freeOcpus: $('prFreeOcpu').value, freeMemGb: $('prFreeMem').value, source: $('prSource').value },
         items: [...$('planRows').querySelectorAll('tr')].map((tr) => {
           const v = (n) => tr.querySelector(`[name="${n}"]`).value;
           return { key: tr.dataset.key, label: v('label'), limit: v('limit'), unit: v('unit'), metric: v('metric') || null, note: v('note') };
@@ -308,6 +322,7 @@
         const d = await res.json();
         if (!res.ok) throw new Error(d.error || 'HTTP ' + res.status);
         planData = d; editing = false; renderPlan();
+        load(false); // recalcula los costos con los precios nuevos
       } catch (e) {
         $('planErr').hidden = false; $('planErr').textContent = 'No se pudo guardar: ' + e.message;
         btn.disabled = false;
@@ -366,16 +381,64 @@
       $('pg').innerHTML = html;
     }
 
-    function renderContainers(list, err) {
+    // ── Costo estimado a precio de lista (hoy la cuenta no paga: ver nota en el panel) ──
+    const HOURS_MONTH = 730;
+    const monthly = (pr, cores, memBytes) => (cores * pr.ocpuHour + memBytes / GB * pr.memGbHour) * HOURS_MONTH;
+    const fmtUsdM = (n) => n == null ? '—' : 'US$ ' + (n < 10 ? n.toFixed(2) : n.toFixed(0));
+
+    // Promedio de 30 días si hay muestras; si no, la lectura actual (marcada como provisoria).
+    function containerCost(c, costs, pr) {
+      const avg = costs && costs.averages && costs.averages[c.key];
+      if (avg && avg.hours > 0) return { usd: monthly(pr, avg.cores, avg.memBytes), hours: avg.hours };
+      if (c.error || c.memUsed == null) return null;
+      return { usd: monthly(pr, (c.cpuPct || 0) / 100, c.memUsed), hours: 0 };
+    }
+
+    function renderCosts(list, costs, instance, h) {
+      const pr = planData && planData.pricing;
+      if (!pr || !list.length) { $('costs').innerHTML = ''; return; }
+      const ocpus = instance && instance.ocpus != null ? instance.ocpus : h ? h.cores : null;
+      const memGb = instance && instance.memoryGb != null ? instance.memoryGb : h ? h.memTotal / GB : null;
+      if (ocpus == null || memGb == null) { $('costs').innerHTML = ''; return; }
+      const vm = (ocpus * pr.ocpuHour + memGb * pr.memGbHour) * HOURS_MONTH;
+      const items = list.map((c) => containerCost(c, costs, pr)).filter(Boolean);
+      const used = items.reduce((a, x) => a + x.usd, 0);
+      const withHistory = items.filter((x) => x.hours > 0).length;
+      const excess = (Math.max(0, ocpus - pr.freeOcpus) * pr.ocpuHour + Math.max(0, memGb - pr.freeMemGb) * pr.memGbHour) * HOURS_MONTH;
+      const shape = `${fmtNum(ocpus)} OCPU · ${fmtNum(memGb)} GB`;
+      let html = '';
+      if (excess > 0) {
+        html += `<div class="alert warn" role="alert"><b>Revisar</b>La VM tiene ${shape} y el cupo Always Free vigente es ${fmtNum(pr.freeOcpus)} OCPU · ${fmtNum(pr.freeMemGb)} GB.
+          En una cuenta Pay As You Go el excedente se cobraría ≈ ${fmtUsdM(excess)} / mes. Confirmalo en la consola de Oracle → Billing &amp; Cost Management → Cost Analysis.</div>`;
+      }
+      html += `<div class="grid">` +
+        card('Costo de lista de la VM', `${fmtUsdM(vm)} <small>/ mes</small>`, `${shape}${instance ? '' : ' (medido en el host)'}`, null) +
+        card('Usado por contenedores', `${fmtUsdM(used)} <small>/ mes</small>`, `${(used / vm * 100).toFixed(0)}% de la VM`, used / vm * 100) +
+        card('Sin asignar', `${fmtUsdM(Math.max(0, vm - used))} <small>/ mes</small>`, 'Sistema operativo y capacidad libre', null) +
+        `</div>`;
+      html += `<p class="note" style="margin:-6px 0 14px">Estimado a precio de lista de Oracle (US$ ${pr.ocpuHour} por OCPU-hora, US$ ${pr.memGbHour} por GB-hora)` +
+        (excess > 0 ? '.' : ': la VM entra en el cupo Always Free, así que hoy no se paga.') +
+        ` Cada contenedor usa su promedio de los últimos ${costs ? costs.windowDays : 30} días (${withHistory} de ${items.length} con historial);` +
+        ` los que todavía no tienen muestras usan la lectura actual y se marcan con ≈. Los precios se editan en <b>Editar límites</b>` +
+        (pr.source ? ` · <a href="${esc(pr.source)}" target="_blank" rel="noopener">fuente</a>` : '') + `.</p>`;
+      $('costs').innerHTML = html;
+    }
+
+    function renderContainers(list, err, costs) {
+      const pr = planData && planData.pricing;
       $('dockerErr').hidden = !err;
       if (err) $('dockerErr').textContent = 'No se pudo consultar Docker (' + err + '). Verificá que el contenedor docker-socket-proxy esté corriendo.';
       const max = Math.max(1, ...list.map((c) => c.memUsed || 0));
       $('rows').innerHTML = list.map((c) => {
         const pct = (c.memUsed || 0) / max * 100;
-        return `<div class="row" title="${esc(c.name)} · ${esc(c.status || '')}">
+        const cost = pr ? containerCost(c, costs, pr) : null;
+        const costCell = !pr ? '' : `<div class="rc" title="${cost && cost.hours ? `Promedio de ${cost.hours} h de muestras` : 'Sin historial: lectura actual'}">` +
+          (cost ? `${cost.hours ? '' : '≈ '}${fmtUsdM(cost.usd)}<small>/ mes</small>` : '—') + `</div>`;
+        return `<div class="row${pr ? ' c4' : ''}" title="${esc(c.name)} · ${esc(c.status || '')}">
           <div class="rl">${esc(c.project)}<small>${TYPE[c.type] || ''}</small></div>
           <div class="track"><div class="fill" style="width:${pct.toFixed(1)}%;background:${COLOR[c.type] || COLOR.other}"></div></div>
           <div class="rv">${c.error ? 'sin datos' : fmtBytes(c.memUsed)}<div class="cpu">CPU ${c.cpuPct == null ? '—' : c.cpuPct.toFixed(1) + '%'}</div></div>
+          ${costCell}
         </div>`;
       }).join('') || '<div class="empty">Sin datos de contenedores.</div>';
     }
@@ -499,9 +562,10 @@
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const d = await res.json();
         renderHost(d.host, d.containers);
-        renderContainers(d.containers, d.dockerError);
-        renderPostgres(d.postgres || {}, d.host);
         hostData = d.host; planData = d.plan;
+        renderCosts(d.containers, d.costs, d.instance, d.host);
+        renderContainers(d.containers, d.dockerError, d.costs);
+        renderPostgres(d.postgres || {}, d.host);
         renderInstance(d.instance);
         if (!editing) renderPlan();
         renderGpu(d.gpu);
