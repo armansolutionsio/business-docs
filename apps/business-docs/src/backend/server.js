@@ -569,6 +569,7 @@ if (require.main === module) {
     app.listen(PORT, () => {
       log.info('server_started', { port: PORT, env: process.env.NODE_ENV || 'development' });
     });
+    require('./utils/runpod').startWatcher();
   });
 }
 

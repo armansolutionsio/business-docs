@@ -7,20 +7,20 @@
 // - Contenedores: stats via docker-socket-proxy de solo lectura (DOCKER_PROXY_URL).
 // - Postgres: tamano del volumen de cada contenedor postgres (GET /system/df del proxy)
 //   y tamano de cada base del cluster al que se conecta business-docs.
-// - GPU: creditos y pods de RunPod si RUNPOD_API_KEY esta configurada.
+// - GPU: RunPod (utils/runpod.js), con su propia cache de 5 min para no perder de vista un pod prendido.
 // - En desarrollo, SYSMETRICS_SSH_HOST reemplaza host + contenedores por una lectura via SSH.
 // - Plan: limites de la licencia / free tier (admin_core.infra_plan), editable via PUT /plan.
-// Las metricas se cachean 1 hora (?refresh=1 fuerza una lectura nueva); el plan se lee siempre.
+// Las metricas del servidor se cachean 1 hora (?refresh=1 fuerza una lectura nueva); el plan se lee siempre.
 
 const express = require('express');
 const fs = require('fs');
 const os = require('os');
-const http = require('http');
-const https = require('https');
 const { execFile } = require('child_process');
 const { requireAdmin } = require('../utils/auth');
 const db = require('../utils/db');
 const infraPlan = require('../utils/infraPlan');
+const runpod = require('../utils/runpod');
+const { requestJson } = require('../utils/httpJson');
 const log = require('../utils/logger');
 
 const router = express.Router();
@@ -28,33 +28,12 @@ router.use(requireAdmin);
 
 const CACHE_TTL_MS = 60 * 60 * 1000;
 const DOCKER_PROXY_URL = process.env.DOCKER_PROXY_URL || 'http://docker-socket-proxy:2375';
-const RUNPOD_API_KEY = process.env.RUNPOD_API_KEY || '';
 const SSH_HOST = process.env.SYSMETRICS_SSH_HOST || '';
 
 let cache = null;      // { data, ts }
 let inflight = null;   // evita lecturas duplicadas si llegan dos refresh juntos
 
 // ── helpers ──────────────────────────────────────────────────────────
-function requestJson(url, { method = 'GET', headers = {}, body, timeout = 8000 } = {}) {
-  return new Promise((resolve, reject) => {
-    const u = new URL(url);
-    const lib = u.protocol === 'https:' ? https : http;
-    const req = lib.request(u, { method, headers, timeout }, (res) => {
-      let raw = '';
-      res.setEncoding('utf8');
-      res.on('data', (c) => { raw += c; });
-      res.on('end', () => {
-        if (res.statusCode >= 400) return reject(new Error(`HTTP ${res.statusCode}`));
-        try { resolve(JSON.parse(raw)); } catch (e) { reject(e); }
-      });
-    });
-    req.on('timeout', () => req.destroy(new Error('timeout')));
-    req.on('error', reject);
-    if (body) req.write(body);
-    req.end();
-  });
-}
-
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 function parseCpuLine(line) {
@@ -317,58 +296,12 @@ async function sshMetrics(host) {
   };
 }
 
-// ── RunPod (GPU) ─────────────────────────────────────────────────────
-const RUNPOD_QUERY = `query {
-  myself {
-    clientBalance
-    currentSpendPerHr
-    pods {
-      id name desiredStatus costPerHr gpuCount memoryInGb vcpuCount
-      machine { gpuDisplayName }
-      runtime {
-        uptimeInSeconds
-        gpus { id gpuUtilPercent memoryUtilPercent }
-        container { cpuPercent memoryPercent }
-      }
-    }
-  }
-}`;
-
-async function runpodMetrics() {
-  const res = await requestJson('https://api.runpod.io/graphql', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${RUNPOD_API_KEY}` },
-    body: JSON.stringify({ query: RUNPOD_QUERY }),
-  });
-  if (res.errors?.length) throw new Error(res.errors[0].message);
-  const me = res.data?.myself || {};
-  return {
-    balance: me.clientBalance ?? null,
-    spendPerHr: me.currentSpendPerHr ?? 0,
-    pods: (me.pods || []).map((p) => ({
-      id: p.id,
-      name: p.name,
-      status: p.desiredStatus,
-      gpu: p.machine?.gpuDisplayName || null,
-      gpuCount: p.gpuCount,
-      vcpu: p.vcpuCount,
-      ramGb: p.memoryInGb,
-      costPerHr: p.costPerHr,
-      uptimeSec: p.runtime?.uptimeInSeconds ?? null,
-      gpus: p.runtime?.gpus || [],
-      cpuPct: p.runtime?.container?.cpuPercent ?? null,
-      memPct: p.runtime?.container?.memoryPercent ?? null,
-    })),
-  };
-}
-
 // ── recolector ───────────────────────────────────────────────────────
 async function collect() {
   const remote = SSH_HOST ? sshMetrics(SSH_HOST) : null;
-  const [host, containers, gpu, pgVolumes, pgDbs, instance] = await Promise.allSettled([
+  const [host, containers, pgVolumes, pgDbs, instance] = await Promise.allSettled([
     remote ? remote.then((r) => r.host) : hostMetrics(),
     remote ? remote.then((r) => r.containers) : containerMetrics(),
-    RUNPOD_API_KEY ? runpodMetrics() : Promise.resolve(null),
     remote ? remote.then((r) => r.postgres) : postgresVolumes(),
     ownDatabases(),
     remote ? remote.then((r) => r.instance) : instanceMetadata(),
@@ -376,7 +309,6 @@ async function collect() {
   if (containers.status === 'rejected') log.warn('sysmetrics_docker_error', { error: containers.reason?.message });
   if (pgVolumes.status === 'rejected') log.warn('sysmetrics_pg_volumes_error', { error: pgVolumes.reason?.message });
   if (pgDbs.status === 'rejected') log.warn('sysmetrics_pg_dbs_error', { error: pgDbs.reason?.message });
-  if (gpu.status === 'rejected') log.warn('sysmetrics_runpod_error', { error: gpu.reason?.message });
   return {
     collectedAt: new Date().toISOString(),
     nextRefreshAt: new Date(Date.now() + CACHE_TTL_MS).toISOString(),
@@ -390,11 +322,6 @@ async function collect() {
       databases: pgDbs.status === 'fulfilled' ? pgDbs.value : [],
       databasesError: pgDbs.status === 'rejected' ? pgDbs.reason?.message : null,
     },
-    gpu: {
-      configured: Boolean(RUNPOD_API_KEY),
-      data: gpu.status === 'fulfilled' ? gpu.value : null,
-      error: gpu.status === 'rejected' ? gpu.reason?.message : null,
-    },
   };
 }
 
@@ -404,14 +331,15 @@ router.get('/', async (req, res, next) => {
     const force = req.query.refresh === '1';
     const fresh = cache && Date.now() - cache.ts < CACHE_TTL_MS;
     const planP = infraPlan.getPlan().catch((e) => { log.warn('sysmetrics_plan_error', { error: e.message }); return null; });
-    if (!force && fresh) return res.json({ ...cache.data, plan: await planP, cached: true });
+    const gpuP = runpod.getStatus(force);
+    if (!force && fresh) return res.json({ ...cache.data, plan: await planP, gpu: await gpuP, cached: true });
     if (!inflight) {
       inflight = collect()
         .then((data) => { cache = { data, ts: Date.now() }; return data; })
         .finally(() => { inflight = null; });
     }
     const data = await inflight;
-    res.json({ ...data, plan: await planP, cached: false });
+    res.json({ ...data, plan: await planP, gpu: await gpuP, cached: false });
   } catch (err) { next(err); }
 });
 
