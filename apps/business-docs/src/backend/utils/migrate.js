@@ -281,6 +281,8 @@ async function runMigrations() {
     // ─── Plan de infraestructura (dashboard /infra) ───────────────────────
     try { await require('./infraPlan').ensureTable(); }
     catch (e) { log.warn('migrate_infra_plan_failed', { error: e.message }); }
+    try { await require('./infraSamples').ensureTable(); }
+    catch (e) { log.warn('migrate_infra_samples_failed', { error: e.message }); }
 
     // ─── Identidad global de cliente cross-vertical ───────────────────────
     try {

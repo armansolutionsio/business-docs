@@ -10,6 +10,9 @@
 // - GPU: RunPod (utils/runpod.js), con su propia cache de 5 min para no perder de vista un pod prendido.
 // - En desarrollo, SYSMETRICS_SSH_HOST reemplaza host + contenedores por una lectura via SSH.
 // - Plan: limites de la licencia / free tier (admin_core.infra_plan), editable via PUT /plan.
+// - Costos: una muestra por hora de CPU/RAM de cada contenedor (admin_core.infra_samples) para
+//   estimar su costo a precio de lista con el promedio de 30 dias. Lo toma un timer horario y
+//   tambien cada lectura del dashboard (como mucho una muestra por hora).
 // Las metricas del servidor se cachean 1 hora (?refresh=1 fuerza una lectura nueva); el plan se lee siempre.
 
 const express = require('express');
@@ -19,6 +22,7 @@ const { execFile } = require('child_process');
 const { requireAdmin } = require('../utils/auth');
 const db = require('../utils/db');
 const infraPlan = require('../utils/infraPlan');
+const infraSamples = require('../utils/infraSamples');
 const runpod = require('../utils/runpod');
 const { requestJson } = require('../utils/httpJson');
 const log = require('../utils/logger');
@@ -307,6 +311,7 @@ async function collect() {
     remote ? remote.then((r) => r.instance) : instanceMetadata(),
   ]);
   if (containers.status === 'rejected') log.warn('sysmetrics_docker_error', { error: containers.reason?.message });
+  else recordSample(containers.value);
   if (pgVolumes.status === 'rejected') log.warn('sysmetrics_pg_volumes_error', { error: pgVolumes.reason?.message });
   if (pgDbs.status === 'rejected') log.warn('sysmetrics_pg_dbs_error', { error: pgDbs.reason?.message });
   return {
@@ -314,7 +319,8 @@ async function collect() {
     nextRefreshAt: new Date(Date.now() + CACHE_TTL_MS).toISOString(),
     host: host.status === 'fulfilled' ? host.value : null,
     instance: instance.status === 'fulfilled' ? instance.value : null,
-    containers: containers.status === 'fulfilled' ? containers.value : [],
+    containers: containers.status === 'fulfilled'
+      ? containers.value.map((c) => ({ ...c, key: infraSamples.stableKey(c.name) })) : [],
     dockerError: containers.status === 'rejected' ? containers.reason?.message : null,
     postgres: {
       volumes: pgVolumes.status === 'fulfilled' ? pgVolumes.value : [],
@@ -325,6 +331,34 @@ async function collect() {
   };
 }
 
+// ── muestras para costos ─────────────────────────────────────────────
+function recordSample(containers) {
+  infraSamples.maybeRecord(containers)
+    .then((saved) => { if (saved) log.debug('sysmetrics_sample_saved', { containers: containers.length }); })
+    .catch((e) => log.warn('sysmetrics_sample_error', { error: e.message }));
+}
+
+// Muestra liviana (sin Postgres ni host) para el timer horario.
+async function sampleNow() {
+  const containers = SSH_HOST ? (await sshMetrics(SSH_HOST)).containers : await containerMetrics();
+  recordSample(containers);
+}
+
+router.startSampler = () => {
+  const tick = () => sampleNow().catch((e) => log.warn('sysmetrics_sample_error', { error: e.message }));
+  setTimeout(tick, 2 * 60 * 1000);
+  setInterval(tick, 60 * 60 * 1000);
+};
+
+async function costData() {
+  try {
+    return { windowDays: infraSamples.WINDOW_DAYS, averages: await infraSamples.averages() };
+  } catch (e) {
+    log.warn('sysmetrics_costs_error', { error: e.message });
+    return { windowDays: infraSamples.WINDOW_DAYS, averages: {}, error: e.message };
+  }
+}
+
 // ── GET /api/sysmetrics ──────────────────────────────────────────────
 router.get('/', async (req, res, next) => {
   try {
@@ -332,14 +366,16 @@ router.get('/', async (req, res, next) => {
     const fresh = cache && Date.now() - cache.ts < CACHE_TTL_MS;
     const planP = infraPlan.getPlan().catch((e) => { log.warn('sysmetrics_plan_error', { error: e.message }); return null; });
     const gpuP = runpod.getStatus(force);
-    if (!force && fresh) return res.json({ ...cache.data, plan: await planP, gpu: await gpuP, cached: true });
+    if (!force && fresh) {
+      return res.json({ ...cache.data, plan: await planP, gpu: await gpuP, costs: await costData(), cached: true });
+    }
     if (!inflight) {
       inflight = collect()
         .then((data) => { cache = { data, ts: Date.now() }; return data; })
         .finally(() => { inflight = null; });
     }
     const data = await inflight;
-    res.json({ ...data, plan: await planP, gpu: await gpuP, cached: false });
+    res.json({ ...data, plan: await planP, gpu: await gpuP, costs: await costData(), cached: false });
   } catch (err) { next(err); }
 });
 
