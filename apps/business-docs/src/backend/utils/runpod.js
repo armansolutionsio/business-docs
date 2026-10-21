@@ -3,7 +3,7 @@
 //   y endpoints serverless. Pods y extras van en consultas separadas para que un error en
 //   volumes/endpoints no tape los creditos.
 // - Historial (REST /v1/billing, cache 1 h): gasto diario de los ultimos 30 dias por pods,
-//   network volumes y serverless.
+//   network volumes y serverless, con los dias en hora de Argentina.
 // - Alertas: creditos para menos de RUNPOD_LOW_HOURS horas al ritmo actual y pods encendidos
 //   sin uso de GPU. "Ocioso desde" es la primera lectura de este proceso con GPU al 0%, no el
 //   historial real del pod. Un watcher revisa cada 5 min y, si RUNPOD_ALERT_EMAIL esta
@@ -120,10 +120,15 @@ async function fetchLive() {
 // ── historial de gasto ───────────────────────────────────────────────
 const BILLING = { pods: 'pods', volumes: 'networkvolumes', serverless: 'endpoints' };
 
+// RunPod corta los dias en UTC; se pide por hora y se agrupa por dia de Argentina (UTC-3),
+// asi lo consumido entre las 21:00 y las 00:00 queda en el dia correcto.
+const TIME_ZONE = 'America/Argentina/Buenos_Aires';
+const localDay = new Intl.DateTimeFormat('en-CA', { timeZone: TIME_ZONE }); // YYYY-MM-DD
+
 async function fetchHistory() {
-  const start = new Date(Date.now() - HISTORY_DAYS * 86400000);
-  start.setUTCHours(0, 0, 0, 0);
-  const qs = `bucketSize=day&startTime=${start.toISOString().replace(/\.\d{3}Z$/, 'Z')}`;
+  const cutoff = localDay.format(new Date(Date.now() - (HISTORY_DAYS - 1) * 86400000));
+  const start = new Date(Date.now() - (HISTORY_DAYS + 1) * 86400000);
+  const qs = `bucketSize=hour&startTime=${start.toISOString().replace(/\.\d{3}Z$/, 'Z')}`;
   const keys = Object.keys(BILLING);
   const results = await Promise.allSettled(keys.map((k) =>
     requestJson(`https://rest.runpod.io/v1/billing/${BILLING[k]}?${qs}`, { headers: auth, timeout: 15000 })));
@@ -133,9 +138,11 @@ async function fetchHistory() {
     const k = keys[i];
     if (r.status === 'rejected') { errors[k] = r.reason?.message; return; }
     for (const rec of Array.isArray(r.value) ? r.value : []) {
-      // pods/endpoints traen `time`; networkvolumes trae `startDate`
-      const date = String(rec.time || rec.startDate || '').slice(0, 10);
-      if (!date) continue;
+      // pods/endpoints traen `time`; networkvolumes trae `startDate` ("2026-10-16 17:00:00", en UTC)
+      const t = new Date(String(rec.time || rec.startDate || '').replace(' ', 'T') + 'Z');
+      if (Number.isNaN(t.getTime())) continue;
+      const date = localDay.format(t);
+      if (date < cutoff) continue;
       const d = days[date] || (days[date] = { date, pods: 0, volumes: 0, serverless: 0 });
       d[k] += Number(rec.amount) || 0;
     }
