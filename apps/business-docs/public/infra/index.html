@@ -177,7 +177,11 @@
     const $ = (id) => document.getElementById(id);
     const GB = 1024 ** 3, MB = 1024 ** 2;
     const fmtBytes = (b) => b == null ? '—' : b >= GB ? (b / GB).toFixed(2) + ' GB' : Math.round(b / MB) + ' MB';
-    const fmtTime = (iso) => new Date(iso).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+    // Todo en hora de Argentina, se abra desde donde se abra
+    const TZ = 'America/Argentina/Buenos_Aires';
+    const fmtTime = (iso) => new Date(iso).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', timeZone: TZ });
+    const fmtDate = (iso) => new Date(iso).toLocaleDateString('es-AR', { timeZone: TZ });
+    const localDay = (d) => new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(d); // YYYY-MM-DD
     const fmtUsd = (n) => n == null ? '—' : 'US$ ' + Number(n).toFixed(2);
     const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
     const level = (p) => p >= 85 ? 'var(--crit)' : p >= 65 ? 'var(--warn)' : 'var(--good)';
@@ -225,7 +229,7 @@
         ['OCPU', i.ocpus], ['Memoria', i.memoryGb != null ? i.memoryGb + ' GB' : null],
         ['Red', i.bandwidthGbps != null ? i.bandwidthGbps + ' Gbps' : null], ['Región', i.region],
         ['Dominio de disponibilidad', i.availabilityDomain], ['Fault domain', i.faultDomain],
-        ['Estado', i.state], ['Creada', i.createdAt ? new Date(i.createdAt).toLocaleDateString('es-AR') : null],
+        ['Estado', i.state], ['Creada', i.createdAt ? fmtDate(i.createdAt) : null],
       ].filter(([, v]) => v != null && v !== '');
       $('instance').innerHTML = `<div class="kv" style="max-width:560px">${kv.map(([k, v]) => `<span>${k}</span><b>${esc(v)}</b>`).join('')}</div>`;
     }
@@ -263,7 +267,7 @@
         `<p class="note">Cargados a mano. Los límites de cuenta se comparten entre todas las instancias; acá se compara solo este servidor.` +
         (p.reviewedAt ? ` Revisado ${esc(p.reviewedAt)}.` : '') +
         (p.source ? ` <a href="${esc(p.source)}" target="_blank" rel="noopener">Fuente</a>.` : '') +
-        (p.updatedBy && p.updatedBy !== 'seed' ? ` Editado por ${esc(p.updatedBy)} el ${new Date(p.updatedAt).toLocaleDateString('es-AR')}.` : '') +
+        (p.updatedBy && p.updatedBy !== 'seed' ? ` Editado por ${esc(p.updatedBy)} el ${fmtDate(p.updatedAt)}.` : '') +
         `</p>`;
     }
 
@@ -539,12 +543,12 @@
       if (!days.length) return '<p class="quiet">Sin gasto en los últimos 30 días.</p>';
       const max = Math.max(...days.map((x) => x.total));
       const used = SPEND.filter((s) => days.some((x) => x[s.key] > 0));
-      const today = new Date().toISOString().slice(0, 10);
+      const today = localDay(new Date());
       return `<div class="legend">${used.map((s) => `<span><span class="dot" style="background:${s.color}"></span>${s.label}</span>`).join('')}</div>
         <div class="rows">${days.map((x) => {
           const detail = used.map((s) => `${s.label} ${fmtUsd(x[s.key])}`).join(' · ');
           return `<div class="row" title="${esc(detail)}">
-            <div class="rl">${x.date === today ? 'Hoy' : fmtDay(x.date)}<small>${new Date(x.date + 'T12:00:00Z').toLocaleDateString('es-AR', { weekday: 'long' })}</small></div>
+            <div class="rl">${x.date === today ? 'Hoy' : fmtDay(x.date)}<small>${new Date(x.date + 'T12:00:00Z').toLocaleDateString('es-AR', { weekday: 'long', timeZone: TZ })}</small></div>
             <div class="track"><div class="seg" style="width:${(x.total / max * 100).toFixed(1)}%">${used.filter((s) => x[s.key] > 0)
               .map((s) => `<span style="flex:${x[s.key]};background:${s.color}"></span>`).join('')}</div></div>
             <div class="rv">${fmtUsd(x.total)}</div>
