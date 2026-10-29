@@ -3,7 +3,8 @@
 // asi un cambio de plan no requiere tocar codigo.
 //
 // Cada item puede tener `metric` para compararlo con lo medido en el servidor:
-//   cores -> nucleos del host, memTotal -> RAM total (GB), diskTotal -> disco total (GB).
+//   cores -> nucleos del host, memTotal -> RAM total (GB), diskTotal -> particion raiz (GB),
+//   blockTotal -> todos los discos de la VM sumados (GB), para el cupo de block storage.
 //
 // `pricing` alimenta el costo estimado por contenedor: precio de lista de Oracle para
 // Ampere A1 (OCPU-hora y GB-hora) y el cupo Always Free vigente. No es lo que se factura:
@@ -11,7 +12,7 @@
 
 const db = require('./db');
 
-const METRICS = ['cores', 'memTotal', 'diskTotal'];
+const METRICS = ['cores', 'memTotal', 'diskTotal', 'blockTotal'];
 
 // Vacio a proposito: los limites se cargan a mano desde la consola de Oracle
 // (Limits, Quotas and Usage) hasta que la API de Limits este autorizada.

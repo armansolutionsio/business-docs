@@ -83,7 +83,8 @@
     .note.foot{margin-top:18px;padding-top:12px;border-top:1px solid var(--line)}
     .ellip{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .empty{color:var(--ink-2);font-size:13px;line-height:1.55;background:var(--panel);border:1px dashed var(--line);border-radius:12px;padding:16px}
-    .empty code{background:var(--rail);padding:1px 6px;border-radius:5px;font-size:12px}
+    .empty code,.pod code,.note code{background:var(--rail);padding:1px 6px;border-radius:5px;font-size:12px}
+    .disk-use{color:var(--ink-2);font-size:12.5px;margin-top:8px;font-variant-numeric:tabular-nums;line-height:1.5}
     .err{color:var(--warn);font-size:12.5px;margin-top:8px}
     .sub-h{font-size:13px;font-weight:600;color:var(--ink-2);margin:18px 0 10px}
     .note{color:var(--muted);font-size:12px;margin-top:8px;line-height:1.5}
@@ -158,8 +159,14 @@
 
     <section class="panel">
       <h2>Bases de datos Postgres</h2>
-      <p class="hint">Espacio en disco de cada contenedor Postgres. No tienen cuota propia: todas crecen sobre el espacio libre del disco del servidor.</p>
+      <p class="hint">Espacio en disco de cada contenedor Postgres. No tienen cuota propia: todas crecen sobre el espacio libre del disco del sistema.</p>
       <div id="pg"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Discos</h2>
+      <p class="hint">Los discos enchufados a la VM. El del sistema vino con la VM; los demás son block volumes de Oracle que se ven como una carpeta más.</p>
+      <div id="disks"></div>
     </section>
 
     <section class="panel">
@@ -210,7 +217,7 @@
     }
 
     // ── Plan contratado ──
-    const METRIC_LABEL = { '': 'No se mide', cores: 'Núcleos del servidor', memTotal: 'RAM del servidor (GB)', diskTotal: 'Disco del servidor (GB)' };
+    const METRIC_LABEL = { '': 'No se mide', cores: 'Núcleos del servidor', memTotal: 'RAM del servidor (GB)', diskTotal: 'Disco del sistema, raíz (GB)', blockTotal: 'Discos de la VM sumados (GB)' };
     let planData = null, hostData = null, editing = false;
 
     function measured(metric, h) {
@@ -218,6 +225,7 @@
       if (metric === 'cores') return h.cores;
       if (metric === 'memTotal') return h.memTotal / GB;
       if (metric === 'diskTotal') return h.diskTotal ? h.diskTotal / GB : null;
+      if (metric === 'blockTotal') { const b = h.blockDevices || []; return b.length ? b.reduce((a, v) => a + v.size, 0) / GB : null; }
       return null;
     }
     const fmtNum = (n) => n == null ? '—' : Number.isInteger(n) ? String(n) : n.toFixed(1);
@@ -334,12 +342,32 @@
     }
 
     function diskCard(h) {
-      if (!h.diskTotal) return card('Disco', '—', 'No se pudo leer el disco', null);
+      if (!h.diskTotal) return card('Disco del sistema', '—', 'No se pudo leer el disco', null);
       const pct = h.diskUsed / h.diskTotal * 100;
-      const vols = h.blockDevices || [];
-      return card('Disco', `${(h.diskTotal / GB).toFixed(1)} <small>GB</small>`,
-        `${fmtBytes(h.diskUsed)} en uso · ${fmtBytes(h.diskFree)} libres` +
-        (vols.length ? `<br>Volumen${vols.length > 1 ? 'es' : ''}: ${vols.map((v) => `${esc(v.name)} ${fmtBytes(v.size)}`).join(' · ')}` : ''), pct);
+      return card('Disco del sistema', `${(h.diskTotal / GB).toFixed(1)} <small>GB</small>`,
+        `${fmtBytes(h.diskUsed)} en uso · ${fmtBytes(h.diskFree)} libres · partición raíz`, pct);
+    }
+
+    // Un bloque por disco: tamaño físico, uso medido (o "sin datos" con el motivo) y qué guarda, en una línea.
+    function renderDisks(h) {
+      const disks = (h && h.disks) || [];
+      if (!disks.length) { $('disks').innerHTML = '<div class="empty">No se pudieron leer los discos del servidor.</div>'; return; }
+      $('disks').innerHTML = `<div class="gpu-grid">` + disks.map((d) => {
+        const pill = [d.device, d.size != null ? fmtBytes(d.size) : 'tamaño sin datos'].filter(Boolean).join(' · ');
+        let body;
+        if (d.mounted && d.total) {
+          const pct = d.used / d.total * 100;
+          body = `<div class="meter"><span style="width:${Math.min(100, pct).toFixed(1)}%;background:${level(pct)}"></span></div>
+            <div class="disk-use">${fmtBytes(d.used)} en uso · ${fmtBytes(d.free)} libres · ${pct.toFixed(0)}% ` +
+            (d.mount === '/' ? `de la partición raíz (${fmtBytes(d.total)})`
+              : `de <code>${esc(d.mount)}</code>${d.fstype ? ' · ' + esc(d.fstype) : ''}${d.readOnly ? ' · solo lectura' : ''}`) + `</div>` +
+            (d.folders && d.folders.length ? `<div class="note">Carpetas: ${d.folders.map(esc).join(', ')}</div>` : '');
+        } else {
+          body = `<div class="disk-use">Uso: sin datos</div><div class="err" style="margin-top:4px">${esc(d.reason || '')}</div>`;
+        }
+        return `<div class="pod"><h3>${esc(d.label)} <span class="pill">${esc(pill)}</span></h3>${body}` +
+          (d.holds ? `<div class="note">${esc(d.holds)}</div>` : '') + `</div>`;
+      }).join('') + `</div>`;
     }
 
     function renderPostgres(pg, h) {
@@ -570,6 +598,7 @@
         renderCosts(d.containers, d.costs, d.instance, d.host);
         renderContainers(d.containers, d.dockerError, d.costs);
         renderPostgres(d.postgres || {}, d.host);
+        renderDisks(d.host);
         renderInstance(d.instance);
         if (!editing) renderPlan();
         renderGpu(d.gpu);
