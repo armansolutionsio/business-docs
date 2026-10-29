@@ -2,6 +2,8 @@
 // - Host: CPU / RAM / carga leyendo /proc (el contenedor ve los valores del host).
 //   Disco: statfs sobre / (el overlay del contenedor vive en el disco del host) y
 //   tamano de cada volumen en /sys/block.
+// - Discos: cada disco de la VM con su uso (utils/infraDisks.js). Un disco extra se mide
+//   solo si el contenedor lo ve en la misma ruta (bind mount en Coolify); si no, "sin datos".
 // - Instancia: forma, OCPU, memoria y region desde el servicio de metadatos de OCI.
 //   Son los recursos asignados a esta VM, no los limites de la cuenta.
 // - Contenedores: stats via docker-socket-proxy de solo lectura (DOCKER_PROXY_URL).
@@ -23,6 +25,7 @@ const { requireAdmin } = require('../utils/auth');
 const db = require('../utils/db');
 const infraPlan = require('../utils/infraPlan');
 const infraSamples = require('../utils/infraSamples');
+const infraDisks = require('../utils/infraDisks');
 const runpod = require('../utils/runpod');
 const { requestJson } = require('../utils/httpJson');
 const log = require('../utils/logger');
@@ -125,6 +128,8 @@ async function hostMetrics() {
   } catch (e) {
     // fuera de Linux (dev local) no hay /proc: quedan los valores de os
   }
+  const disk = readDisk();
+  const blockDevices = readBlockDevices();
   return {
     hostname: os.hostname(),
     arch: os.arch(),
@@ -134,8 +139,9 @@ async function hostMetrics() {
     memTotal: mem.total,
     memUsed: mem.total - mem.available,
     memAvailable: mem.available,
-    ...readDisk(),
-    blockDevices: readBlockDevices(),
+    ...disk,
+    blockDevices,
+    disks: infraDisks.readDisks({ total: disk.diskTotal, used: disk.diskUsed, free: disk.diskFree }, blockDevices),
   };
 }
 
@@ -223,7 +229,9 @@ const REMOTE_SCRIPT = [
     + 'while IFS="|" read n i st m; do for v in $(echo "$m" | tr "," " "); do '
     + 's=$(sudo du -sb "/var/lib/docker/volumes/$v/_data" 2>/dev/null | cut -f1); echo "$n|$st|$v|${s:--1}"; done; done', 'echo @@',
   `curl -s -m 5 -H "Authorization: Bearer Oracle" ${IMDS_URL}`, 'echo', 'echo @@',
-  'lsblk -b -dn -o NAME,SIZE,TYPE',
+  'lsblk -b -dn -o NAME,SIZE,TYPE', 'echo @@',
+  // discos extra: findmnt + carpetas de cada mount (utils/infraDisks.js)
+  ...infraDisks.sshCommands(),
 ].join('; ');
 
 const UNITS = { B: 1, KB: 1e3, MB: 1e6, GB: 1e9, KIB: 1024, MIB: 1024 ** 2, GIB: 1024 ** 3 };
@@ -241,7 +249,7 @@ function sshRun(host) {
 }
 
 async function sshMetrics(host) {
-  const [cpu, mem, sys, stats, ps, disk, pg = '', imds = '', lsblk = ''] = (await sshRun(host)).split('@@\n');
+  const [cpu, mem, sys, stats, ps, disk, pg = '', imds = '', lsblk = '', mounts = ''] = (await sshRun(host)).split('@@\n');
   const [c1, c2] = cpu.trim().split('\n');
   const [loadLine, nproc, hostname, arch] = sys.trim().split('\n');
   const mi = parseMeminfo(mem);
@@ -294,6 +302,7 @@ async function sshMetrics(host) {
       diskUsed: dUsed,
       diskFree: dAvail,
       blockDevices,
+      disks: infraDisks.parseSsh(mounts, { total: dTotal, used: dUsed, free: dAvail }, blockDevices),
     },
     containers,
     postgres: Object.values(pgMap).sort((a, b) => (b.size || 0) - (a.size || 0)),
