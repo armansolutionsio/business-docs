@@ -111,7 +111,11 @@ async function instanceMetadata() {
   return pickInstance(await requestJson(IMDS_URL, { headers: { Authorization: 'Bearer Oracle' }, timeout: 3000 }));
 }
 
-const isPostgres = (image) => /postgres|postgis|timescale|pgvector/i.test(image || '');
+// Postgres por imagen o por nombre de volumen. Cuando Coolify vuelve a descargar la imagen, los
+// contenedores viejos quedan con un ID (sha256:...) en vez de "postgres:16-alpine" y solo el volumen
+// postgres-data-* delata la base; el modo SSH ya matchea asi porque filtra la linea entera.
+const PG_RE = /postgres|postgis|timescale|pgvector/i;
+const isPostgres = (c) => PG_RE.test([c.Image, ...(c.Mounts || []).map((m) => m.Name)].join(' '));
 
 // ── host ─────────────────────────────────────────────────────────────
 async function hostMetrics() {
@@ -189,7 +193,7 @@ async function postgresVolumes() {
   const volSize = {};
   for (const v of df.Volumes || []) volSize[v.Name] = v.UsageData?.Size ?? null;
   return (df.Containers || [])
-    .filter((c) => isPostgres(c.Image))
+    .filter(isPostgres)
     .map((c) => {
       const name = (c.Names?.[0] || c.Id.slice(0, 12)).replace(/^\//, '');
       const vols = (c.Mounts || []).filter((m) => m.Type === 'volume');
@@ -312,8 +316,12 @@ async function sshMetrics(host) {
 // ── recolector ───────────────────────────────────────────────────────
 async function collect() {
   const remote = SSH_HOST ? sshMetrics(SSH_HOST) : null;
-  const [host, containers, pgVolumes, pgDbs, instance] = await Promise.allSettled([
-    remote ? remote.then((r) => r.host) : hostMetrics(),
+  // El host se mide antes de pedirle nada a Docker: /system/df hace recorrer los volumenes al daemon y los
+  // stats de todos los contenedores lo ocupan tambien, y eso inflaba la CPU del host en la ventana de 2 s
+  // (17% en una ventana tranquila contra 50% con Docker trabajando, medido en prod el 2026-10-29).
+  // Por SSH ya corre en serie dentro del mismo script.
+  const [host] = await Promise.allSettled([remote ? remote.then((r) => r.host) : hostMetrics()]);
+  const [containers, pgVolumes, pgDbs, instance] = await Promise.allSettled([
     remote ? remote.then((r) => r.containers) : containerMetrics(),
     remote ? remote.then((r) => r.postgres) : postgresVolumes(),
     ownDatabases(),
