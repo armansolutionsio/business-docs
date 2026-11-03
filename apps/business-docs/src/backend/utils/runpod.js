@@ -2,7 +2,7 @@
 // - Live (GraphQL, cache 5 min): creditos, gasto/hora, limite de gasto, pods, network volumes
 //   y endpoints serverless. Pods y extras van en consultas separadas para que un error en
 //   volumes/endpoints no tape los creditos.
-// - Historial (REST /v1/billing, cache 1 h): gasto diario de los ultimos 30 dias por pods,
+// - Historial (REST /v1/billing, cache 1 h): gasto diario de los ultimos dos meses por pods,
 //   network volumes y serverless, con los dias en hora de Argentina.
 // - Alertas: creditos para menos de RUNPOD_LOW_HOURS horas al ritmo actual y pods encendidos
 //   sin uso de GPU. "Ocioso desde" es la primera lectura de este proceso con GPU al 0%, no el
@@ -19,7 +19,7 @@ const IDLE_ALERT_MIN = Number(process.env.RUNPOD_IDLE_ALERT_MIN) || 30;
 const ALERT_EMAIL = process.env.RUNPOD_ALERT_EMAIL || '';
 const LIVE_TTL_MS = 5 * 60 * 1000;
 const HISTORY_TTL_MS = 60 * 60 * 1000;
-const HISTORY_DAYS = 30;
+const HISTORY_DAYS = 62;   // dos meses: el dashboard filtra por hoy / 7 dias / 30 dias / este mes / mes anterior
 
 const auth = { Authorization: `Bearer ${API_KEY}` };
 

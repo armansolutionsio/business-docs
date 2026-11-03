@@ -2,7 +2,7 @@
 // - Live (REST, cache 5 min): credito e instancias con su costo por hora y uso de GPU. El gasto por
 //   hora es la suma de las instancias prendidas; las apagadas siguen pagando el disco hasta que se
 //   destruyen, y eso se informa aparte (stoppedDiskPerHr).
-// - Historial (GET /charges, cache 1 h): gasto diario de los ultimos 30 dias por GPU, disco y ancho
+// - Historial (GET /charges, cache 1 h): gasto diario de los ultimos dos meses por GPU, disco y ancho
 //   de banda. Vast corta los cargos por dia UTC; un cargo que abarca varios dias se prorratea por horas.
 // - Alertas: mismas reglas que RunPod (credito para pocas horas, GPU prendida al 0%) mas instancias
 //   apagadas que siguen pagando disco. VAST_LOW_HOURS y VAST_IDLE_ALERT_MIN toman por defecto los
@@ -19,7 +19,7 @@ const IDLE_ALERT_MIN = Number(process.env.VAST_IDLE_ALERT_MIN || process.env.RUN
 const ALERT_EMAIL = process.env.GPU_ALERT_EMAIL || process.env.RUNPOD_ALERT_EMAIL || '';
 const LIVE_TTL_MS = 5 * 60 * 1000;
 const HISTORY_TTL_MS = 60 * 60 * 1000;
-const HISTORY_DAYS = 30;
+const HISTORY_DAYS = 62;   // dos meses: el dashboard filtra por hoy / 7 dias / 30 dias / este mes / mes anterior
 const BASE = 'https://console.vast.ai/api';
 const PAGE_LIMIT = 20; // tope de paginas por consulta, por si la API no corta
 
