@@ -87,6 +87,7 @@
     .disk-use{color:var(--ink-2);font-size:12.5px;margin-top:8px;font-variant-numeric:tabular-nums;line-height:1.5}
     .err{color:var(--warn);font-size:12.5px;margin-top:8px}
     .sub-h{font-size:13px;font-weight:600;color:var(--ink-2);margin:18px 0 10px}
+    .sub-h.prov{font-size:15px;color:var(--ink);margin-top:24px;display:flex;align-items:center}
     .note{color:var(--muted);font-size:12px;margin-top:8px;line-height:1.5}
     .note a{color:var(--ink-2)}
     .panel-h{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
@@ -170,8 +171,8 @@
     </section>
 
     <section class="panel">
-      <h2>GPU · RunPod</h2>
-      <p class="hint">Créditos, gasto, pods, volúmenes y endpoints serverless de la cuenta.</p>
+      <h2>GPU</h2>
+      <p class="hint">RunPod y Vast.ai: créditos, gasto y máquinas de cada cuenta, y el total entre las dos.</p>
       <div id="gpu"></div>
     </section>
   </div>
@@ -476,49 +477,102 @@
     }
 
     const fmtDay = (iso) => iso.slice(8, 10) + '/' + iso.slice(5, 7);
-    const fmtAgo = (iso) => {
-      const min = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
-      return min < 60 ? `${min} min` : `${(min / 60).toFixed(1)} h`;
-    };
-    // Series del gasto diario, en orden fijo (colores validados contra el fondo del panel)
-    const SPEND = [
-      { key: 'pods', label: 'Pods', color: '#3987e5' },
-      { key: 'volumes', label: 'Network volumes', color: '#d95926' },
-      { key: 'serverless', label: 'Serverless', color: '#199e70' },
+    const fmtAgo = (iso) => fmtDur((Date.now() - new Date(iso).getTime()) / 1000);
+    const fmtDur = (sec) => sec == null ? '—' : sec < 3600 ? `${Math.round(sec / 60)} min` : sec < 172800 ? `${(sec / 3600).toFixed(1)} h` : `${Math.round(sec / 86400)} d`;
+
+    // ── GPU: RunPod y Vast.ai. Alertas de los dos, totales si hay más de uno, y un bloque por proveedor. ──
+    // `series` son los tipos de gasto que trae el historial de cada uno (history.days[].<key>).
+    const PROVIDERS = [
+      { key: 'runpod', label: 'RunPod', color: '#3987e5', envKey: 'RUNPOD_API_KEY',
+        keyHint: 'runpod.io → Settings → API Keys (con permiso de solo lectura alcanza)',
+        series: [{ key: 'pods', label: 'Pods', color: '#3987e5' }, { key: 'volumes', label: 'Network volumes', color: '#d95926' }, { key: 'serverless', label: 'Serverless', color: '#199e70' }] },
+      { key: 'vast', label: 'Vast.ai', color: '#d985ff', envKey: 'VAST_API_KEY',
+        keyHint: 'console.vast.ai → Keys → API Keys, con permisos instance_read, user_read y billing_read',
+        series: [{ key: 'gpu', label: 'GPU', color: '#d985ff' }, { key: 'disk', label: 'Disco', color: '#fab219' }, { key: 'bandwidth', label: 'Ancho de banda', color: '#7d92bd' }] },
     ];
+    const dayTotal = (p, x) => p.series.reduce((a, s) => a + (x[s.key] || 0), 0);
+    const machinesOf = (p, d) => (d && (p.key === 'runpod' ? d.pods : d.instances)) || [];
+    const isOn = (m) => String(m.status || '').toLowerCase() === 'running';
+    const spent30 = (p, g) => g.history ? g.history.days.reduce((a, x) => a + dayTotal(p, x), 0) : null;
+    const onCount = (p, g) => machinesOf(p, g.data).filter(isOn).length;
+    const onLabel = (p, n) => p.key === 'runpod' ? `${n} pod${n === 1 ? '' : 's'} encendido${n === 1 ? '' : 's'}` : `${n} instancia${n === 1 ? '' : 's'} encendida${n === 1 ? '' : 's'}`;
+    const alertBox = (level, msg) => `<div class="alert ${level}" role="alert"><b>${level === 'crit' ? 'Crítico' : 'Atención'}</b>${esc(msg)}</div>`;
 
-    function renderGpu(g) {
+    function renderGpu(gpu) {
+      const all = PROVIDERS.map((p) => ({ p, g: (gpu && gpu[p.key]) || { configured: false } }));
+      const live = all.filter(({ g }) => g.configured && g.data);
+      let html = '';
+      for (const { p, g } of all) for (const a of g.alerts || []) html += alertBox(a.level, `${p.label}: ${a.message}`);
+      if (live.length >= 2) html += renderTotals(live);
+      for (const { p, g } of all) html += renderProvider(p, g, live.length < 2);
+      html += renderGpuFoot(all);
+      $('gpu').innerHTML = html;
+    }
+
+    // Suma de los proveedores conectados, con el detalle de cada uno en la leyenda de la tarjeta.
+    function renderTotals(live) {
+      const sum = (f) => live.reduce((a, { p, g }) => a + (f(p, g) || 0), 0);
+      const per = (f, fmt) => live.map(({ p, g }) => `${p.label} ${fmt(f(p, g))}`).join(' · ');
+      const credit = (p, g) => g.data.balance;
+      const rate = (p, g) => g.data.spendPerHr;
+      const noHist = live.filter(({ g }) => !g.history).map(({ p }) => p.label);
+      return `<div class="sub-h" style="margin-top:0">Total entre proveedores</div><div class="grid">` +
+        card('Créditos', fmtUsd(sum(credit)), per(credit, fmtUsd), null) +
+        card('Gasto ahora', `${fmtUsd(sum(rate))} <small>/ hora</small>`, `${per(rate, fmtUsd)} · ≈ ${fmtUsd(sum(rate) * 24)} / día`, null) +
+        card('Gastado · 30 días', fmtUsd(sum(spent30)), per(spent30, fmtUsd) + (noHist.length ? ` (sin facturación de ${noHist.join(', ')})` : ''), null) +
+        card('Máquinas encendidas', String(sum(onCount)), per(onCount, String), null) +
+        `</div><div class="sub-h">Gasto por día · últimos 30 días · por proveedor</div>` +
+        renderSpendChart(live.map(({ p, g }) => ({ label: p.label, color: p.color, days: (g.history ? g.history.days : []).map((x) => ({
+          date: x.date, total: dayTotal(p, x),
+          detail: p.series.filter((s) => x[s.key] > 0).map((s) => `${s.label} ${fmtUsd(x[s.key])}`).join(' · '),
+        })) })));
+    }
+
+    function renderProvider(p, g, withChart) {
+      let html = `<div class="sub-h prov"><span class="dot" style="background:${p.color}"></span>${p.label}</div>`;
       if (!g.configured) {
-        $('gpu').innerHTML = `<div class="empty">RunPod todavía no está conectado. Para ver créditos y uso de GPU, agregá la variable
-          <code>RUNPOD_API_KEY</code> en las variables de entorno de business-docs en Coolify y redeployá.
-          La key se genera en runpod.io → Settings → API Keys (con permiso de solo lectura alcanza).</div>`;
-        return;
+        return html + `<div class="empty">${p.label} todavía no está conectado. Para ver créditos y uso de GPU, agregá la variable
+          <code>${p.envKey}</code> en las variables de entorno de business-docs en Coolify y redeployá. La key se genera en ${esc(p.keyHint)}.</div>`;
       }
-      if (g.error || !g.data) { $('gpu').innerHTML = `<div class="err">No se pudo consultar RunPod: ${esc(g.error || 'sin respuesta')}</div>`; return; }
+      if (g.error || !g.data) return html + `<div class="err">No se pudo consultar ${p.label}: ${esc(g.error || 'sin respuesta')}</div>`;
       const d = g.data;
-      const running = d.pods.filter((p) => p.status === 'RUNNING');
-      const hoursLeft = d.spendPerHr > 0 ? d.balance / d.spendPerHr : null;
-      const totals = { pods: 0, volumes: 0, serverless: 0 };
-      for (const x of g.history ? g.history.days : []) SPEND.forEach((s) => { totals[s.key] += x[s.key]; });
-      const total30 = totals.pods + totals.volumes + totals.serverless;
-
-      let html = (g.alerts || []).map((a) => `<div class="alert ${a.level}" role="alert"><b>${a.level === 'crit' ? 'Crítico' : 'Atención'}</b>${esc(a.message)}</div>`).join('');
+      const machines = machinesOf(p, d);
+      const on = machines.filter(isOn).length;
+      const hoursLeft = d.spendPerHr > 0 && d.balance != null ? d.balance / d.spendPerHr : null;
+      const m30 = spent30(p, g);
+      const totals = {};
+      for (const x of g.history ? g.history.days : []) p.series.forEach((s) => { totals[s.key] = (totals[s.key] || 0) + (x[s.key] || 0); });
       html += `<div class="grid">` +
         card('Créditos', fmtUsd(d.balance), hoursLeft == null ? 'Sin consumo en este momento' : `Alcanza para ≈ ${hoursLeft.toFixed(0)} h al ritmo actual`, null) +
-        card('Gasto ahora', `${fmtUsd(d.spendPerHr)} <small>/ hora</small>`,
-          running.length ? `${running.length} pod${running.length > 1 ? 's' : ''} encendido${running.length > 1 ? 's' : ''} · ≈ ${fmtUsd(d.spendPerHr * 24)} / día` : 'Nada encendido', null) +
-        card('Gastado · 30 días', g.history ? fmtUsd(total30) : '—',
-          g.history ? SPEND.filter((s) => totals[s.key] > 0).map((s) => `${s.label} ${fmtUsd(totals[s.key])}`).join(' · ') || 'Sin gasto' : 'Sin datos de facturación', null) +
-        card('Límite de gasto', d.spendLimit ? `${fmtUsd(d.spendLimit)} <small>/ hora</small>` : '—', 'Tope por hora configurado en la cuenta', null) +
+        card('Gasto ahora', `${fmtUsd(d.spendPerHr)} <small>/ hora</small>`, on ? `${onLabel(p, on)} · ≈ ${fmtUsd(d.spendPerHr * 24)} / día` : 'Nada encendido', null) +
+        card('Gastado · 30 días', m30 == null ? '—' : fmtUsd(m30),
+          g.history ? p.series.filter((s) => totals[s.key] > 0).map((s) => `${s.label} ${fmtUsd(totals[s.key])}`).join(' · ') || 'Sin gasto' : 'Sin datos de facturación', null) +
+        (p.key === 'runpod'
+          ? card('Límite de gasto', d.spendLimit ? `${fmtUsd(d.spendLimit)} <small>/ hora</small>` : '—', 'Tope por hora configurado en la cuenta', null)
+          : card('Apagadas con disco', `${fmtUsd(d.stoppedDiskPerHr || 0)} <small>/ hora</small>`,
+            `${machines.length - on} apagada${machines.length - on === 1 ? '' : 's'}: pagan el disco hasta que se destruyen`, null)) +
         `</div>`;
+      if (withChart) {
+        html += `<div class="sub-h">Gasto por día · últimos 30 días</div>`;
+        if (!g.history) html += `<div class="err">No se pudo leer la facturación de ${p.label}: ${esc(g.historyError || 'sin respuesta')}</div>`;
+        else {
+          html += renderSpendChart(p.series.map((s) => ({ label: s.label, color: s.color, days: g.history.days.map((x) => ({ date: x.date, total: x[s.key] || 0, detail: '' })) })));
+          const partial = Object.keys(g.history.errors || {});
+          if (partial.length) html += `<div class="err">Faltan datos de: ${partial.map(esc).join(', ')}.</div>`;
+        }
+      } else if (g.historyError) {
+        html += `<div class="err">No se pudo leer la facturación de ${p.label}: ${esc(g.historyError)}</div>`;
+      }
+      return html + (p.key === 'runpod' ? renderRunpodDetail(d) : renderVastDetail(d));
+    }
 
-      html += `<div class="sub-h">Gasto por día · últimos 30 días</div>` + renderSpendChart(g);
-
+    function renderRunpodDetail(d) {
+      const running = d.pods.filter(isOn);
       const sections = [];
       if (d.pods.length) {
         sections.push(`<div class="sub-h">Pods · ${running.length} de ${d.pods.length} encendidos</div><div class="gpu-grid">` + d.pods.map((p) => {
           const gpu = p.gpus[0] || {};
-          const on = p.status === 'RUNNING';
+          const on = isOn(p);
           return `<div class="pod${p.idleSince ? ' idle' : ''}">
             <h3>${esc(p.name)} <span class="pill ${on ? 'run' : ''}">${on ? 'Encendido' : 'Apagado'}</span></h3>
             ${p.idleSince ? `<div class="idle-tag">Sin uso de GPU · visto desde hace ${fmtAgo(p.idleSince)}</div>` : ''}
@@ -529,61 +583,93 @@
               <span>Disco</span><b>${p.volumeGb ?? '—'} + ${p.containerDiskGb ?? '—'} GB</b>
               <span>Tipo</span><b>${p.podType === 'INTERRUPTABLE' ? 'Spot' : p.podType === 'RESERVED' ? 'On-demand' : esc(p.podType || '—')}</b>
               <span>Costo</span><b>${fmtUsd(p.costPerHr)}/h</b>
-              <span>Encendido hace</span><b>${p.uptimeSec ? (p.uptimeSec / 3600).toFixed(1) + ' h' : '—'}</b>
+              <span>Encendido hace</span><b>${p.uptimeSec ? fmtDur(p.uptimeSec) : '—'}</b>
             </div>
             ${p.image ? `<div class="note ellip" title="${esc(p.image)}">${esc(p.image)}</div>` : ''}
           </div>`;
         }).join('') + `</div>`);
       }
       if (d.volumesError) sections.push(`<div class="err">No se pudieron leer los network volumes: ${esc(d.volumesError)}</div>`);
-      else if (d.volumes.length) {
+      else if (d.volumes && d.volumes.length) {
         sections.push(`<div class="sub-h">Network volumes</div><div class="plan-wrap"><table class="plan"><thead><tr><th>Volumen</th><th>Tamaño</th><th>Datacenter</th><th class="hide-sm">Pods que lo usan</th></tr></thead><tbody>` +
           d.volumes.map((v) => `<tr><td><b>${esc(v.name)}</b></td><td class="r">${v.sizeGb ?? '—'} GB</td><td>${esc(v.dataCenter || '—')}</td>
             <td class="hide-sm">${esc(d.pods.filter((p) => p.networkVolumeId === v.id).map((p) => p.name).join(', ') || 'Ninguno')}</td></tr>`).join('') +
           `</tbody></table></div><p class="note">Cobran por GB aunque ningún pod los use.</p>`);
       }
       if (d.endpointsError) sections.push(`<div class="err">No se pudieron leer los endpoints serverless: ${esc(d.endpointsError)}</div>`);
-      else if (d.endpoints.length) {
+      else if (d.endpoints && d.endpoints.length) {
         sections.push(`<div class="sub-h">Endpoints serverless</div><div class="plan-wrap"><table class="plan"><thead><tr><th>Endpoint</th><th>Workers mín / máx</th><th class="hide-sm">GPUs</th><th class="hide-sm">Idle timeout</th></tr></thead><tbody>` +
           d.endpoints.map((e) => `<tr><td><b>${esc(e.name)}</b></td>
             <td class="r"><span class="${e.workersMin > 0 ? 'over' : ''}">${e.workersMin ?? '—'}</span> / ${e.workersMax ?? '—'}</td>
             <td class="hide-sm">${esc(e.gpuIds || '—')}</td><td class="hide-sm">${e.idleTimeout != null ? e.idleTimeout + ' s' : '—'}</td></tr>`).join('') +
           `</tbody></table></div><p class="note">Con workers mínimos en 0 solo cobran mientras procesan pedidos.</p>`);
       }
-      html += sections.length ? sections.join('')
+      return sections.length ? sections.join('')
         : `<div class="sub-h">Recursos</div><p class="quiet">No hay pods, network volumes ni endpoints serverless en la cuenta. El gasto del gráfico corresponde a recursos ya eliminados.</p>`;
-
-      const s = g.settings || {};
-      html += `<p class="note foot">Leído ${fmtTime(g.collectedAt)} · se actualiza cada 5 min · ` +
-        `alertas si los créditos alcanzan para menos de ${s.lowHours} h o un pod tiene la GPU al 0% por ${s.idleAlertMin} min` +
-        (s.alertEmail ? ' (se avisan por mail)' : ' (para recibirlas por mail: <code>RUNPOD_ALERT_EMAIL</code>)') + `</p>`;
-      $('gpu').innerHTML = html;
     }
 
-    // Gasto por día como filas (mismo formato que "Memoria por proyecto"): solo días con gasto, el más reciente arriba.
-    function renderSpendChart(g) {
-      if (!g.history) return `<div class="err">No se pudo leer la facturación de RunPod: ${esc(g.historyError || 'sin respuesta')}</div>`;
-      const days = g.history.days
-        .map((x) => ({ ...x, total: x.pods + x.volumes + x.serverless }))
-        .filter((x) => x.total > 0)
-        .reverse();
-      const partial = Object.keys(g.history.errors || {});
+    const VAST_STATUS = { running: 'Encendida', exited: 'Apagada', loading: 'Iniciando', offline: 'Sin conexión', created: 'Creada' };
+
+    function renderVastDetail(d) {
+      const list = d.instances || [];
+      if (!list.length) return `<div class="sub-h">Instancias</div><p class="quiet">No hay instancias en la cuenta. El gasto del gráfico corresponde a instancias ya destruidas.</p>`;
+      const on = list.filter(isOn).length;
+      return `<div class="sub-h">Instancias · ${on} de ${list.length} encendida${list.length === 1 ? '' : 's'}</div><div class="gpu-grid">` + list.map((m) => {
+        const run = isOn(m);
+        return `<div class="pod${m.idleSince ? ' idle' : ''}">
+          <h3>${esc(m.name)} <span class="pill ${run ? 'run' : ''}">${esc(VAST_STATUS[m.status] || m.status || '—')}</span></h3>
+          ${m.idleSince ? `<div class="idle-tag">Sin uso de GPU · visto desde hace ${fmtAgo(m.idleSince)}</div>` : ''}
+          <div class="kv">
+            <span>GPU</span><b>${m.gpuCount || 1}× ${esc(m.gpu || '—')}</b>
+            <span>Uso GPU</span><b>${m.gpuUtilPercent == null ? '—' : Math.round(m.gpuUtilPercent) + '%'}</b>
+            <span>Disco</span><b>${m.diskGb == null ? '—' : `${m.diskGb} GB`}${m.diskUsedGb != null ? ` · ${m.diskUsedGb.toFixed(1)} usados` : ''}</b>
+            <span>Tipo</span><b>${m.spot ? 'Spot (puja)' : 'On-demand'}</b>
+            <span>Costo</span><b>${run ? `${fmtUsd(m.costPerHr)}/h` : `${fmtUsd(m.diskPerHr)}/h solo disco`}</b>
+            <span>Encendida hace</span><b>${run && m.startedAt ? fmtAgo(m.startedAt) : '—'}</b>
+            <span>Ubicación</span><b>${esc(m.location || '—')}</b>
+          </div>
+          ${m.image ? `<div class="note ellip" title="${esc(m.image)}">${esc(m.image)}</div>` : ''}
+        </div>`;
+      }).join('') + `</div><p class="note">Las instancias apagadas no pagan GPU pero sí el disco, hasta que se destruyen.</p>`;
+    }
+
+    function renderGpuFoot(all) {
+      const conf = all.filter(({ g }) => g.configured);
+      if (!conf.length) return '';
+      const rule = (s) => `créditos para menos de ${s.lowHours} h o GPU al 0% por ${s.idleAlertMin} min`;
+      const first = conf[0].g.settings;
+      const same = conf.every(({ g }) => g.settings.lowHours === first.lowHours && g.settings.idleAlertMin === first.idleAlertMin);
+      const rules = same ? rule(first) : conf.map(({ p, g }) => `${p.label}: ${rule(g.settings)}`).join(' · ');
+      const mail = conf.some(({ g }) => g.settings.alertEmail);
+      const read = conf.map(({ g }) => g.collectedAt).filter(Boolean).sort().pop();
+      return `<p class="note foot">${read ? `Leído ${fmtTime(read)} · ` : ''}se actualiza cada 5 min · alertas si ${rules}` +
+        (mail ? ' (se avisan por mail)' : ' (para recibirlas por mail: <code>GPU_ALERT_EMAIL</code>)') + `</p>`;
+    }
+
+    // Gasto por día como filas apiladas por serie (proveedor o tipo de gasto): solo días con gasto, el más reciente arriba.
+    function renderSpendChart(seriesList) {
+      const byDate = {};
+      for (const s of seriesList) for (const x of s.days) {
+        if (!(x.total > 0)) continue;
+        const d = byDate[x.date] || (byDate[x.date] = { date: x.date, total: 0, parts: [] });
+        d.total += x.total;
+        d.parts.push({ s, amount: x.total, detail: x.detail });
+      }
+      const days = Object.values(byDate).sort((a, b) => b.date.localeCompare(a.date));
       if (!days.length) return '<p class="quiet">Sin gasto en los últimos 30 días.</p>';
       const max = Math.max(...days.map((x) => x.total));
-      const used = SPEND.filter((s) => days.some((x) => x[s.key] > 0));
+      const used = seriesList.filter((s) => days.some((x) => x.parts.some((pt) => pt.s === s)));
       const today = localDay(new Date());
-      return `<div class="legend">${used.map((s) => `<span><span class="dot" style="background:${s.color}"></span>${s.label}</span>`).join('')}</div>
+      return `<div class="legend">${used.map((s) => `<span><span class="dot" style="background:${s.color}"></span>${esc(s.label)}</span>`).join('')}</div>
         <div class="rows">${days.map((x) => {
-          const detail = used.map((s) => `${s.label} ${fmtUsd(x[s.key])}`).join(' · ');
-          return `<div class="row" title="${esc(detail)}">
+          const title = x.parts.map((pt) => `${pt.s.label} ${fmtUsd(pt.amount)}${pt.detail ? ` (${pt.detail})` : ''}`).join(' · ');
+          return `<div class="row" title="${esc(title)}">
             <div class="rl">${x.date === today ? 'Hoy' : fmtDay(x.date)}<small>${new Date(x.date + 'T12:00:00Z').toLocaleDateString('es-AR', { weekday: 'long', timeZone: TZ })}</small></div>
-            <div class="track"><div class="seg" style="width:${(x.total / max * 100).toFixed(1)}%">${used.filter((s) => x[s.key] > 0)
-              .map((s) => `<span style="flex:${x[s.key]};background:${s.color}"></span>`).join('')}</div></div>
+            <div class="track"><div class="seg" style="width:${(x.total / max * 100).toFixed(1)}%">${x.parts.map((pt) => `<span style="flex:${pt.amount};background:${pt.s.color}"></span>`).join('')}</div></div>
             <div class="rv">${fmtUsd(x.total)}</div>
           </div>`;
         }).join('')}</div>
-        <p class="note">Días sin gasto no se muestran. RunPod puede tardar algunas horas en facturar el consumo de hoy.</p>` +
-        (partial.length ? `<div class="err">Faltan datos de: ${partial.map(esc).join(', ')}.</div>` : '');
+        <p class="note">Días sin gasto no se muestran. La facturación de hoy puede tardar algunas horas en aparecer.</p>`;
     }
 
     async function load(force) {

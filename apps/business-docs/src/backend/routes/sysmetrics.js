@@ -9,7 +9,8 @@
 // - Contenedores: stats via docker-socket-proxy de solo lectura (DOCKER_PROXY_URL).
 // - Postgres: tamano del volumen de cada contenedor postgres (GET /system/df del proxy)
 //   y tamano de cada base del cluster al que se conecta business-docs.
-// - GPU: RunPod (utils/runpod.js), con su propia cache de 5 min para no perder de vista un pod prendido.
+// - GPU: RunPod y Vast.ai (utils/runpod.js, utils/vast.js), cada uno con su cache de 5 min para no
+//   perder de vista una maquina prendida. Van en `gpu.runpod` y `gpu.vast`.
 // - En desarrollo, SYSMETRICS_SSH_HOST reemplaza host + contenedores por una lectura via SSH.
 // - Plan: limites de la licencia / free tier (admin_core.infra_plan), editable via PUT /plan.
 // - Costos: una muestra por hora de CPU/RAM de cada contenedor (admin_core.infra_samples) para
@@ -27,6 +28,7 @@ const infraPlan = require('../utils/infraPlan');
 const infraSamples = require('../utils/infraSamples');
 const infraDisks = require('../utils/infraDisks');
 const runpod = require('../utils/runpod');
+const vast = require('../utils/vast');
 const { requestJson } = require('../utils/httpJson');
 const log = require('../utils/logger');
 
@@ -382,7 +384,7 @@ router.get('/', async (req, res, next) => {
     const force = req.query.refresh === '1';
     const fresh = cache && Date.now() - cache.ts < CACHE_TTL_MS;
     const planP = infraPlan.getPlan().catch((e) => { log.warn('sysmetrics_plan_error', { error: e.message }); return null; });
-    const gpuP = runpod.getStatus(force);
+    const gpuP = Promise.all([runpod.getStatus(force), vast.getStatus(force)]).then(([rp, va]) => ({ runpod: rp, vast: va }));
     if (!force && fresh) {
       return res.json({ ...cache.data, plan: await planP, gpu: await gpuP, costs: await costData(), cached: true });
     }
