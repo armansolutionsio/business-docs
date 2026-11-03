@@ -16,19 +16,19 @@
     body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
       background:radial-gradient(1200px 600px at 20% 0%,#1f2a44,var(--bg) 70%) fixed;color:var(--ink);min-height:100vh}
     .wrap{max-width:1040px;margin:0 auto;padding:28px 20px 48px}
-    .top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:22px}
+    .top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:14px}
     .top a.back{color:var(--muted);text-decoration:none;font-size:13px}
     .top a.back:hover{color:var(--ink)}
     h1{font-size:26px;font-weight:600;margin:6px 0 4px}
     .sub{color:var(--ink-2);font-size:13.5px}
-    .actions{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
-    button.refresh{background:var(--panel-2);border:1px solid var(--line);color:var(--ink);padding:9px 16px;border-radius:9px;
-      cursor:pointer;font-size:13px;display:inline-flex;align-items:center;gap:8px}
-    button.refresh:hover{border-color:#5b7bd6}
+    .nav-actions{display:flex;align-items:center;gap:10px;margin-left:auto}
+    button.refresh{background:#3d5fc4;border:1px solid #3d5fc4;color:#fff;padding:5px 13px;border-radius:20px;
+      cursor:pointer;font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
+    button.refresh:hover{background:#4a6dd6;border-color:#4a6dd6}
     button.refresh:disabled{opacity:.6;cursor:progress}
     button.refresh:focus-visible{outline:2px solid #5b7bd6;outline-offset:2px}
-    .stamp{color:var(--muted);font-size:12px;text-align:right}
-    .spin{width:12px;height:12px;border:2px solid var(--ink-2);border-top-color:transparent;border-radius:50%;animation:s 1s linear infinite;display:none}
+    .stamp{color:var(--muted);font-size:11.5px;text-align:right}
+    .spin{width:12px;height:12px;border:2px solid #fff;border-top-color:transparent;border-radius:50%;animation:s 1s linear infinite;display:none}
     button.loading .spin{display:inline-block}
     @keyframes s{to{transform:rotate(360deg)}}
     @media (prefers-reduced-motion: reduce){.spin{animation:none}}
@@ -87,8 +87,9 @@
       background:rgba(11,15,26,.92);backdrop-filter:blur(6px)}
     .nav a{color:var(--ink-2);text-decoration:none;font-size:12.5px;padding:5px 11px;border:1px solid var(--line);border-radius:20px;background:var(--panel)}
     .nav a:hover{color:var(--ink);border-color:#5b7bd6}
-    .nav a.nav-alerts{margin-left:auto;color:var(--warn);border-color:rgba(250,178,25,.45);background:rgba(250,178,25,.08);font-weight:600}
+    .nav a.nav-alerts{color:var(--warn);border-color:rgba(250,178,25,.45);background:rgba(250,178,25,.08);font-weight:600}
     .nav a.nav-alerts.crit{color:var(--crit);border-color:rgba(230,103,103,.5);background:rgba(230,103,103,.1)}
+    @media (max-width:640px){.nav-actions{width:100%;justify-content:space-between;margin-left:0}}
     .pod h3 .pills{display:flex;gap:6px;flex-shrink:0}
     .toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin:4px 0 16px}
     .tog-l{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted)}
@@ -140,16 +141,16 @@
         <h1>Infraestructura</h1>
         <div class="sub" id="sub">Servidor Oracle Cloud y GPU</div>
       </div>
-      <div class="actions">
-        <button class="refresh" id="refresh" type="button"><span class="spin"></span>Actualizar ahora</button>
-        <div class="stamp" id="stamp">Cargando…</div>
-      </div>
     </div>
 
     <nav class="nav" aria-label="Secciones">
       <a href="#hostCards">Servidor</a><a href="#sec-instancia">Instancia</a><a href="#sec-costos">Costos</a>
       <a href="#sec-postgres">Postgres</a><a href="#sec-discos">Discos</a><a href="#sec-gpu">GPU</a>
       <a class="nav-alerts" id="navAlerts" href="#" hidden></a>
+      <div class="nav-actions">
+        <span class="stamp" id="stamp">Cargando…</span>
+        <button class="refresh" id="refresh" type="button"><span class="spin"></span>Actualizar</button>
+      </div>
     </nav>
 
     <div class="grid" id="hostCards"></div>
