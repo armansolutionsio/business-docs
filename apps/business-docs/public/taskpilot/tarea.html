@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Arman — TaskPilot · Tarea</title>
+  <link rel="icon" href="/favicon.ico" />
+  <style>
+    :root{
+      --bg:#0b0f1a; --panel:#111a2e; --panel-2:#19233d; --line:#2a3656; --rail:#1d2843;
+      --ink:#e8edf5; --ink-2:#a6b6d6; --muted:#7d92bd; --accent:#3fb0a8; --good:#16b816; --warn:#fab219; --crit:#e66767;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{height:100%}
+    body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;display:flex;flex-direction:column;min-height:100vh}
+    a{color:#8fb3ff}
+    .top{display:flex;align-items:center;gap:14px;padding:12px 20px;border-bottom:1px solid var(--line);background:#0f1729;flex-wrap:wrap}
+    .top a.back{color:var(--muted);text-decoration:none;font-size:13px;white-space:nowrap}
+    .top a.back:hover{color:var(--ink)}
+    .top h1{font-size:16px;font-weight:600;flex:1;min-width:240px;line-height:1.3}
+    .top h1 small{display:block;color:var(--muted);font-weight:400;font-size:12px;margin-top:2px}
+    .tag{display:inline-block;padding:2px 9px;border-radius:99px;font-size:11px;background:#1c2c52;color:#a6c3ff;white-space:nowrap}
+    .tag.green{background:#163a2a;color:#7fe6b1}
+    .tag.amber{background:#3a2e16;color:#ffd089}
+    .tag.red{background:#3a1616;color:#ff8a8a}
+    .tag.grey{background:#1d2843;color:var(--ink-2)}
+    .tag.teal{background:#143835;color:#7fe0d8}
+    .layout{display:grid;grid-template-columns:1fr 380px;flex:1;min-height:0}
+    @media (max-width:980px){.layout{grid-template-columns:1fr}.side{border-left:none;border-top:1px solid var(--line)}}
+    .chat{display:flex;flex-direction:column;min-height:0}
+    .messages{flex:1;overflow:auto;padding:18px 22px;display:flex;flex-direction:column;gap:12px}
+    .msg{max-width:860px;line-height:1.5;word-break:break-word}
+    .msg.user{align-self:flex-end;background:#1c2c52;border:1px solid #2f4a8a;border-radius:14px 14px 4px 14px;padding:10px 14px;white-space:pre-wrap}
+    .msg.assistant{background:var(--panel);border:1px solid var(--line);border-radius:14px 14px 14px 4px;padding:12px 16px}
+    .msg.assistant p{margin:0 0 8px}
+    .msg.assistant p:last-child{margin-bottom:0}
+    .msg.assistant h1,.msg.assistant h2,.msg.assistant h3{font-size:14px;margin:10px 0 6px;color:#c7d6ff}
+    .msg.assistant ul,.msg.assistant ol{margin:4px 0 8px 20px}
+    .msg.assistant code{background:#0d121e;border:1px solid var(--line);border-radius:4px;padding:1px 5px;font-size:12.5px}
+    .msg.assistant pre{background:#0d121e;border:1px solid var(--line);border-radius:8px;padding:10px 12px;overflow:auto;margin:6px 0 10px;font-size:12.5px;line-height:1.45}
+    .msg.assistant pre code{background:none;border:none;padding:0}
+    .msg.tool{color:var(--muted);font-size:12.5px;padding:2px 6px;border-left:2px solid var(--line);cursor:pointer}
+    .msg.tool:hover{color:var(--ink-2)}
+    .msg.tool.err{border-left-color:var(--crit);color:#ff9a9a}
+    .msg.tool pre{display:none;white-space:pre-wrap;background:#0d121e;border:1px solid var(--line);border-radius:6px;padding:8px;margin-top:6px;font-size:12px;color:var(--ink-2)}
+    .msg.tool.open pre{display:block}
+    .msg.system{align-self:center;color:var(--muted);font-size:12px;text-align:center;max-width:720px}
+    .msg.result{align-self:center;color:var(--muted);font-size:11.5px}
+    .msg.error{background:#3a1616;color:#ff9a9a;border:1px solid #5a2222;border-radius:10px;padding:10px 14px}
+    .approval{background:linear-gradient(135deg,#1b2a4a,#141f3a);border:1px solid #3d5fc4;border-radius:12px;padding:14px 16px;max-width:860px}
+    .approval .ttl{font-size:11px;text-transform:uppercase;letter-spacing:1.2px;color:#7fb1ff;margin-bottom:8px}
+    .approval .body{white-space:pre-wrap;font-size:13px;line-height:1.5;max-height:360px;overflow:auto}
+    .approval .acts{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center}
+    .approval .acts input{flex:1;min-width:200px}
+    .approval .done{color:var(--ink-2);font-size:12.5px;margin-top:8px}
+    .composer{border-top:1px solid var(--line);padding:12px 22px 16px;background:#0f1729}
+    .composer .status{font-size:12.5px;color:var(--muted);margin-bottom:8px;display:flex;align-items:center;gap:8px;min-height:18px}
+    .spin{width:12px;height:12px;border:2px solid #8fb3ff;border-top-color:transparent;border-radius:50%;animation:s 1s linear infinite;display:inline-block}
+    @keyframes s{to{transform:rotate(360deg)}}
+    textarea{width:100%;background:#0d121e;border:1px solid var(--line);color:var(--ink);padding:10px 12px;border-radius:10px;font-size:13.5px;font-family:inherit;resize:vertical;min-height:72px}
+    textarea:focus,input:focus{border-color:#5b7bd6;outline:none}
+    input{background:#0d121e;border:1px solid var(--line);color:var(--ink);padding:7px 10px;border-radius:8px;font-size:13px;font-family:inherit}
+    .btns{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;align-items:center}
+    .btn{background:#3a5cc4;color:#fff;border:none;padding:8px 14px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:500}
+    .btn:hover{background:#4a6ed4}
+    .btn.ghost{background:transparent;border:1px solid var(--line);color:var(--ink-2)}
+    .btn.ghost:hover{background:#19223a;color:#fff}
+    .btn.success{background:#2f8f63}
+    .btn.danger{background:#8f2f2f}
+    .btn:disabled{opacity:.5;cursor:not-allowed}
+    .hint{color:var(--muted);font-size:11.5px;margin-left:auto}
+    .side{border-left:1px solid var(--line);background:#0f1729;overflow:auto;padding:16px 18px;display:flex;flex-direction:column;gap:14px}
+    .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+    .card h3{font-size:11px;text-transform:uppercase;letter-spacing:1.3px;color:var(--muted);margin-bottom:10px}
+    .kv{display:grid;grid-template-columns:auto 1fr;gap:5px 12px;font-size:12.5px;color:var(--ink-2)}
+    .kv b{color:var(--ink);font-weight:500;word-break:break-word}
+    .rep p{font-size:13px;line-height:1.5;white-space:pre-wrap;margin-bottom:8px}
+    .rep .lbl{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#7fb1ff;margin:10px 0 4px}
+    .rep ul{margin:0 0 8px 18px;font-size:12.5px;color:var(--ink-2)}
+    .rep .commit{background:#0d121e;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-family:Consolas,monospace;font-size:12px;white-space:pre-wrap;word-break:break-word}
+    .big{font-size:22px;font-weight:700}
+    .big small{font-size:12px;color:var(--ink-2);font-weight:500}
+    .empty{color:var(--muted);font-size:12.5px}
+  </style>
+</head>
+<body>
+  <div class="top">
+    <a class="back" href="/taskpilot/">TaskPilot</a>
+    <h1 id="title">Cargando...<small id="subtitle"></small></h1>
+    <span id="badge-estado" class="tag grey">-</span>
+    <span id="badge-fase" class="tag">-</span>
+  </div>
+  <div class="layout">
+    <section class="chat">
+      <div class="messages" id="messages"></div>
+      <div class="composer">
+        <div class="status" id="status"></div>
+        <textarea id="input" placeholder="Escribile a Claude: aclaraciones, correcciones, pedidos... (Ctrl+Enter para enviar)"></textarea>
+        <div class="btns">
+          <button class="btn" id="send" type="button">Enviar</button>
+          <button class="btn success" id="approve" type="button" style="display:none">Aprobar plan y ejecutar</button>
+          <button class="btn success" id="finish" type="button" style="display:none">Validado: lista para registrar</button>
+          <button class="btn danger" id="cancel" type="button">Cancelar sesión</button>
+          <span class="hint" id="hint"></span>
+        </div>
+      </div>
+    </section>
+    <aside class="side">
+      <div class="card">
+        <h3>Tarea</h3>
+        <div class="kv" id="kv-issue"></div>
+      </div>
+      <div class="card">
+        <h3>Sesión</h3>
+        <div class="kv" id="kv-session"></div>
+      </div>
+      <div class="card" id="git-card">
+        <h3>Git (en la PC del runner)</h3>
+        <div id="git-body"><div class="empty">Cargando...</div></div>
+      </div>
+      <div class="card">
+        <h3>Informe</h3>
+        <div id="report" class="rep"><div class="empty">Todavía no hay informe. Se genera cuando Claude termina una ejecución.</div></div>
+      </div>
+    </aside>
+  </div>
+
+  <script src="/_shared/auth.js"></script>
+  <script>
+    const me = ArmanAuth.requireSession({ vertical: 'taskpilot' });
+    const $ = (id) => document.getElementById(id);
+    const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const fmtDate = (d) => d ? new Date(d).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' }) : '';
+    const money = (n) => 'US$ ' + Number(n || 0).toFixed(3);
+    const mins = (ms) => { const m = Math.round(Number(ms || 0) / 60000); return m < 1 ? '< 1 min' : m + ' min'; };
+    const sessionId = Number(new URLSearchParams(location.search).get('session'));
+    if (!sessionId) location.href = '/taskpilot/';
+
+    const state = { session: null, messages: [], approvals: [], report: null, lastMessageId: 0, busy: false, git: null, gitPending: false, gitAsked: false };
+
+    async function api(path, opts = {}) {
+      const res = await fetch('/api/taskpilot' + path, { headers: { 'Content-Type': 'application/json' }, ...opts });
+      let data = null; try { data = await res.json(); } catch {}
+      if (!res.ok) throw Object.assign(new Error(data?.error || `HTTP ${res.status}`), { status: res.status, data });
+      return data;
+    }
+
+    // ── markdown minimo (texto de Claude) ───────────────────────────
+    function md(text) {
+      const parts = String(text || '').split(/```/);
+      let html = '';
+      for (let i = 0; i < parts.length; i++) {
+        if (i % 2 === 1) { const code = parts[i].replace(/^[a-zA-Z0-9_-]*\n/, ''); html += `<pre><code>${esc(code)}</code></pre>`; continue; }
+        const blocks = parts[i].split(/\n{2,}/);
+        for (const b of blocks) {
+          const t = b.trim(); if (!t) continue;
+          const lines = t.split('\n');
+          if (lines.every((l) => /^\s*([-*]|\d+[.)])\s+/.test(l))) {
+            const ordered = /^\s*\d+[.)]/.test(lines[0]);
+            html += `<${ordered ? 'ol' : 'ul'}>` + lines.map((l) => `<li>${inline(l.replace(/^\s*([-*]|\d+[.)])\s+/, ''))}</li>`).join('') + `</${ordered ? 'ol' : 'ul'}>`;
+          } else if (/^#{1,3}\s/.test(t)) {
+            html += `<h3>${inline(t.replace(/^#{1,3}\s+/, ''))}</h3>`;
+          } else {
+            html += `<p>${lines.map(inline).join('<br>')}</p>`;
+          }
+        }
+      }
+      return html;
+    }
+    function inline(s) {
+      return esc(s).replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/(^|\s)_([^_]+)_(?=\s|$)/g, '$1<i>$2</i>');
+    }
+
+    // ── render ──────────────────────────────────────────────────────
+    function estadoTag(s) {
+      const map = { esperando_runner: ['amber', 'Esperando al runner'], trabajando: ['teal', 'Claude trabajando'], esperando_usuario: ['', 'Esperando tu respuesta'], finalizada: ['green', 'Finalizada'], error: ['red', 'Error'], cancelada: ['grey', 'Cancelada'] };
+      const [cls, label] = map[s.estado] || ['grey', s.estado];
+      return { cls, label };
+    }
+    function renderSession() {
+      const s = state.session;
+      $('title').innerHTML = `#${s.issue_id} ${esc(s.issue_subject)}<small id="subtitle">${esc(s.project_name || '')} · estado en Redmine: ${esc(s.issue_status || '-')}</small>`;
+      const et = estadoTag(s);
+      $('badge-estado').className = 'tag ' + et.cls; $('badge-estado').textContent = et.label;
+      const fases = { plan: 'Fase: análisis y plan', ejecucion: 'Fase: ejecución', informe: 'Fase: informe listo' };
+      $('badge-fase').textContent = fases[s.fase] || s.fase;
+      $('kv-issue').innerHTML = `<span>Tarea</span><b><a href="/taskpilot/?issue=${s.issue_id}">#${s.issue_id}</a></b><span>Proyecto</span><b>${esc(s.project_name || '-')}</b><span>Responsable</span><b>${esc(s.alias ? s.alias.charAt(0).toUpperCase() + s.alias.slice(1) : '-')}</b>`;
+      $('kv-session').innerHTML = `
+        <span>Runner</span><b>${esc(s.runner_nombre || '-')} ${s.runner_online ? '<span class="tag green">conectado</span>' : '<span class="tag grey">desconectado</span>'}</b>
+        <span>Repo</span><b>${esc(s.repo || 'sin repositorio')}</b>
+        <span>Modelo</span><b>${esc(s.model || '-')}</b>
+        <span>${s.auth === 'api_key' ? 'Costo' : 'Uso'}</span><b>${s.auth === 'api_key' ? money(s.costo_usd) : 'Incluido en la suscripción de Claude Code'}</b>
+        <span>Tiempo de Claude</span><b>${mins(s.duracion_ms)} · ${s.turnos || 0} pasos</b>
+        ${s.runner_limits?.unifiedWindows ? `<span>Plan de Claude</span><b>${esc(s.runner_account?.subscriptionType || '')}: semana ${Math.round((s.runner_limits.unifiedWindows.seven_day?.utilization || 0) * 100)}% · ventana 5 h ${Math.round((s.runner_limits.unifiedWindows.five_hour?.utilization || 0) * 100)}%<br><small style="color:var(--muted)">leído ${esc(fmtDate(s.runner_limits_at))}</small></b>` : ''}
+        <span>Tokens</span><b>${Number(s.tokens_in || 0).toLocaleString('es-AR')} entrada · ${Number(s.tokens_out || 0).toLocaleString('es-AR')} salida</b>
+        <span>Iniciada</span><b>${esc(fmtDate(s.created_at))} por ${esc(s.created_by || '')}</b>
+        ${s.plan_aprobado_at ? `<span>Plan aprobado</span><b>${esc(fmtDate(s.plan_aprobado_at))} por ${esc(s.plan_aprobado_por || '')}</b>` : ''}
+        ${s.ultimo_error ? `<span>Último error</span><b style="color:#ff9a9a">${esc(s.ultimo_error)}</b>` : ''}`;
+      const live = !['finalizada', 'cancelada'].includes(s.estado);
+      $('input').disabled = !live; $('send').disabled = !live || s.estado === 'trabajando';
+      $('cancel').style.display = live ? '' : 'none';
+      $('approve').style.display = live && s.fase === 'plan' && s.estado !== 'trabajando' ? '' : 'none';
+      $('finish').style.display = live && (s.fase !== 'plan' || state.report) ? '' : 'none';
+      const st = $('status');
+      if (s.estado === 'trabajando') st.innerHTML = '<span class="spin"></span> Claude está trabajando. Podés seguir escribiendo; se envía cuando termine el paso actual.';
+      else if (s.estado === 'esperando_runner') st.innerHTML = '<span class="spin"></span> Esperando que el runner tome el trabajo' + (s.runner_online ? '.' : '. El runner no está conectado: iniciá el runner en esa PC.');
+      else if (s.estado === 'esperando_usuario') st.textContent = state.approvals.some((a) => a.estado === 'pendiente') ? 'Claude espera tu aprobación (ver arriba).' : (s.fase === 'plan' ? 'Leé la propuesta. Podés conversar, corregir o aprobar el plan.' : 'Claude terminó este paso. Pedí correcciones o validá el trabajo.');
+      else if (s.estado === 'error') st.textContent = 'La sesión terminó con error. Podés mandar un mensaje para reintentar o cancelarla.';
+      else st.textContent = `Sesión ${et.label.toLowerCase()}.`;
+    }
+
+    function approvalCard(a) {
+      const pending = a.estado === 'pendiente';
+      const title = a.tipo === 'plan' ? 'Plan propuesto por Claude' : `Claude pide permiso: ${esc(a.tool || 'operación')}`;
+      const inputHtml = a.tipo === 'tool' && a.input && (a.input.command || a.input.file_path) ? `<pre style="white-space:pre-wrap;background:#0d121e;border:1px solid var(--line);border-radius:6px;padding:8px;margin-top:8px;font-size:12px">${esc(a.input.command || a.input.file_path)}</pre>` : '';
+      return `<div class="approval" id="approval-${a.id}" data-id="${a.id}">
+        <div class="ttl">${title}</div>
+        <div class="body">${a.tipo === 'plan' ? md(a.descripcion || '') : esc(a.descripcion || '')}</div>${inputHtml}
+        ${pending ? `<div class="acts"><button class="btn success" data-act="aprobado">${a.tipo === 'plan' ? 'Aprobar plan y ejecutar' : 'Aprobar'}</button><button class="btn danger" data-act="rechazado">Rechazar</button><input placeholder="Comentario para Claude (opcional)" data-motivo /></div>`
+          : `<div class="done">${a.estado === 'aprobado' ? 'Aprobado' : a.estado === 'rechazado' ? 'Rechazado' : 'Expirado'}${a.decidido_por ? ' por ' + esc(a.decidido_por) : ''}${a.motivo ? ': ' + esc(a.motivo) : ''}</div>`}
+      </div>`;
+    }
+
+    function messageHtml(m) {
+      const meta = m.metadata || {};
+      switch (m.rol) {
+        case 'user': return `<div class="msg user">${esc(m.contenido)}</div>`;
+        case 'assistant': return `<div class="msg assistant">${md(m.contenido)}</div>`;
+        case 'tool': {
+          const detail = meta.kind === 'use' && meta.input ? Object.entries(meta.input).map(([k, v]) => `${k}: ${typeof v === 'string' ? v : JSON.stringify(v)}`).join('\n') : (meta.kind === 'result' ? m.contenido : '');
+          return `<div class="msg tool ${meta.is_error ? 'err' : ''}" onclick="this.classList.toggle('open')">${meta.kind === 'result' ? (meta.is_error ? 'Error de herramienta: ' : 'Resultado: ') : ''}${esc(meta.kind === 'result' ? (m.contenido || '').slice(0, 160) : m.contenido)}${detail ? `<pre>${esc(detail)}</pre>` : ''}</div>`;
+        }
+        case 'approval': { const a = state.approvals.find((x) => x.id === meta.approval_id); return a ? approvalCard(a) : ''; }
+        case 'result': return `<div class="msg result">${m.contenido ? esc(m.contenido) + ' · ' : ''}paso de Claude: ${state.session?.auth === 'api_key' ? money(meta.costo_usd) + ' · ' : ''}${mins(meta.duracion_ms)} · ${meta.turnos || 0} acciones · ${Number(meta.tokens_in || 0).toLocaleString('es-AR')} tokens</div>`;
+        case 'error': return `<div class="msg error">${esc(m.contenido)}</div>`;
+        case 'git': return `<div class="msg tool ${meta.ok ? '' : 'err'}" onclick="this.classList.toggle('open')">git ${esc(meta.op)}: ${meta.ok ? 'OK' : 'ERROR'}${meta.usuario ? ' · pedido por ' + esc(meta.usuario) : ''}${m.contenido ? `<pre>${esc(m.contenido)}</pre>` : ''}</div>`;
+        case 'system': return `<div class="msg system">${esc(m.contenido)}</div>`;
+        default: return `<div class="msg system">${esc(m.contenido)}</div>`;
+      }
+    }
+
+    function renderMessages() {
+      const box = $('messages');
+      const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
+      box.innerHTML = state.messages.map(messageHtml).join('') || '<div class="msg system">Sin mensajes todavía.</div>';
+      box.querySelectorAll('.approval button[data-act]').forEach((b) => b.addEventListener('click', () => decide(Number(b.closest('.approval').dataset.id), b.dataset.act, b.closest('.approval').querySelector('[data-motivo]').value)));
+      if (atBottom) box.scrollTop = box.scrollHeight;
+    }
+
+    function renderReport() {
+      const r = state.report;
+      if (!r) { $('report').innerHTML = '<div class="empty">Todavía no hay informe. Se genera cuando Claude termina una ejecución.</div>'; return; }
+      const hh = r.minutos_estimados != null ? (r.minutos_estimados / 60).toFixed(2).replace('.', ',') : null;
+      $('report').innerHTML = `
+        <div class="lbl">Qué se hizo</div><p>${esc(r.resumen || '-')}</p>
+        <div class="lbl">Resultado</div><p>${esc(r.resultado || '-')}</p>
+        <div class="lbl">Archivos</div>${(r.archivos || []).length ? '<ul>' + r.archivos.map((a) => `<li><b>${esc(a.ruta)}</b>: ${esc(a.cambio)}</li>`).join('') + '</ul>' : '<p>Sin cambios de archivos</p>'}
+        <div class="lbl">Pruebas automáticas</div><p>${esc(r.pruebas_automaticas || '-')}</p>
+        <div class="lbl">Testing manual</div><p>${esc(r.testing_manual || '-')}</p>
+        <div class="lbl">Errores y pendientes</div><p>${esc(r.errores_pendientes || '-')}</p>
+        <div class="lbl">Comentario propuesto</div><p>${esc(r.comentario_propuesto || '-')}</p>
+        <div class="lbl">Estimación</div><div class="big">${r.minutos_estimados ?? '-'} min <small>${hh != null ? hh + ' HH' : ''}${r.tipo_actividad ? ' · ' + esc(r.tipo_actividad) : ''}${r.requiere_testing === false ? ' · no requiere testing' : ''}</small></div>
+        ${r.commit_message ? `<div class="lbl">Mensaje de commit (el commit lo hacés vos)</div><div class="commit" id="commit-msg">${esc(r.commit_message)}</div><div class="btns"><button class="btn ghost" type="button" id="copy-commit">Copiar mensaje</button><span class="hint" id="copy-hint"></span></div>` : ''}
+        <div class="empty" style="margin-top:8px">Generado ${esc(fmtDate(r.created_at))}</div>`;
+      const btn = $('copy-commit');
+      if (btn) btn.addEventListener('click', async () => { try { await navigator.clipboard.writeText(r.commit_message); $('copy-hint').textContent = 'Copiado'; } catch { $('copy-hint').textContent = 'No se pudo copiar'; } });
+    }
+
+    // ── git (lo ejecuta el runner en la PC del usuario, con su git y su usuario) ──
+    function renderGit() {
+      const s = state.session; const box = $('git-body');
+      if (!s) return;
+      if (!s.repo) { box.innerHTML = '<div class="empty">Esta sesión no tiene repositorio.</div>'; return; }
+      const g = state.git; const st = g?.metadata?.status || null;
+      const canRun = s.runner_online && s.estado !== 'trabajando' && !state.gitPending;
+      const changes = st?.changes || [];
+      let html = '';
+      if (st) {
+        const branchWarn = st.expectedBranch && st.branch && st.branch !== st.expectedBranch;
+        html += `<div class="kv">
+          <span>Repo</span><b>${esc(s.repo)}</b>
+          <span>Rama</span><b>${esc(st.branch || '?')}${branchWarn ? ` <span class="tag red">esperada ${esc(st.expectedBranch)}</span>` : ''}${st.upstream ? `<br><small style="color:var(--muted)">${esc(st.upstream)} · ${st.ahead} por subir · ${st.behind} por bajar</small>` : '<br><small style="color:var(--muted)">sin upstream</small>'}</b>
+          <span>Autor</span><b>${st.author ? esc(st.author) : '<span class="tag red">sin user.name/email</span>'}</b>
+          <span>Último commit</span><b>${esc(st.lastCommit || '-')}</b>
+          <span>Cambios</span><b>${changes.length ? `${changes.length} archivo${changes.length === 1 ? '' : 's'} <a href="#" id="git-toggle" style="font-size:12px">${state.gitShowFiles ? 'ocultar' : 'ver'}</a>` : 'sin cambios'}</b>
+        </div>`;
+        if (changes.length && state.gitShowFiles) html += `<pre style="background:#0d121e;border:1px solid var(--line);border-radius:8px;padding:8px;font-size:11.5px;white-space:pre-wrap;margin-top:8px;max-height:200px;overflow:auto">${esc(changes.map((c) => `${c.status.padEnd(2)} ${c.path}`).join('\n'))}</pre>`;
+        if (st.error) html += `<div class="empty" style="color:#ff9a9a">${esc(st.error)}</div>`;
+      } else {
+        html += `<div class="empty">${s.runner_online ? 'Estado de git no leído todavía.' : 'El runner no está conectado.'}</div>`;
+      }
+      if (g && g.metadata?.op !== 'status') html += `<div class="empty" style="margin-top:8px;color:${g.metadata?.ok ? '#7fe6b1' : '#ff9a9a'}">Último: git ${esc(g.metadata?.op)} ${g.metadata?.ok ? 'OK' : 'con error'} (${esc(fmtDate(g.created_at))})</div>`;
+      html += `<div class="btns" style="margin-top:10px">
+        <button class="btn ghost" type="button" data-git="status" ${canRun ? '' : 'disabled'}>${state.gitPending ? 'Ejecutando...' : 'Ver estado'}</button>
+        <button class="btn ghost" type="button" data-git="pull" ${canRun ? '' : 'disabled'}>Pull</button>
+        <button class="btn ghost" type="button" data-git="push" ${canRun && st?.ahead ? '' : 'disabled'}>Push${st?.ahead ? ' (' + st.ahead + ')' : ''}</button>
+      </div>
+      <div style="margin-top:10px"><label style="display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px">Mensaje de commit</label>
+        <textarea id="git-msg" rows="3" style="min-height:60px;font-size:12.5px">${esc(state.gitMsg ?? (state.report?.commit_message || `#${s.issue_id} ${s.issue_subject}`))}</textarea>
+        <div class="btns"><button class="btn" type="button" data-git="commit" ${canRun && changes.length ? '' : 'disabled'}>Commit (add + commit)</button><span class="hint">${changes.length ? `${changes.length} archivo${changes.length === 1 ? '' : 's'} para commitear` : 'nada para commitear'}</span></div>
+      </div>`;
+      box.innerHTML = html;
+      const tg = $('git-toggle'); if (tg) tg.addEventListener('click', (e) => { e.preventDefault(); state.gitShowFiles = !state.gitShowFiles; renderGit(); });
+      const msgEl = $('git-msg'); if (msgEl) msgEl.addEventListener('input', () => { state.gitMsg = msgEl.value; });
+      box.querySelectorAll('[data-git]').forEach((b) => b.addEventListener('click', () => gitOp(b.dataset.git)));
+    }
+    async function gitOp(op) {
+      const s = state.session; const st = state.git?.metadata?.status;
+      let body = { op };
+      if (op === 'commit') {
+        const message = ($('git-msg')?.value || '').trim();
+        if (!message) { alert('Escribí el mensaje de commit.'); return; }
+        if (!confirm(`Se hace "git add -A" y "git commit" en ${s.repo} (rama ${st?.branch || '?'}) con el autor ${st?.author || 'configurado en esa PC'}.\n\nMensaje:\n${message}\n\n¿Confirmás?`)) return;
+        body.message = message;
+      } else if (op === 'pull') {
+        if (!confirm(`Se hace "git pull --ff-only" en ${s.repo}. Si hay conflictos o divergencias no se aplica nada y se muestra el error. ¿Confirmás?`)) return;
+      } else if (op === 'push') {
+        if (!confirm(`Se hace "git push" de la rama ${st?.branch || '?'} de ${s.repo} con las credenciales de esa PC. ¿Confirmás?`)) return;
+      }
+      state.gitPending = true; renderGit();
+      try { await api(`/sessions/${sessionId}/git`, { method: 'POST', body: JSON.stringify(body) }); }
+      catch (e) { state.gitPending = false; renderGit(); alert(e.message); }
+    }
+
+    // ── acciones ────────────────────────────────────────────────────
+    async function decide(id, decision, motivo) {
+      try { await api(`/approvals/${id}/decide`, { method: 'POST', body: JSON.stringify({ decision, motivo: motivo || null }) }); }
+      catch (e) { alert(e.message); }
+    }
+    async function send() {
+      const text = $('input').value.trim();
+      if (!text || state.busy) return;
+      state.busy = true; $('send').disabled = true;
+      try { await api(`/sessions/${sessionId}/messages`, { method: 'POST', body: JSON.stringify({ text }) }); $('input').value = ''; }
+      catch (e) { alert(e.message); }
+      finally { state.busy = false; renderSession(); }
+    }
+    $('send').addEventListener('click', send);
+    $('input').addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); send(); } });
+    $('approve').addEventListener('click', async () => {
+      const comentario = $('input').value.trim();
+      if (!confirm('Claude va a empezar a modificar el repositorio según el plan. Las operaciones sensibles te las va a pedir una por una. ¿Aprobás el plan?')) return;
+      try { await api(`/sessions/${sessionId}/approve-plan`, { method: 'POST', body: JSON.stringify({ comentario }) }); $('input').value = ''; }
+      catch (e) { alert(e.message); }
+    });
+    $('cancel').addEventListener('click', async () => {
+      if (!confirm('Se interrumpe el trabajo de Claude y la sesión queda cancelada. ¿Seguro?')) return;
+      try { await api(`/sessions/${sessionId}/cancel`, { method: 'POST', body: '{}' }); } catch (e) { alert(e.message); }
+    });
+    $('finish').addEventListener('click', async () => {
+      if (!confirm('Marcás el trabajo como validado: la tarea pasa a "Lista para registrar" y la sesión se cierra. ¿Confirmás?')) return;
+      try { await api(`/sessions/${sessionId}/finish`, { method: 'POST', body: '{}' }); } catch (e) { alert(e.message); }
+    });
+
+    // ── carga y streaming ───────────────────────────────────────────
+    async function loadAll() {
+      const d = await api(`/sessions/${sessionId}`);
+      state.session = d.session; state.messages = d.messages; state.approvals = d.approvals; state.report = d.report;
+      state.lastMessageId = d.messages.length ? d.messages[d.messages.length - 1].id : 0;
+      const lastGit = [...d.messages].reverse().find((m) => m.rol === 'git');
+      if (lastGit) state.git = lastGit;
+      renderSession(); renderMessages(); renderReport(); renderGit();
+      // Primera vez: pedir el estado de git si hay repo y el runner esta conectado.
+      if (!state.gitAsked && d.session.repo && d.session.runner_online && d.session.estado !== 'trabajando' && !lastGit?.metadata?.status) {
+        state.gitAsked = true;
+        state.gitPending = true; renderGit();
+        api(`/sessions/${sessionId}/git`, { method: 'POST', body: JSON.stringify({ op: 'status' }) }).catch(() => { state.gitPending = false; renderGit(); });
+      }
+    }
+    function handleEvent(ev) {
+      if (ev.type === 'message') {
+        if (!state.messages.some((m) => m.id === ev.message.id)) { state.messages.push(ev.message); state.lastMessageId = Math.max(state.lastMessageId, ev.message.id); }
+        if (ev.message.rol === 'git') { state.git = ev.message; state.gitPending = false; renderGit(); }
+        renderMessages();
+      } else if (ev.type === 'approval') {
+        const i = state.approvals.findIndex((a) => a.id === ev.approval.id);
+        if (i >= 0) state.approvals[i] = ev.approval; else state.approvals.push(ev.approval);
+        renderMessages(); renderSession();
+      } else if (ev.type === 'session') {
+        state.session = ev.session; renderSession(); renderGit();
+      } else if (ev.type === 'report') {
+        state.report = ev.report; renderReport(); renderSession(); renderGit();
+      }
+    }
+    async function stream() {
+      for (;;) {
+        try {
+          const res = await fetch(`/api/taskpilot/sessions/${sessionId}/stream`);
+          if (!res.ok || !res.body) throw new Error('stream ' + res.status);
+          const reader = res.body.getReader(); const dec = new TextDecoder(); let buf = '';
+          for (;;) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            buf += dec.decode(value, { stream: true });
+            let idx;
+            while ((idx = buf.indexOf('\n\n')) >= 0) {
+              const chunk = buf.slice(0, idx); buf = buf.slice(idx + 2);
+              for (const line of chunk.split('\n')) if (line.startsWith('data: ')) { try { handleEvent(JSON.parse(line.slice(6))); } catch {} }
+            }
+          }
+        } catch (e) { /* se reconecta */ }
+        await new Promise((r) => setTimeout(r, 3000));
+        try { await loadAll(); } catch {}
+      }
+    }
+    (async () => {
+      try { await loadAll(); stream(); }
+      catch (e) { $('messages').innerHTML = `<div class="msg error">${esc(e.message)}</div>`; }
+      setInterval(() => loadAll().catch(() => {}), 20000);
+    })();
+  </script>
+</body>
+</html>

@@ -38,6 +38,7 @@
     .tile.paybridge{border-top:3px solid #6affb1}
     .tile.admin    {border-top:3px solid #d985ff}
     .tile.infra    {border-top:3px solid #ef7a4c}
+    .tile.taskpilot{border-top:3px solid #3fb0a8}
     footer{margin-top:56px;color:#586a91;font-size:12px}
     footer a{color:#8aa0c8;text-decoration:none;margin:0 8px;cursor:pointer}
     .userbar{position:absolute;top:18px;right:24px;font-size:13px;color:#a6b6d6;display:flex;gap:14px;align-items:center}
@@ -86,6 +87,12 @@
       <h2>Infraestructura</h2>
       <p>CPU y memoria del servidor Oracle, consumo por proyecto y créditos/uso de GPU en RunPod.</p>
     </a>
+
+    <a class="tile taskpilot" href="/taskpilot/">
+      <span class="tag">Tareas</span>
+      <h2>TaskPilot</h2>
+      <p>Tareas de Redmine priorizadas por persona, resolución asistida con Claude y registro de horas en Excel y Redmine.</p>
+    </a>
   </div>
 
 
@@ -103,7 +110,8 @@
                   : t.classList.contains('travel') ? 'travel'
                   : t.classList.contains('paybridge') ? 'paybridge'
                   : t.classList.contains('admin') ? 'admin'
-                  : t.classList.contains('infra') ? 'infra' : null;
+                  : t.classList.contains('infra') ? 'infra'
+                  : t.classList.contains('taskpilot') ? 'taskpilot' : null;
           if (v && !allowed.includes(v)) t.style.display = 'none';
         });
       }

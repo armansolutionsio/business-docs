@@ -1,0 +1,20 @@
+{
+  "name": "taskpilot-runner",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Runner de TaskPilot: ejecuta tareas de Redmine con Claude (Agent SDK) en los repos locales de cada dev y se conecta saliente al servidor de Arman Suite.",
+  "type": "module",
+  "main": "src/index.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "check": "node src/check.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.3.318",
+    "@anthropic-ai/sdk": "^1.4.0",
+    "dotenv": "^17.2.4"
+  }
+}

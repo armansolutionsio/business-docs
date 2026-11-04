@@ -1,0 +1,824 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Arman — TaskPilot</title>
+  <link rel="icon" href="/favicon.ico" />
+  <style>
+    :root{
+      --bg:#0b0f1a; --panel:#111a2e; --panel-2:#19233d; --line:#2a3656; --rail:#1d2843;
+      --ink:#e8edf5; --ink-2:#a6b6d6; --muted:#7d92bd;
+      --accent:#3fb0a8; --good:#16b816; --warn:#fab219; --crit:#e66767; --blue:#3987e5;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+      background:radial-gradient(1200px 600px at 20% 0%,#1f2a44,var(--bg) 70%) fixed;color:var(--ink);min-height:100vh;font-size:14px}
+    .wrap{max-width:1320px;margin:0 auto;padding:28px 20px 48px}
+    .top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:14px}
+    .top a.back{color:var(--muted);text-decoration:none;font-size:13px}
+    .top a.back:hover{color:var(--ink)}
+    h1{font-size:26px;font-weight:600;margin:6px 0 4px}
+    .sub{color:var(--ink-2);font-size:13.5px}
+    .nav-actions{display:flex;align-items:center;gap:12px;margin-left:auto}
+    button.refresh{background:#3d5fc4;border:1px solid #3d5fc4;color:#fff;padding:6px 14px;border-radius:20px;
+      cursor:pointer;font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
+    button.refresh:hover{background:#4a6dd6;border-color:#4a6dd6}
+    button.refresh:disabled{opacity:.6;cursor:progress}
+    .stamp{color:var(--muted);font-size:11.5px;text-align:right;max-width:360px}
+    .spin{width:12px;height:12px;border:2px solid #fff;border-top-color:transparent;border-radius:50%;animation:s 1s linear infinite;display:none}
+    button.loading .spin{display:inline-block}
+    @keyframes s{to{transform:rotate(360deg)}}
+
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin-bottom:18px}
+    .card{background:linear-gradient(135deg,var(--panel-2),var(--panel));border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+    .card .lbl{font-size:11px;text-transform:uppercase;letter-spacing:1.4px;color:var(--muted)}
+    .card .big{font-size:26px;font-weight:700;margin-top:6px;font-variant-numeric:tabular-nums}
+    .card .big small{font-size:12.5px;color:var(--ink-2);font-weight:500}
+    .card .cap{color:var(--ink-2);font-size:12.5px;margin-top:4px;line-height:1.5}
+    .card .cap b{color:var(--ink);font-weight:600}
+
+    .panel{background:linear-gradient(135deg,var(--panel-2),var(--panel));border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:18px}
+    .panel h2{font-size:16px;font-weight:600}
+    .panel h2 .tag{margin-left:8px;vertical-align:middle}
+    .panel .hint{color:var(--muted);font-size:12.5px;margin:3px 0 14px}
+    .panel.estimar{border-color:#4a5f9a;box-shadow:0 0 0 1px rgba(127,177,255,.08)}
+    .tabbar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;border-bottom:1px solid var(--line);padding-bottom:10px}
+    .tabbar button{background:transparent;border:1px solid var(--line);color:var(--ink-2);padding:8px 16px;border-radius:20px;cursor:pointer;font-size:13.5px;font-weight:500;display:inline-flex;align-items:center;gap:8px}
+    .tabbar button:hover{background:#19223a;color:#fff}
+    .tabbar button.active{background:#1c2c52;color:#fff;border-color:#3d5fc4}
+    .tabbar button .tag{font-size:10.5px}
+    section.panel[data-tab]{display:none}
+    section.panel[data-tab].active{display:block}
+
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+    th{color:var(--muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.7px;white-space:nowrap}
+    tr.row{cursor:pointer}
+    tr.row:hover td{background:rgba(61,95,196,.12)}
+    td.id{color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+    td.subject{max-width:520px}
+    td.subject .proj{display:block;color:var(--muted);font-size:11.5px;margin-top:2px}
+    td.nowrap{white-space:nowrap}
+    td.hours{white-space:nowrap;font-variant-numeric:tabular-nums;font-size:12.5px}
+    td.hours small{display:block;color:var(--muted);font-size:11px}
+    .tag{display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;background:#1c2c52;color:#a6c3ff;white-space:nowrap}
+    .tag.green{background:#163a2a;color:#7fe6b1}
+    .tag.amber{background:#3a2e16;color:#ffd089}
+    .tag.red{background:#3a1616;color:#ff8a8a}
+    .tag.grey{background:#1d2843;color:var(--ink-2)}
+    .tag.teal{background:#143835;color:#7fe0d8}
+    .empty{color:var(--muted);text-align:center;padding:28px;font-size:13px}
+    .err{background:#3a1616;color:#ff9a9a;border:1px solid #5a2222;border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:14px}
+    .note{background:#1c2c52;color:#c7d6ff;border:1px solid #2f4a8a;border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:14px}
+
+    .filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
+    .filters label{display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px}
+    input,select,textarea{background:#0d121e;border:1px solid var(--line);color:var(--ink);padding:7px 10px;border-radius:8px;font-size:13px;font-family:inherit;width:100%}
+    input:focus,select:focus,textarea:focus{border-color:#5b7bd6;outline:none}
+    .btn{background:#3a5cc4;color:#fff;border:none;padding:8px 14px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:500;text-decoration:none;display:inline-block}
+    .btn:hover{background:#4a6ed4}
+    .btn.ghost{background:transparent;border:1px solid var(--line);color:var(--ink-2)}
+    .btn.ghost:hover{background:#19223a;color:#fff}
+    .btn:disabled{opacity:.5;cursor:not-allowed}
+    .more{display:flex;align-items:center;gap:14px;margin-top:12px;color:var(--muted);font-size:12.5px}
+
+    .modal-bg{position:fixed;inset:0;background:rgba(7,11,20,.78);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:50;padding:20px}
+    .modal-bg.open{display:flex}
+    .modal{background:linear-gradient(180deg,#172040 0%,#0f1729 100%);border:1px solid var(--line);border-radius:16px;width:min(1020px,96vw);max-height:92vh;overflow:auto;box-shadow:0 30px 80px rgba(0,0,0,.55)}
+    .modal-head{position:sticky;top:0;background:rgba(15,22,40,.94);backdrop-filter:blur(8px);padding:16px 22px 12px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:flex-start;gap:12px;z-index:1}
+    .modal-head h3{font-size:17px;font-weight:600;line-height:1.35}
+    .modal-head .close{background:none;border:none;color:var(--muted);font-size:24px;cursor:pointer;line-height:1;padding:0 6px;border-radius:6px}
+    .modal-head .close:hover{background:#1f2a44;color:#fff}
+    .modal-body{padding:16px 22px 22px}
+    .meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px 16px;margin-bottom:14px}
+    .meta div{font-size:12.5px;color:var(--ink-2)}
+    .meta div b{display:block;color:var(--ink);font-weight:500;margin-top:2px;word-break:break-word}
+    .desc{white-space:pre-wrap;word-break:break-word;background:#0d121e;border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:13px;line-height:1.5;max-height:420px;overflow:auto}
+    .section{margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
+    .section-title{font-size:10.5px;color:#7fb1ff;text-transform:uppercase;letter-spacing:1.4px;font-weight:600;margin-bottom:10px}
+    .journal{border-left:2px solid var(--line);padding:6px 12px;margin-bottom:10px;font-size:13px}
+    .journal .who{color:var(--muted);font-size:11.5px;margin-bottom:4px}
+    .journal .notes{white-space:pre-wrap;word-break:break-word}
+    .journal .det{color:var(--ink-2);font-size:12px}
+    .actions{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+    .actions > div{flex:1;min-width:180px}
+    .actions label{display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px}
+    .inline-msg{font-size:12.5px;margin-top:8px;color:var(--ink-2)}
+    .inline-msg.ok{color:#7fe6b1}
+    .inline-msg.bad{color:#ff9a9a}
+    .cf{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:6px 16px;font-size:12.5px;color:var(--ink-2)}
+    .cf b{color:var(--ink);font-weight:500}
+    @media (max-width:640px){ td.subject{max-width:none} .meta{grid-template-columns:1fr 1fr} }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div>
+        <a class="back" href="/">Arman Suite</a>
+        <h1>TaskPilot</h1>
+        <div class="sub">Tareas de Redmine asignadas a Santi y Gabi, en todos los estados. <span id="sub-sync"></span></div>
+      </div>
+      <div class="nav-actions">
+        <div class="stamp" id="stamp">Cargando...</div>
+        <button class="refresh" id="sync" type="button"><span class="spin"></span>Sincronizar</button>
+      </div>
+    </div>
+
+    <div id="alert"></div>
+    <div class="grid" id="kpis"></div>
+
+    <div class="tabbar" id="tabbar">
+      <button type="button" data-tab="estimar">A estimar <span class="tag amber" id="tab-est-count"></span></button>
+      <button type="button" data-tab="tareas">Tareas <span class="tag" id="tab-rest-count"></span></button>
+      <button type="button" data-tab="horas">Horas</button>
+      <button type="button" data-tab="contexto">Contexto</button>
+      <button type="button" data-tab="runners">Runners</button>
+    </div>
+
+    <section class="panel" id="context-panel" data-tab="contexto">
+      <h2>Contexto para Claude</h2>
+      <p class="hint">Lo que escribas acá viaja a Claude en cada tarea nueva, además de la tarea de Redmine y de las reglas de TaskPilot. Usalo para explicar cómo trabajan, convenciones, entornos, cómo se prueban las cosas y qué no hay que tocar. Si el repo tiene un CLAUDE.md, también se carga solo.</p>
+      <div class="actions" style="flex-direction:column;align-items:stretch;gap:14px">
+        <div>
+          <label>Contexto general (todas las tareas)</label>
+          <textarea id="ctx-global" rows="10" placeholder="Ejemplo: Somos Arman Solutions, trabajamos para el cliente X. Las tareas vienen de Redmine. Usamos ramas develop por repo; los deploys los hace Y. Antes de dar por terminado, correr los tests..."></textarea>
+          <div class="row" style="display:flex;gap:10px;align-items:center;margin-top:8px"><button class="btn" type="button" id="ctx-global-save">Guardar contexto general</button><span class="inline-msg" id="ctx-global-msg" style="margin:0"></span></div>
+        </div>
+        <div>
+          <label>Contexto de un repositorio</label>
+          <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px;flex-wrap:wrap"><select id="ctx-repo" style="max-width:360px"></select><input id="ctx-repo-new" placeholder="o escribí un nombre de repo nuevo" style="max-width:300px" /></div>
+          <textarea id="ctx-repo-text" rows="10" placeholder="Ejemplo: Next.js 14 + TypeScript. Carpeta src/app. Los tests corren con npm test. No tocar la carpeta legacy/. Variables en .env.local (no las leas)..."></textarea>
+          <div class="row" style="display:flex;gap:10px;align-items:center;margin-top:8px"><button class="btn" type="button" id="ctx-repo-save">Guardar contexto del repo</button><span class="inline-msg" id="ctx-repo-msg" style="margin:0"></span></div>
+        </div>
+      </div>
+      <p class="hint" style="margin-top:14px">Los cambios aplican a las sesiones que inicies después de guardar. Una sesión ya abierta mantiene el contexto con el que arrancó.</p>
+    </section>
+
+    <section class="panel" id="hours-panel" data-tab="horas">
+      <h2>Horas cargadas en Redmine</h2>
+      <p class="hint">Lo que Santi y Gabi registraron en Redmine, mes por mes. Hacé clic en un mes para ver el desglose por proyecto y cada carga.</p>
+      <div id="hours-months" style="overflow:auto"><div class="empty">Sin datos</div></div>
+      <div id="hours-detail" style="margin-top:14px"></div>
+    </section>
+
+    <section class="panel estimar" data-tab="estimar">
+      <h2>A estimar <span class="tag amber" id="est-count"></span></h2>
+      <p class="hint">Tareas en estado "Estimar", de la más reciente a la más antigua.</p>
+      <div class="filters">
+        <div><label>Asignada a</label><select id="est-assigned"><option value="team">Santi o Gabi</option></select></div>
+        <div><label>Proyecto</label><select id="est-project"><option value="">Todos</option></select></div>
+        <div><label>Tipo</label><select id="est-tracker"><option value="">Todos</option></select></div>
+        <div><label>Prioridad</label><select id="est-priority"><option value="">Todas</option></select></div>
+        <div><label>Orden</label><select id="est-sort"><option value="created">Creación, más recientes</option><option value="created_asc">Creación, más antiguas</option><option value="priority">Prioridad</option><option value="updated">Última actualización</option><option value="due">Vencimiento</option></select></div>
+        <div style="grid-column:span 2"><label>Buscar (número o texto)</label><input type="search" id="est-q" placeholder="#18639, perfiles..." /></div>
+        <div style="display:flex;align-items:flex-end"><button class="btn ghost" id="est-clear" type="button">Limpiar</button></div>
+      </div>
+      <div id="est-table"><div class="empty">Sin datos</div></div>
+      <div class="more"><button class="btn ghost" id="est-more" type="button">Cargar más</button><span id="est-count2"></span></div>
+    </section>
+
+    <section class="panel" data-tab="tareas">
+      <h2>Resto de las tareas <span class="tag" id="rest-count"></span></h2>
+      <p class="hint">Todo lo demás, de la más reciente a la más antigua. Abiertas por defecto; con el filtro de estado se ven también las resueltas y cerradas.</p>
+      <div class="filters">
+        <div><label>Asignada a</label><select id="rest-assigned"><option value="team">Santi o Gabi</option></select></div>
+        <div><label>Proyecto</label><select id="rest-project"><option value="">Todos</option></select></div>
+        <div><label>Estado</label><select id="rest-status"><option value="">Abiertas</option><option value="__all">Todas</option><option value="__closed">Cerradas</option></select></div>
+        <div><label>Tipo</label><select id="rest-tracker"><option value="">Todos</option></select></div>
+        <div><label>Prioridad</label><select id="rest-priority"><option value="">Todas</option></select></div>
+        <div><label>Etapa TaskPilot</label><select id="rest-etapa"><option value="">Todas</option></select></div>
+        <div><label>Creada desde</label><input type="date" id="rest-from" /></div>
+        <div><label>Creada hasta</label><input type="date" id="rest-to" /></div>
+        <div><label>Orden</label><select id="rest-sort"><option value="created">Creación, más recientes</option><option value="created_asc">Creación, más antiguas</option><option value="priority">Prioridad</option><option value="updated">Última actualización</option><option value="due">Vencimiento</option></select></div>
+        <div style="grid-column:span 2"><label>Buscar (número o texto)</label><input type="search" id="rest-q" placeholder="#18329, agenda, usuarios..." /></div>
+        <div style="display:flex;align-items:flex-end"><button class="btn ghost" id="rest-clear" type="button">Limpiar</button></div>
+      </div>
+      <div id="rest-table"><div class="empty">Sin datos</div></div>
+      <div class="more"><button class="btn ghost" id="rest-more" type="button">Cargar más</button><span id="rest-count2"></span></div>
+    </section>
+
+    <section class="panel" id="runners-panel" data-tab="runners">
+      <h2>Runners</h2>
+      <p class="hint">El runner es el programa que corre en la PC de cada uno y ejecuta las tareas con Claude sobre sus repos. Tiene que estar conectado para iniciar una tarea.</p>
+      <div id="runners-table"><div class="empty">Sin datos</div></div>
+      <div id="runners-admin"></div>
+    </section>
+  </div>
+
+  <div class="modal-bg" id="modal">
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="modal-head">
+        <h3 id="m-title">Tarea</h3>
+        <button class="close" id="m-close" type="button" aria-label="Cerrar">&times;</button>
+      </div>
+      <div class="modal-body" id="m-body"></div>
+    </div>
+  </div>
+
+  <div class="modal-bg" id="start-modal">
+    <div class="modal" role="dialog" aria-modal="true" style="width:min(640px,94vw)">
+      <div class="modal-head"><h3 id="s-title">Iniciar tarea con Claude</h3><button class="close" id="s-close" type="button" aria-label="Cerrar">&times;</button></div>
+      <div class="modal-body">
+        <div class="actions" style="flex-direction:column;align-items:stretch;gap:12px">
+          <div><label>Runner (PC donde está el código)</label><select id="s-runner"></select></div>
+          <div><label>Repositorio</label><select id="s-repo"></select></div>
+          <div><label>Modelo de Claude</label><select id="s-model"></select></div>
+          <div><label>Instrucciones adicionales (opcional)</label><textarea id="s-instr" rows="3" placeholder="Contexto extra, restricciones, qué priorizar..."></textarea></div>
+        </div>
+        <div class="inline-msg" id="s-msg"></div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px">
+          <button class="btn ghost" type="button" id="s-cancel">Cancelar</button>
+          <button class="btn" type="button" id="s-go">Iniciar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/_shared/auth.js"></script>
+  <script>
+    const me = ArmanAuth.requireSession({ vertical: 'taskpilot' });
+    const $ = (id) => document.getElementById(id);
+    const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const fmtDate = (d) => d ? new Date(d).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' }) : '';
+    const fmtDay = (d) => {
+      if (!d) return '';
+      const dt = /^\d{4}-\d{2}-\d{2}$/.test(d) ? new Date(d + 'T00:00:00') : new Date(d);
+      return Number.isNaN(dt.getTime()) ? '' : dt.toLocaleDateString('es-AR');
+    };
+    const fmtShort = (d) => d ? new Date(d).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '';
+    const cap = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
+    // Horas decimales de Redmine a "3 h 30 min"
+    const fmtHoras = (h) => {
+      const total = Math.round(Number(h || 0) * 60);
+      if (!total) return '0 min';
+      const hh = Math.floor(total / 60), mm = total % 60;
+      return [hh ? `${hh} h` : '', mm ? `${mm} min` : ''].filter(Boolean).join(' ');
+    };
+
+    const state = { catalogs: null, status: null, runners: [], pollTimer: null, lists: {} };
+
+    async function api(path, opts = {}) {
+      const res = await fetch('/api/taskpilot' + path, { headers: { 'Content-Type': 'application/json' }, ...opts });
+      let data = null;
+      try { data = await res.json(); } catch {}
+      if (!res.ok) throw Object.assign(new Error(data?.error || `HTTP ${res.status}`), { status: res.status, data });
+      return data;
+    }
+
+    function setAlert(html, kind = 'err') { $('alert').innerHTML = html ? `<div class="${kind}">${html}</div>` : ''; }
+
+    // ── pestañas ────────────────────────────────────────────────────
+    const TABS = ['estimar', 'tareas', 'horas', 'contexto', 'runners'];
+    function showTab(name, remember = true) {
+      if (!TABS.includes(name)) name = 'estimar';
+      document.querySelectorAll('section.panel[data-tab]').forEach((s) => s.classList.toggle('active', s.dataset.tab === name));
+      document.querySelectorAll('#tabbar button').forEach((b) => b.classList.toggle('active', b.dataset.tab === name));
+      if (remember) {
+        try { localStorage.setItem('taskpilot_tab', name); } catch {}
+        if (location.hash !== '#' + name) history.replaceState(null, '', '#' + name);
+      }
+    }
+    document.querySelectorAll('#tabbar button').forEach((b) => b.addEventListener('click', () => showTab(b.dataset.tab)));
+    (() => {
+      const fromHash = location.hash.replace('#', '');
+      let saved = null; try { saved = localStorage.getItem('taskpilot_tab'); } catch {}
+      showTab(TABS.includes(fromHash) ? fromHash : (saved || 'estimar'), false);
+    })();
+
+    // ── tags ────────────────────────────────────────────────────────
+    function prioTag(p) {
+      const n = (p || '').toLowerCase();
+      const cls = /inmediata|urgente/.test(n) ? 'red' : /alta/.test(n) ? 'amber' : /baja/.test(n) ? 'grey' : '';
+      return `<span class="tag ${cls}">${esc(p || '-')}</span>`;
+    }
+    function statusTag(i) {
+      const cls = i.is_closed ? 'grey' : /progreso|activa/i.test(i.status) ? 'green' : /espera|feedback|estimar|backlog/i.test(i.status) ? 'amber' : '';
+      return `<span class="tag ${cls}">${esc(i.status || '-')}</span>`;
+    }
+    function etapaTag(e) {
+      const label = state.status?.etapaLabels?.[e] || e;
+      const cls = e === 'registrada' ? 'green' : e === 'pendiente' ? 'grey' : 'teal';
+      return `<span class="tag ${cls}">${esc(label)}</span>`;
+    }
+    function aliasLabel(alias) {
+      const a = (state.catalogs?.accounts || []).find((x) => x.alias === alias);
+      return a?.nombre ? `${cap(alias)} (${a.nombre})` : cap(alias);
+    }
+    function horasEquipo(h) {
+      const entries = Object.entries(h || {}).filter(([, v]) => v > 0);
+      if (!entries.length) return '<span style="color:var(--muted)">-</span>';
+      return entries.map(([a, v]) => `${esc(cap(a))}: ${esc(fmtHoras(v))}`).join('<br>');
+    }
+
+    // ── estado y KPIs ───────────────────────────────────────────────
+    function renderStatus(s) {
+      state.status = s;
+      const last = s.last;
+      const parts = [];
+      if (!s.configured) parts.push('Redmine no configurado (REDMINE_URL)');
+      else if (s.running) parts.push('Sincronizando con Redmine...');
+      else if (last?.fin) parts.push(`${last.ok ? 'Última sincronización' : 'Último intento'} ${fmtDate(last.fin)}${last.ok ? '' : ' (con error)'}`);
+      else parts.push('Todavía no se sincronizó');
+      if (!s.running && s.lastOkAt && last && !last.ok) parts.push(`Último OK ${fmtDate(s.lastOkAt)}`);
+      $('stamp').innerHTML = parts.map(esc).join('<br>');
+      $('sub-sync').textContent = `Se sincroniza cada ${s.intervalMin} min, o con el botón.`;
+      $('sync').disabled = s.running || !s.configured;
+      $('sync').classList.toggle('loading', s.running);
+
+      let alert = '';
+      if (last && !last.ok && last.error) alert = `La última sincronización falló: ${esc(last.error)}`;
+      const accErrors = (s.accounts || []).filter((a) => a.activo && a.last_error);
+      if (accErrors.length) alert += (alert ? '<br>' : '') + accErrors.map((a) => `Cuenta ${esc(cap(a.alias))}: ${esc(a.last_error)}`).join('<br>');
+      setAlert(alert);
+
+      const kpis = [];
+      for (const a of s.byAccount || []) {
+        kpis.push(`<div class="card"><div class="lbl">${esc(cap(a.alias))} · tareas</div><div class="big">${a.abiertas} <small>abiertas</small></div>
+          <div class="cap"><b>${a.a_estimar}</b> a estimar · <b>${a.cerradas}</b> cerradas<br>${esc(a.nombre || '')}</div></div>`);
+        kpis.push(`<div class="card"><div class="lbl">${esc(cap(a.alias))} · horas cargadas en Redmine</div><div class="big">${esc(fmtHoras(a.horas_mes))} <small>este mes</small></div>
+          <div class="cap">Hoy <b>${esc(fmtHoras(a.horas_hoy))}</b> · esta semana <b>${esc(fmtHoras(a.horas_semana))}</b><br>Mes anterior <b>${esc(fmtHoras(a.horas_mes_anterior))}</b>${a.ultima_carga ? ' · última carga ' + esc(fmtDay(a.ultima_carga)) : ''}</div></div>`);
+      }
+      for (const r of (state.runners || []).filter((x) => x.activo && (x.limits || x.online))) kpis.push(limitsCard(r));
+      const et = Object.fromEntries((s.etapas || []).map((e) => [e.etapa, e.n]));
+      const order = ['analizando', 'en_ejecucion', 'pendiente_validacion', 'lista_registrar'];
+      kpis.push(`<div class="card"><div class="lbl">En curso con Claude</div><div class="big">${order.reduce((n, k) => n + (et[k] || 0), 0)}</div><div class="cap">${order.map((k) => `${esc(s.etapaLabels[k])}: <b>${et[k] || 0}</b>`).join(' · ')}<br>Tareas del equipo: <b>${s.totals?.total ?? 0}</b> (${s.totals?.abiertas ?? 0} abiertas)</div></div>`);
+      $('kpis').innerHTML = kpis.join('');
+    }
+
+    async function loadStatus() { renderStatus(await api('/status')); }
+
+    // ── limites del plan de Claude de cada runner ───────────────────
+    const pct = (u) => `${Math.round(Number(u || 0) * 100)}%`;
+    const resetAt = (epoch) => epoch ? new Date(Number(epoch) * 1000).toLocaleString('es-AR', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-';
+    const limColor = (w) => !w ? '' : w.status === 'rejected' || w.utilization >= 0.95 ? 'color:#ff8a8a' : w.status === 'allowed_warning' || w.utilization >= 0.75 ? 'color:#ffd089' : 'color:#7fe6b1';
+    function limitsCard(r) {
+      const w = r.limits?.unifiedWindows || {};
+      const five = w.five_hour, week = w.seven_day;
+      const plan = r.account?.subscriptionType || 'plan de Claude';
+      if (!five && !week) return `<div class="card"><div class="lbl">${esc(r.nombre)} · ${esc(plan)}</div><div class="big" style="font-size:16px">Límites sin leer</div><div class="cap">Se actualizan solos con cada tarea, o con "Actualizar límites" en la pestaña Runners.</div></div>`;
+      return `<div class="card"><div class="lbl">${esc(r.nombre)} · ${esc(plan)}</div>
+        <div class="big" style="${limColor(week)}">${pct(week?.utilization)} <small>de la semana</small></div>
+        <div class="cap">Se reinicia ${esc(resetAt(week?.resetsAt))}<br>Ventana de 5 h: <b style="${limColor(five)}">${pct(five?.utilization)}</b>, se reinicia ${esc(resetAt(five?.resetsAt))}${r.limits?.isUsingOverage ? '<br><b>Usando créditos extra</b>' : ''}<br><span style="color:var(--muted)">Leído ${esc(fmtDate(r.limits_at))}</span></div></div>`;
+    }
+    async function refreshLimits(runnerId, btn) {
+      if (btn) { btn.disabled = true; btn.textContent = 'Consultando...'; }
+      try {
+        await api(`/runners/${runnerId}/limits-refresh`, { method: 'POST', body: '{}' });
+        for (let i = 0; i < 20; i++) {
+          await new Promise((r) => setTimeout(r, 3000));
+          const runners = await api('/runners');
+          const r = runners.find((x) => x.id === runnerId);
+          if (r?.limits_at && Date.now() - new Date(r.limits_at).getTime() < 60000) { state.runners = runners; break; }
+        }
+        await loadRunners(); await loadStatus();
+      } catch (e) { setAlert('No se pudieron leer los límites: ' + esc(e.message)); }
+      finally { if (btn) { btn.disabled = false; btn.textContent = 'Actualizar límites'; } }
+    }
+
+    // ── catalogos ───────────────────────────────────────────────────
+    function fillSelect(id, items, label = (x) => x.nombre, value = (x) => x.id, keepFirst = 1) {
+      const sel = $(id);
+      const current = sel.value;
+      [...sel.options].slice(keepFirst).forEach((o) => o.remove());
+      for (const it of items) {
+        const o = document.createElement('option');
+        o.value = value(it); o.textContent = label(it);
+        sel.appendChild(o);
+      }
+      sel.value = current;
+    }
+    async function loadCatalogs() {
+      const c = await api('/catalogs');
+      state.catalogs = c;
+      const byId = Object.fromEntries(c.projects.map((p) => [p.id, p]));
+      const projLabel = (p) => (p.parent_id && byId[p.parent_id] ? `${byId[p.parent_id].name} / ` : '') + p.name;
+      for (const pre of ['est', 'rest']) {
+        fillSelect(`${pre}-assigned`, c.accounts, (a) => aliasLabel(a.alias), (a) => a.alias, 1);
+        fillSelect(`${pre}-project`, c.projects, projLabel);
+        fillSelect(`${pre}-tracker`, c.trackers);
+        fillSelect(`${pre}-priority`, c.priorities);
+      }
+      fillSelect('rest-status', c.statuses.filter((s) => s.nombre.toLowerCase() !== 'estimar'), (s) => s.nombre + (s.extra?.is_closed ? ' (cerrado)' : ''), (s) => s.id, 3);
+      fillSelect('rest-etapa', c.etapas);
+    }
+
+    // ── horas por mes ───────────────────────────────────────────────
+    const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+    const mesLabel = (ym) => { const [y, m] = ym.split('-'); return `${MESES[Number(m) - 1]} ${y.slice(2)}`; };
+    const mesLargo = (ym) => { const [y, m] = ym.split('-'); return new Date(Number(y), Number(m) - 1, 1).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' }); };
+    const hours = { summary: null, mes: null, entries: null, showAll: false };
+
+    async function loadHours() {
+      const s = await api('/hours/summary?months=12');
+      hours.summary = s;
+      if (!hours.mes) hours.mes = s.periodos.mes.slice(0, 7);
+      const months = s.months; // del actual hacia atras
+      const cols = [...months].reverse(); // mas antiguo a la izquierda
+      const cell = (v, cargas) => v ? `<b>${esc(fmtHoras(v))}</b><small style="display:block;color:var(--muted);font-size:10.5px">${cargas} carga${cargas === 1 ? '' : 's'}</small>` : '<span style="color:var(--muted)">-</span>';
+      let html = `<table style="min-width:900px"><thead><tr><th>Persona</th>${cols.map((m) => `<th style="text-align:right;cursor:pointer;${m.mes === hours.mes ? 'color:#fff;background:rgba(61,95,196,.25)' : ''}" data-mes="${m.mes}">${esc(mesLabel(m.mes))}</th>`).join('')}<th style="text-align:right">Total 12 meses</th><th style="text-align:right">Histórico</th></tr></thead><tbody>`;
+      for (const a of s.accounts) {
+        const tot12 = cols.reduce((n, m) => n + (m.por_alias[a]?.horas || 0), 0);
+        const c12 = cols.reduce((n, m) => n + (m.por_alias[a]?.cargas || 0), 0);
+        html += `<tr><td class="nowrap"><b>${esc(aliasLabel(a))}</b></td>${cols.map((m) => `<td style="text-align:right;cursor:pointer;${m.mes === hours.mes ? 'background:rgba(61,95,196,.12)' : ''}" data-mes="${m.mes}">${cell(m.por_alias[a]?.horas, m.por_alias[a]?.cargas)}</td>`).join('')}<td style="text-align:right">${cell(tot12, c12)}</td><td style="text-align:right">${cell(s.historico.por_alias[a]?.horas, s.historico.por_alias[a]?.cargas)}</td></tr>`;
+      }
+      html += `<tr><td class="nowrap" style="color:var(--muted)">Equipo</td>${cols.map((m) => `<td style="text-align:right;cursor:pointer;${m.mes === hours.mes ? 'background:rgba(61,95,196,.12)' : ''}" data-mes="${m.mes}">${cell(m.total, m.cargas)}</td>`).join('')}<td style="text-align:right">${cell(cols.reduce((n, m) => n + m.total, 0), cols.reduce((n, m) => n + m.cargas, 0))}</td><td style="text-align:right">${cell(s.historico.horas, s.historico.cargas)}</td></tr></tbody></table>`;
+      html += `<div class="more" style="margin-top:6px">Histórico: desde ${esc(fmtDay(s.historico.primera) || '-')} hasta ${esc(fmtDay(s.historico.ultima) || '-')}. Semana actual desde el ${esc(fmtDay(s.periodos.semana))}.</div>`;
+      $('hours-months').innerHTML = html;
+      $('hours-months').querySelectorAll('[data-mes]').forEach((el) => el.addEventListener('click', () => { hours.mes = el.dataset.mes; hours.showAll = false; loadHours().catch(() => {}); }));
+      await loadHoursDetail();
+    }
+
+    async function loadHoursDetail() {
+      const box = $('hours-detail');
+      const d = await api(`/hours/entries?mes=${hours.mes}&limit=${hours.showAll ? 500 : 15}`);
+      hours.entries = d;
+      const accounts = hours.summary.accounts;
+      const byA = Object.fromEntries(d.by_alias.map((x) => [x.alias, x]));
+      const totalMes = d.by_alias.reduce((n, x) => n + x.horas, 0);
+      const projects = {};
+      for (const r of d.by_project) { const k = r.project_name; projects[k] = projects[k] || { name: k, total: 0, por: {} }; projects[k].por[r.alias] = r.horas; projects[k].total += r.horas; }
+      const projRows = Object.values(projects).sort((a, b) => b.total - a.total);
+      const acts = {};
+      for (const r of d.by_activity) { acts[r.activity] = acts[r.activity] || { name: r.activity, total: 0, por: {} }; acts[r.activity].por[r.alias] = r.horas; acts[r.activity].total += r.horas; }
+      const actRows = Object.values(acts).sort((a, b) => b.total - a.total);
+      const h = (v) => (v ? esc(fmtHoras(v)) : '<span style="color:var(--muted)">-</span>');
+      box.innerHTML = `
+        <div class="section-title" style="margin-top:4px">${esc(cap(mesLargo(hours.mes)))}: ${esc(fmtHoras(totalMes))} en ${d.total} carga${d.total === 1 ? '' : 's'} · ${accounts.map((a) => `${esc(cap(a))} ${esc(fmtHoras(byA[a]?.horas || 0))}`).join(' · ')}</div>
+        ${d.total ? `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;margin-bottom:12px">
+          <div><div class="section-title">Por proyecto</div><table><thead><tr><th>Proyecto</th>${accounts.map((a) => `<th style="text-align:right">${esc(cap(a))}</th>`).join('')}<th style="text-align:right">Total</th></tr></thead><tbody>${projRows.map((p) => `<tr><td>${esc(p.name)}</td>${accounts.map((a) => `<td style="text-align:right">${h(p.por[a])}</td>`).join('')}<td style="text-align:right"><b>${h(p.total)}</b></td></tr>`).join('')}</tbody></table></div>
+          <div><div class="section-title">Por tipo de actividad</div><table><thead><tr><th>Actividad</th>${accounts.map((a) => `<th style="text-align:right">${esc(cap(a))}</th>`).join('')}<th style="text-align:right">Total</th></tr></thead><tbody>${actRows.map((p) => `<tr><td>${esc(p.name)}</td>${accounts.map((a) => `<td style="text-align:right">${h(p.por[a])}</td>`).join('')}<td style="text-align:right"><b>${h(p.total)}</b></td></tr>`).join('')}</tbody></table></div>
+        </div>
+        <div class="section-title">Cargas del mes</div>
+        <table><thead><tr><th>Fecha</th><th>Quién</th><th>Tarea</th><th>Actividad</th><th>Horas</th><th>Comentario</th></tr></thead><tbody>${d.items.map((t) => `<tr class="${t.issue_id ? 'row' : ''}" data-id="${t.issue_id || ''}"><td class="nowrap">${esc(fmtDay(t.spent_on))}</td><td class="nowrap">${esc(cap(t.alias))}</td><td>${t.issue_id ? `#${t.issue_id} ` : ''}${esc(t.issue_subject || '')}<span class="proj" style="display:block;color:var(--muted);font-size:11.5px">${esc(t.project_name || '')}</span></td><td class="nowrap">${esc(t.activity || '')}</td><td class="nowrap">${esc(fmtHoras(t.hours))}</td><td>${esc(t.comments || '')}</td></tr>`).join('')}</tbody></table>
+        ${d.total > d.items.length ? `<div class="more"><button class="btn ghost" type="button" id="hours-all">Ver las ${d.total} cargas del mes</button><span>Mostrando ${d.items.length} de ${d.total}</span></div>` : ''}`
+        : '<div class="empty">Sin horas cargadas en este mes</div>'}`;
+      box.querySelectorAll('tr.row[data-id]').forEach((tr) => tr.addEventListener('click', () => { if (tr.dataset.id) openIssue(Number(tr.dataset.id)); }));
+      const all = $('hours-all');
+      if (all) all.addEventListener('click', () => { hours.showAll = true; loadHoursDetail().catch(() => {}); });
+    }
+
+    // ── tablas ──────────────────────────────────────────────────────
+    function issuesTable(items) {
+      if (!items.length) return '<div class="empty">Sin tareas para este filtro</div>';
+      return `<table><thead><tr><th>#</th><th>Tarea</th><th>Tipo</th><th>Estado</th><th>Prioridad</th><th>Asignada</th><th>Horas en Redmine</th><th>Etapa</th><th>Creada</th></tr></thead><tbody>` +
+        items.map((i) => `<tr class="row" data-id="${i.id}">
+          <td class="id">#${i.id}</td>
+          <td class="subject">${esc(i.subject)}<span class="proj">${esc(i.project_name || '')}</span></td>
+          <td class="nowrap">${esc(i.tracker || '')}</td>
+          <td>${statusTag(i)}</td>
+          <td>${prioTag(i.priority)}</td>
+          <td class="nowrap">${esc(i.assigned_to || '-')}</td>
+          <td class="hours">${horasEquipo(i.horas_equipo)}${i.spent_hours > 0 ? `<small>total tarea ${esc(fmtHoras(i.spent_hours))}</small>` : ''}</td>
+          <td>${etapaTag(i.etapa)}</td>
+          <td class="nowrap">${esc(fmtShort(i.created_on))}</td>
+        </tr>`).join('') + '</tbody></table>';
+    }
+    function bindRows(container) {
+      container.querySelectorAll('tr.row').forEach((tr) => tr.addEventListener('click', () => openIssue(Number(tr.dataset.id))));
+    }
+
+    // Una lista con filtros y paginacion. pre = 'est' (a estimar) | 'rest' (el resto)
+    function makeList(pre, fixed) {
+      const L = { pre, fixed, items: [], total: 0, offset: 0 };
+      L.read = () => {
+        const f = { assigned: $(`${pre}-assigned`).value, project: $(`${pre}-project`).value, tracker: $(`${pre}-tracker`).value, priority: $(`${pre}-priority`).value, sort: $(`${pre}-sort`).value, q: $(`${pre}-q`).value.trim() };
+        if (pre === 'rest') {
+          const st = $('rest-status').value;
+          if (st === '__all') f.status_group = 'all';
+          else if (st === '__closed') f.status_group = 'closed';
+          else if (st) { f.status = st; f.status_group = 'all'; }
+          f.etapa = $('rest-etapa').value; f.created_from = $('rest-from').value; f.created_to = $('rest-to').value;
+        }
+        return f;
+      };
+      L.load = async (append = false) => {
+        if (!append) { L.offset = 0; L.items = []; }
+        const f = { ...fixed, ...L.read() };
+        const qs = new URLSearchParams({ ...Object.fromEntries(Object.entries(f).filter(([, v]) => v)), limit: 50, offset: L.offset });
+        const data = await api('/issues?' + qs.toString());
+        L.items = append ? L.items.concat(data.items) : data.items;
+        L.total = data.total; L.offset = L.items.length;
+        $(`${pre}-table`).innerHTML = issuesTable(L.items);
+        bindRows($(`${pre}-table`));
+        $(`${pre}-count`).textContent = L.total ? `${L.total}` : '0';
+        $(`tab-${pre}-count`).textContent = L.total ? `${L.total}` : '0';
+        $(`${pre}-count2`).textContent = L.total ? `${L.items.length} de ${L.total}` : '';
+        $(`${pre}-more`).style.display = L.items.length < L.total ? '' : 'none';
+      };
+      const ids = pre === 'rest' ? ['rest-assigned', 'rest-project', 'rest-status', 'rest-tracker', 'rest-priority', 'rest-etapa', 'rest-from', 'rest-to', 'rest-sort'] : ['est-assigned', 'est-project', 'est-tracker', 'est-priority', 'est-sort'];
+      ids.forEach((id) => $(id).addEventListener('change', () => L.load().catch((e) => setAlert(esc(e.message)))));
+      let t; $(`${pre}-q`).addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => L.load().catch((e) => setAlert(esc(e.message))), 350); });
+      $(`${pre}-clear`).addEventListener('click', () => {
+        ids.forEach((id) => { if (!id.endsWith('-sort') && !id.endsWith('-assigned')) $(id).value = ''; });
+        $(`${pre}-assigned`).value = 'team'; $(`${pre}-sort`).value = 'created'; $(`${pre}-q`).value = '';
+        L.load();
+      });
+      $(`${pre}-more`).addEventListener('click', () => L.load(true).catch((e) => setAlert(esc(e.message))));
+      state.lists[pre] = L;
+      return L;
+    }
+    const listEst = makeList('est', { estimar: '1', status_group: 'all' });
+    const listRest = makeList('rest', { estimar: '0' });
+    const reloadLists = () => Promise.all([listEst.load(), listRest.load(), loadHours().catch(() => {})]);
+
+    // ── detalle ─────────────────────────────────────────────────────
+    function describeDetail(d) {
+      const cat = state.catalogs || {};
+      const nameOf = (list, id) => (list || []).find((x) => String(x.id) === String(id))?.nombre || id;
+      if (d.property === 'attr') {
+        const map = { status_id: ['Estado', cat.statuses], assigned_to_id: ['Asignada a', cat.users], priority_id: ['Prioridad', cat.priorities], tracker_id: ['Tipo', cat.trackers], done_ratio: ['% realizado'], subject: ['Título'], description: ['Descripción'], due_date: ['Vencimiento'], estimated_hours: ['Horas estimadas'], fixed_version_id: ['Versión'] };
+        const [label, list] = map[d.name] || [d.name];
+        if (d.name === 'description') return `${label} modificada`;
+        return `${label}: ${esc(d.old_value ? nameOf(list, d.old_value) : '(vacío)')} a ${esc(d.new_value ? nameOf(list, d.new_value) : '(vacío)')}`;
+      }
+      if (d.property === 'attachment') return `Adjunto: ${esc(d.new_value || d.old_value || '')}`;
+      if (d.property === 'cf') return `Campo personalizado ${esc(d.name)}: ${esc(d.old_value ?? '(vacío)')} a ${esc(d.new_value ?? '(vacío)')}`;
+      return `${esc(d.property)} ${esc(d.name)}: ${esc(d.old_value ?? '')} a ${esc(d.new_value ?? '')}`;
+    }
+    async function openIssue(id) {
+      $('modal').classList.add('open');
+      $('m-title').textContent = `#${id}`;
+      $('m-body').innerHTML = '<div class="empty">Cargando desde Redmine...</div>';
+      let data;
+      try { data = await api(`/issues/${id}`); }
+      catch (e) { $('m-body').innerHTML = `<div class="err">${esc(e.message)}</div>`; return; }
+      renderIssue(data);
+    }
+    async function downloadPdf(issue) {
+      const btn = $('a-pdf'); const msg = $('a-pdf-msg');
+      btn.disabled = true; msg.textContent = 'Generando PDF...';
+      try {
+        const res = await fetch(`/api/taskpilot/issues/${issue.id}/pdf`);
+        if (!res.ok) { let d = null; try { d = await res.json(); } catch {} throw new Error(d?.error || `HTTP ${res.status}`); }
+        const blob = await res.blob();
+        const name = `${issue.id} - ${String(issue.subject).replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 110)}.pdf`;
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
+        msg.textContent = `Descargado: ${name}`;
+      } catch (e) { msg.textContent = 'No se pudo generar el PDF: ' + e.message; }
+      finally { btn.disabled = false; }
+    }
+    function renderIssue(data) {
+      const i = data.issue;
+      const s = state.status || {};
+      const accounts = state.catalogs?.accounts || [];
+      const own = accounts.find((a) => a.user_id === me?.id);
+      const canChooseAccount = me?.rol === 'admin' || !own;
+      $('m-title').textContent = `#${i.id} ${i.subject}`;
+      const cfs = (i.custom_fields || []).filter((c) => c.value !== '' && c.value !== null && !(Array.isArray(c.value) && !c.value.length));
+      const closedStatuses = new Set((state.catalogs?.statuses || []).filter((x) => x.extra?.is_closed).map((x) => String(x.id)));
+      const te = data.time_entries || [];
+      const totalEquipo = Object.values(data.horas_equipo || {}).reduce((a, b) => a + b, 0);
+      $('m-body').innerHTML = `
+        ${data.refreshError ? `<div class="err">No se pudo refrescar desde Redmine (se muestra la copia local): ${esc(data.refreshError)}</div>` : ''}
+        <div class="meta">
+          <div>Proyecto<b>${esc(i.project_name || '-')}</b></div>
+          <div>Tipo<b>${esc(i.tracker || '-')}</b></div>
+          <div>Estado<b>${statusTag(i)}</b></div>
+          <div>Prioridad<b>${prioTag(i.priority)}</b></div>
+          <div>Asignada a<b>${esc(i.assigned_to || 'Sin asignar')}</b></div>
+          <div>Autor<b>${esc(i.author || '-')}</b></div>
+          <div>Creada<b>${esc(fmtDate(i.created_on))}</b></div>
+          <div>Actualizada<b>${esc(fmtDate(i.updated_on))}</b></div>
+          <div>Inicio<b>${esc(fmtDay(i.start_date) || '-')}</b></div>
+          <div>Vencimiento<b>${esc(fmtDay(i.due_date) || '-')}</b></div>
+          <div>Estimadas<b>${i.estimated_hours != null ? esc(fmtHoras(i.estimated_hours)) : '-'}</b></div>
+          <div>Horas cargadas (total tarea)<b>${i.spent_hours != null ? esc(fmtHoras(i.spent_hours)) : '-'}</b></div>
+          <div>Horas del equipo<b>${esc(fmtHoras(totalEquipo))}${Object.keys(data.horas_equipo || {}).length ? ' (' + Object.entries(data.horas_equipo).map(([a, v]) => `${cap(a)} ${fmtHoras(v)}`).map(esc).join(', ') + ')' : ''}</b></div>
+          <div>% realizado<b>${i.done_ratio ?? 0}%</b></div>
+          <div>Versión<b>${esc(i.fixed_version || '-')}</b></div>
+          <div>Etapa TaskPilot<b>${etapaTag(i.etapa)}</b></div>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:6px;align-items:center">
+          <a class="btn ghost" href="${esc(data.url)}" target="_blank" rel="noopener">Abrir en Redmine</a>
+          <button class="btn ghost" type="button" id="a-pdf">Generar PDF de la tarea</button>
+          <button class="btn" type="button" id="a-start">Iniciar tarea con Claude</button>
+          <span class="inline-msg" id="a-pdf-msg" style="margin:0"></span>
+        </div>
+        <div class="section"><div class="section-title">Descripción completa</div>
+          <div class="desc">${i.description ? esc(i.description) : '<span style="color:var(--muted)">Sin descripción</span>'}</div></div>
+        ${cfs.length ? `<div class="section"><div class="section-title">Campos de Redmine</div><div class="cf">${cfs.map((c) => `<div>${esc(c.name)}: <b>${esc(Array.isArray(c.value) ? c.value.join(', ') : c.value)}</b></div>`).join('')}</div></div>` : ''}
+        <div class="section"><div class="section-title">Horas cargadas en Redmine por el equipo (${te.length})</div>
+          ${te.length ? `<table><thead><tr><th>Fecha</th><th>Quién</th><th>Actividad</th><th>Horas</th><th>Comentario</th></tr></thead><tbody>${te.map((t) => `<tr><td class="nowrap">${esc(fmtDay(t.spent_on))}</td><td class="nowrap">${esc(cap(t.alias))}</td><td class="nowrap">${esc(t.activity || '')}</td><td class="nowrap">${esc(fmtHoras(t.hours))}</td><td>${esc(t.comments || '')}</td></tr>`).join('')}</tbody></table>` : '<div class="empty" style="padding:10px">Santi y Gabi no tienen horas cargadas en esta tarea</div>'}
+        </div>
+        <div class="section"><div class="section-title">Historial (${data.journals.length})</div>
+          ${data.journals.length ? data.journals.map((j) => `<div class="journal"><div class="who">${esc(j.user_name || '')} · ${esc(fmtDate(j.created_on))}${j.private_notes ? ' · nota privada' : ''}</div>${j.notes ? `<div class="notes">${esc(j.notes)}</div>` : ''}${(j.details || []).length ? `<div class="det">${j.details.map(describeDetail).join('<br>')}</div>` : ''}</div>`).join('') : '<div class="empty">Sin entradas</div>'}
+        </div>
+        <div class="section"><div class="section-title">Sesiones con Claude</div><div id="sessions-list" class="empty">Cargando...</div></div>
+        <div class="section"><div class="section-title">Etapa en TaskPilot</div>
+          <div class="actions">
+            <div><label>Etapa</label><select id="a-etapa">${(state.catalogs?.etapas || []).map((e) => `<option value="${e.id}" ${e.id === i.etapa ? 'selected' : ''}>${esc(e.nombre)}</option>`).join('')}</select></div>
+            <div><label>Responsable</label><select id="a-owner"><option value="">-</option>${accounts.map((a) => `<option value="${esc(a.alias)}" ${a.alias === i.owner_alias ? 'selected' : ''}>${esc(aliasLabel(a.alias))}</option>`).join('')}</select></div>
+            <div style="flex:0"><button class="btn" type="button" id="a-etapa-save">Guardar etapa</button></div>
+          </div>
+          <div class="inline-msg" id="a-etapa-msg"></div>
+        </div>
+        <div class="section"><div class="section-title">Estado en Redmine</div>
+          ${s.redmineWrites ? '' : '<div class="note">La escritura en Redmine está deshabilitada en este entorno. El cambio de estado se habilita con REDMINE_ALLOW_WRITES cuando lo autorices.</div>'}
+          <div class="actions">
+            <div><label>Nuevo estado</label><select id="a-status">${(state.catalogs?.statuses || []).map((x) => `<option value="${x.id}" ${x.id === i.status_id ? 'selected' : ''}>${esc(x.nombre)}${x.extra?.is_closed ? ' (cierra la tarea)' : ''}</option>`).join('')}</select></div>
+            ${canChooseAccount ? `<div><label>Actuar como</label><select id="a-as">${accounts.map((a) => `<option value="${esc(a.alias)}" ${own && a.alias === own.alias ? 'selected' : ''}>${esc(aliasLabel(a.alias))}</option>`).join('')}</select></div>` : `<div><label>Actuar como</label><input value="${esc(aliasLabel(own.alias))}" disabled /></div>`}
+            <div style="flex:2;min-width:240px"><label>Nota para Redmine (opcional)</label><input id="a-notes" placeholder="Comentario que queda en el historial" /></div>
+            <div style="flex:0"><button class="btn" type="button" id="a-status-save" ${s.redmineWrites ? '' : 'disabled'}>Cambiar estado</button></div>
+          </div>
+          <div class="inline-msg" id="a-status-msg"></div>
+        </div>`;
+      $('a-start').addEventListener('click', () => openStartModal(i));
+      $('a-pdf').addEventListener('click', () => downloadPdf(i));
+      loadSessions(i.id);
+      $('a-etapa-save').addEventListener('click', async () => {
+        const msg = $('a-etapa-msg'); msg.className = 'inline-msg'; msg.textContent = 'Guardando...';
+        try {
+          await api(`/issues/${i.id}/etapa`, { method: 'PATCH', body: JSON.stringify({ etapa: $('a-etapa').value, owner_alias: $('a-owner').value || null }) });
+          msg.className = 'inline-msg ok'; msg.textContent = 'Etapa guardada';
+          loadStatus(); reloadLists();
+        } catch (e) { msg.className = 'inline-msg bad'; msg.textContent = e.message; }
+      });
+      $('a-status-save').addEventListener('click', async () => {
+        const msg = $('a-status-msg'); msg.className = 'inline-msg';
+        const status_id = $('a-status').value;
+        const target = (state.catalogs?.statuses || []).find((x) => String(x.id) === status_id);
+        if (String(i.status_id) === status_id) { msg.textContent = 'La tarea ya está en ese estado'; return; }
+        const closes = closedStatuses.has(status_id);
+        const as = $('a-as') ? $('a-as').value : own?.alias;
+        const ok = confirm(`Vas a cambiar #${i.id} de "${i.status}" a "${target?.nombre}" en Redmine actuando como ${cap(as)}.${closes ? '\n\nATENCION: este estado CIERRA la tarea.' : ''}\n\n¿Confirmás?`);
+        if (!ok) return;
+        msg.textContent = 'Enviando a Redmine...';
+        try {
+          const data = await api(`/issues/${i.id}/status`, { method: 'PATCH', body: JSON.stringify({ status_id: Number(status_id), notes: $('a-notes').value, as, confirm_close: closes }) });
+          msg.className = 'inline-msg ok'; msg.textContent = 'Estado actualizado en Redmine';
+          renderIssue({ ...data, refreshed: true, refreshError: null });
+          loadStatus(); reloadLists();
+        } catch (e) { msg.className = 'inline-msg bad'; msg.textContent = e.message; }
+      });
+    }
+
+    // ── contexto para Claude ────────────────────────────────────────
+    const ctx = { items: [], repos: [] };
+    function ctxGet(key) { return ctx.items.find((c) => c.key === key) || null; }
+    function ctxStamp(c) { return c ? `Guardado ${fmtDate(c.updated_at)} por ${c.updated_by || '?'} · ${c.contenido.length} caracteres` : 'Sin contexto guardado'; }
+    function ctxRenderRepo() {
+      const sel = $('ctx-repo');
+      const name = sel.value;
+      const c = name ? ctxGet('repo:' + name) : null;
+      $('ctx-repo-text').value = c ? c.contenido : '';
+      $('ctx-repo-msg').className = 'inline-msg'; $('ctx-repo-msg').textContent = name ? ctxStamp(c) : '';
+    }
+    async function loadContexts() {
+      const d = await api('/contexts');
+      ctx.items = d.items; ctx.repos = d.repos;
+      const g = ctxGet('global');
+      if (document.activeElement !== $('ctx-global')) $('ctx-global').value = g ? g.contenido : '';
+      $('ctx-global-msg').className = 'inline-msg'; $('ctx-global-msg').textContent = ctxStamp(g);
+      const sel = $('ctx-repo'); const current = sel.value;
+      sel.innerHTML = '<option value="">Elegí un repo</option>' + ctx.repos.map((r) => `<option value="${esc(r)}">${esc(r)}${ctxGet('repo:' + r) ? ' (con contexto)' : ''}</option>`).join('');
+      sel.value = current && ctx.repos.includes(current) ? current : (ctx.repos[0] || '');
+      ctxRenderRepo();
+    }
+    async function saveContext(key, contenido, msgEl) {
+      msgEl.className = 'inline-msg'; msgEl.textContent = 'Guardando...';
+      try {
+        const row = await api(`/contexts/${encodeURIComponent(key)}`, { method: 'PUT', body: JSON.stringify({ contenido }) });
+        const i = ctx.items.findIndex((c) => c.key === key);
+        if (i >= 0) ctx.items[i] = row; else ctx.items.push(row);
+        msgEl.className = 'inline-msg ok'; msgEl.textContent = ctxStamp(row);
+      } catch (e) { msgEl.className = 'inline-msg bad'; msgEl.textContent = e.message; }
+    }
+    $('ctx-global-save').addEventListener('click', () => saveContext('global', $('ctx-global').value, $('ctx-global-msg')));
+    $('ctx-repo').addEventListener('change', () => { $('ctx-repo-new').value = ''; ctxRenderRepo(); });
+    $('ctx-repo-new').addEventListener('input', () => { if ($('ctx-repo-new').value.trim()) { $('ctx-repo').value = ''; $('ctx-repo-text').value = ''; $('ctx-repo-msg').textContent = ''; } });
+    $('ctx-repo-save').addEventListener('click', async () => {
+      const name = ($('ctx-repo-new').value.trim() || $('ctx-repo').value).trim();
+      if (!name) { $('ctx-repo-msg').className = 'inline-msg bad'; $('ctx-repo-msg').textContent = 'Elegí o escribí el nombre del repo (tiene que coincidir con el de repos.json del runner).'; return; }
+      await saveContext('repo:' + name, $('ctx-repo-text').value, $('ctx-repo-msg'));
+      if (!ctx.repos.includes(name)) ctx.repos.push(name);
+      await loadContexts(); $('ctx-repo').value = name; ctxRenderRepo();
+    });
+
+    // ── runners ─────────────────────────────────────────────────────
+    async function loadRunners() {
+      const runners = await api('/runners');
+      state.runners = runners;
+      $('runners-table').innerHTML = runners.length ? `<table><thead><tr><th>Nombre</th><th>Cuenta</th><th>Estado</th><th>Repos</th><th>Modelos</th><th>Plan de Claude</th><th>Última conexión</th><th></th></tr></thead><tbody>` +
+        runners.map((r) => {
+          const w = r.limits?.unifiedWindows || {};
+          const lim = w.seven_day || w.five_hour
+            ? `${esc(r.account?.subscriptionType || '')}<br>semana <b style="${limColor(w.seven_day)}">${pct(w.seven_day?.utilization)}</b> · 5 h <b style="${limColor(w.five_hour)}">${pct(w.five_hour?.utilization)}</b><br><span style="color:var(--muted);font-size:11px">leído ${esc(fmtDate(r.limits_at))}</span>`
+            : '<span style="color:var(--muted)">sin leer</span>';
+          return `<tr><td>${esc(r.nombre)}${r.host ? `<span style="display:block;color:var(--muted);font-size:11.5px">${esc(r.host)}${r.version ? ' · v' + esc(r.version) : ''}</span>` : ''}</td><td>${esc(r.alias ? aliasLabel(r.alias) : '-')}</td><td>${r.activo ? (r.online ? '<span class="tag green">conectado</span>' : '<span class="tag grey">desconectado</span>') : '<span class="tag red">desactivado</span>'}</td><td>${(r.repos || []).map((x) => `${esc(x.name)}${x.branch ? '@' + esc(x.branch) : ''}`).join(', ') || '-'}</td><td>${(r.models || []).length || '-'}</td><td style="font-size:12.5px">${lim}</td><td class="nowrap">${esc(fmtDate(r.last_seen_at)) || 'nunca'}</td><td>${r.activo && r.online ? `<button class="btn ghost" type="button" data-limits="${r.id}" style="padding:4px 10px;white-space:nowrap">Actualizar límites</button>` : ''}</td></tr>`;
+        }).join('') + '</tbody></table>'
+        : '<div class="empty">No hay runners registrados.</div>';
+      $('runners-table').querySelectorAll('[data-limits]').forEach((b) => b.addEventListener('click', () => refreshLimits(Number(b.dataset.limits), b)));
+      if (me?.rol === 'admin') {
+        $('runners-admin').innerHTML = `<div class="actions" style="margin-top:12px"><div><label>Nombre del runner nuevo</label><input id="r-nombre" placeholder="PC de Gabi" /></div><div><label>Cuenta</label><select id="r-alias"><option value="">-</option>${(state.catalogs?.accounts || []).map((a) => `<option value="${esc(a.alias)}">${esc(aliasLabel(a.alias))}</option>`).join('')}</select></div><div style="flex:0"><button class="btn" type="button" id="r-create">Crear runner</button></div></div><div class="inline-msg" id="r-msg"></div>`;
+        $('r-create').addEventListener('click', async () => {
+          const msg = $('r-msg'); msg.className = 'inline-msg';
+          try {
+            const r = await api('/runners', { method: 'POST', body: JSON.stringify({ nombre: $('r-nombre').value, alias: $('r-alias').value || null }) });
+            msg.className = 'inline-msg ok';
+            msg.innerHTML = `Runner creado. Token (se muestra una sola vez; va en TASKPILOT_RUNNER_TOKEN del .env del runner):<br><code style="user-select:all;word-break:break-all">${esc(r.token)}</code>`;
+            loadRunners();
+          } catch (e) { msg.className = 'inline-msg bad'; msg.textContent = e.message; }
+        });
+      }
+    }
+
+    // ── sesiones de una tarea ───────────────────────────────────────
+    async function loadSessions(issueId) {
+      const box = $('sessions-list');
+      if (!box) return;
+      try {
+        const list = await api(`/issues/${issueId}/sessions`);
+        if (!list.length) { box.className = 'empty'; box.textContent = 'Todavía no se trabajó esta tarea con Claude.'; return; }
+        const estados = { esperando_runner: ['amber', 'esperando runner'], trabajando: ['teal', 'trabajando'], esperando_usuario: ['', 'esperando respuesta'], finalizada: ['green', 'finalizada'], error: ['red', 'error'], cancelada: ['grey', 'cancelada'] };
+        box.className = '';
+        box.innerHTML = `<table><thead><tr><th>#</th><th>Estado</th><th>Runner / repo</th><th>Modelo</th><th>Uso</th><th>Inicio</th><th></th></tr></thead><tbody>` + list.map((s) => {
+          const [cls, label] = estados[s.estado] || ['grey', s.estado];
+          const uso = s.auth === 'api_key' ? `US$ ${Number(s.costo_usd || 0).toFixed(3)}` : `${Math.round(Number(s.duracion_ms || 0) / 60000)} min · ${s.turnos || 0} pasos`;
+          return `<tr><td class="id">${s.id}</td><td><span class="tag ${cls}">${esc(label)}</span>${s.informes ? ' <span class="tag green">informe</span>' : ''}</td><td>${esc(s.runner_nombre || '-')} / ${esc(s.repo || 'sin repo')}</td><td>${esc(s.model || '-')}</td><td class="nowrap">${esc(uso)}</td><td class="nowrap">${esc(fmtDate(s.created_at))}</td><td><a class="btn ghost" style="padding:4px 10px" href="/taskpilot/tarea?session=${s.id}">Abrir chat</a></td></tr>`;
+        }).join('') + '</tbody></table>';
+      } catch (e) { box.className = 'empty'; box.textContent = 'No se pudieron cargar las sesiones: ' + e.message; }
+    }
+
+    // ── iniciar tarea ───────────────────────────────────────────────
+    function openStartModal(issue) {
+      const runners = (state.runners || []).filter((r) => r.activo);
+      const online = runners.filter((r) => r.online);
+      const sel = $('s-runner');
+      sel.innerHTML = runners.length ? runners.map((r) => `<option value="${r.id}" ${!r.online ? 'disabled' : ''}>${esc(r.nombre)}${r.alias ? ' (' + esc(aliasLabel(r.alias)) + ')' : ''}${r.online ? '' : ' - desconectado'}</option>`).join('') : '<option value="">No hay runners</option>';
+      if (online.length) sel.value = String(online[0].id);
+      const fill = () => {
+        const r = runners.find((x) => String(x.id) === sel.value);
+        $('s-repo').innerHTML = '<option value="">Sin repositorio (consulta, análisis, gestión)</option>' + (r?.repos || []).map((x) => `<option value="${esc(x.name)}">${esc(x.name)}${x.branch ? ' @ ' + esc(x.branch) : ''}${x.description ? ' - ' + esc(x.description) : ''}</option>`).join('');
+        if ((r?.repos || []).length) $('s-repo').value = r.repos[0].name;
+        const models = r?.models || [];
+        $('s-model').innerHTML = models.length ? models.map((m) => `<option value="${esc(m.id)}">${esc(m.display_name || m.id)}</option>`).join('') : '<option value="">El runner no reportó modelos</option>';
+        const def = models.find((m) => m.id === 'claude-opus-5-5') || models[0];
+        if (def) $('s-model').value = def.id;
+      };
+      sel.onchange = fill; fill();
+      $('s-title').textContent = `Iniciar #${issue.id} con Claude`;
+      $('s-msg').className = 'inline-msg'; $('s-msg').textContent = online.length ? '' : 'Ningún runner está conectado. Iniciá el runner en la PC donde está el código.';
+      $('s-instr').value = '';
+      $('start-modal').classList.add('open');
+      $('s-go').onclick = async () => {
+        const msg = $('s-msg'); msg.className = 'inline-msg'; msg.textContent = 'Iniciando...';
+        try {
+          const s = await api(`/issues/${issue.id}/sessions`, { method: 'POST', body: JSON.stringify({ runner_id: Number(sel.value), repo: $('s-repo').value || null, model: $('s-model').value, instrucciones: $('s-instr').value.trim() || null }) });
+          location.href = `/taskpilot/tarea?session=${s.id}`;
+        } catch (e) {
+          msg.className = 'inline-msg bad';
+          msg.innerHTML = esc(e.message) + (e.data?.session_id ? ` <a href="/taskpilot/tarea?session=${e.data.session_id}">Abrir la sesión activa</a>` : '');
+        }
+      };
+    }
+    $('s-close').addEventListener('click', () => $('start-modal').classList.remove('open'));
+    $('s-cancel').addEventListener('click', () => $('start-modal').classList.remove('open'));
+
+    $('m-close').addEventListener('click', () => $('modal').classList.remove('open'));
+    $('modal').addEventListener('click', (e) => { if (e.target === $('modal')) $('modal').classList.remove('open'); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { $('modal').classList.remove('open'); $('start-modal').classList.remove('open'); } });
+
+    // ── sync manual con polling ─────────────────────────────────────
+    async function pollUntilDone() {
+      clearTimeout(state.pollTimer);
+      const s = await api('/status');
+      renderStatus(s);
+      if (s.running) { state.pollTimer = setTimeout(pollUntilDone, 3000); return; }
+      await loadCatalogs();
+      await reloadLists();
+    }
+    $('sync').addEventListener('click', async () => {
+      const btn = $('sync');
+      btn.disabled = true; btn.classList.add('loading');
+      try {
+        await api('/sync', { method: 'POST', body: JSON.stringify({ full: false }) });
+        await pollUntilDone();
+      } catch (e) {
+        setAlert('No se pudo sincronizar: ' + esc(e.message));
+        btn.disabled = false; btn.classList.remove('loading');
+      }
+    });
+
+    // ── arranque ────────────────────────────────────────────────────
+    (async () => {
+      try {
+        await loadCatalogs();
+        await loadRunners().catch(() => {});
+        await loadStatus();
+        await reloadLists();
+        loadContexts().catch((e) => { $('ctx-global-msg').className = 'inline-msg bad'; $('ctx-global-msg').textContent = e.message; });
+        const wanted = Number(new URLSearchParams(location.search).get('issue'));
+        if (wanted) openIssue(wanted);
+        if (state.status?.running) pollUntilDone();
+      } catch (e) {
+        setAlert('No se pudo cargar TaskPilot: ' + esc(e.message));
+      }
+      setInterval(() => { loadStatus().then(reloadLists).catch(() => {}); }, 5 * 60 * 1000);
+    })();
+  </script>
+</body>
+</html>
