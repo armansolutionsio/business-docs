@@ -284,6 +284,10 @@ async function runMigrations() {
     try { await require('./infraSamples').ensureTable(); }
     catch (e) { log.warn('migrate_infra_samples_failed', { error: e.message }); }
 
+    // ─── TaskPilot (Redmine + Claude + registro de horas) ─────────────────
+    try { await require('./taskpilotDb').ensureSchema(); }
+    catch (e) { log.error('migrate_taskpilot_failed', { error: e.message, stack: e.stack }); }
+
     // ─── Identidad global de cliente cross-vertical ───────────────────────
     try {
       await db.query(`ALTER TABLE public.contactos ADD COLUMN IF NOT EXISTS global_customer_id UUID`);

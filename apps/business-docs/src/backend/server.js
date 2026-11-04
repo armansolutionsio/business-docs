@@ -60,6 +60,7 @@ app.use((req, res, next) => {
   if (!req.path.startsWith('/api/')) return next();
   if (req.path === '/api/auth/login') return next();
   if (req.path.startsWith('/api/auth/')) return next(); // /me y /change-password ya tienen requireAuth interno
+  if (req.path.startsWith('/api/taskpilot-runner/')) return next(); // los runners se autentican con su propio token
   return requireAuth(req, res, next);
 });
 
@@ -71,6 +72,8 @@ app.get(['/tech', '/tech/'],           (req, res) => res.sendFile(path.join(PUBL
 app.get(['/paybridge', '/paybridge/'], (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'paybridge', 'index.html')));
 app.get(['/admin', '/admin/'],         (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'admin', 'index.html')));
 app.get(['/infra', '/infra/'],         (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'infra', 'index.html')));
+app.get(['/taskpilot', '/taskpilot/'], (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'taskpilot', 'index.html')));
+app.get('/taskpilot/tarea',            (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'taskpilot', 'tarea.html')));
 
 app.use(express.static(PUBLIC_DIR, { etag: false, maxAge: 0, index: false }));
 
@@ -109,6 +112,8 @@ const paybridgeRoutes      = require('./routes/paybridge');
 const adminCoreRoutes      = require('./routes/adminCore');
 const arcaRoutes           = require('./routes/arca');
 const sysmetricsRoutes     = require('./routes/sysmetrics');
+const taskpilotRoutes      = require('./routes/taskpilot');
+const taskpilotRunnerRoutes = require('./routes/taskpilotRunner');
 
 // Quick cotizacion estado update (used by cotizador frontend)
 const dbPool = require('./utils/db');
@@ -264,6 +269,8 @@ app.use('/api/paybridge', paybridgeRoutes);
 app.use('/api/admin',     adminCoreRoutes);
 app.use('/api/arca',      arcaRoutes);
 app.use('/api/sysmetrics', sysmetricsRoutes);
+app.use('/api/taskpilot',  taskpilotRoutes);
+app.use('/api/taskpilot-runner', taskpilotRunnerRoutes);
 
 // ── WA Import — receives file as base64 or rows as JSON ──────────────────────
 app.post('/api/wa-import', async (req, res, next) => {
@@ -571,6 +578,7 @@ if (require.main === module) {
     });
     require('./utils/runpod').startWatcher();
     require('./utils/vast').startWatcher();
+    require('./utils/taskpilotSync').startWatcher();
     sysmetricsRoutes.startSampler();
   });
 }

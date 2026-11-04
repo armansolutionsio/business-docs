@@ -1,0 +1,32 @@
+[
+  {
+    "name": "ad-app",
+    "path": "C:/Users/sanag/Downloads/arman/Anfler/Gitlab/ad-app",
+    "branch": "develop",
+    "description": "AD App - Aplicación de Administración - Una aplicación Next.js moderna para administración, desarrollada con TypeScript y TailwindCSS. (frontend-ad)"
+  },
+  {
+    "name": "ad-backend",
+    "path": "C:/Users/sanag/Downloads/arman/Anfler/Gitlab/ad-backend",
+    "branch": "develop",
+    "description": "Backend Django - Sistema de login Django (frontend-ad)"
+  },
+  {
+    "name": "autogestion",
+    "path": "C:/Users/sanag/Downloads/arman/Anfler/Gitlab/autogestion",
+    "branch": "develop",
+    "description": "Autogestión - Front de autogestión del ABM. Cada persona autenticada ve **únicamente su propia (frontend-ad)"
+  },
+  {
+    "name": "backend",
+    "path": "C:/Users/sanag/Downloads/arman/Anfler/Gitlab/backend",
+    "branch": "feat/datos-caja-calculo",
+    "description": "Khalipa 2 — backend - API **store-pool** (single PostgreSQL schema, row isolation via `store_id` — see [ADR 0006](.cursor/docs/adr/0006-store-pool-isolation.md)), **Django REST Framework**, **Celery** (khalipa-2)"
+  },
+  {
+    "name": "ng-abm",
+    "path": "C:/Users/sanag/Downloads/arman/Anfler/Gitlab/ng-abm",
+    "branch": "main",
+    "description": "NG ABM - ServerName      abm.jusbaires.gob.ar (frontend-ad)"
+  }
+]

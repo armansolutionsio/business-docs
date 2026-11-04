@@ -1,0 +1,14 @@
+[
+  {
+    "name": "business-docs",
+    "path": "C:/Users/usuario/Github/business-docs",
+    "branch": "develop",
+    "description": "Arman Suite (backoffice): Node + Express + Postgres, UIs vanilla por vertical."
+  },
+  {
+    "name": "otro-repo",
+    "path": "C:/Users/usuario/Github/otro-repo",
+    "branch": "main",
+    "description": "Descripcion corta para que Claude sepa de que se trata."
+  }
+]
