@@ -14,7 +14,6 @@ const express = require('express');
 const db = require('../utils/db');
 const log = require('../utils/logger');
 const events = require('../utils/taskpilotEvents');
-const iaUsage = require('../utils/iaUsage');
 const { helpers } = require('./taskpilotSessions');
 
 const router = express.Router();
@@ -63,12 +62,11 @@ router.post('/limits', async (req, res, next) => {
     const info = b.info && typeof b.info === 'object' ? b.info : null;
     const account = b.account && typeof b.account === 'object' ? b.account : null;
     // Se combina con lo anterior: el evento de un turno no trae los limites por modelo que da la lectura completa.
-    const { rows: [saved] } = await db.query(
+    await db.query(
       `UPDATE taskpilot.runners SET limits = CASE WHEN $2::jsonb IS NULL THEN limits ELSE COALESCE(limits, '{}'::jsonb) || $2::jsonb END,
               limits_at = CASE WHEN $2::jsonb IS NULL THEN limits_at ELSE NOW() END,
-              account = COALESCE(account, '{}'::jsonb) || COALESCE($3::jsonb, '{}'::jsonb), last_seen_at = NOW() WHERE id = $1 RETURNING limits_at`,
+              account = COALESCE(account, '{}'::jsonb) || COALESCE($3::jsonb, '{}'::jsonb), last_seen_at = NOW() WHERE id = $1`,
       [req.runner.id, info ? JSON.stringify(info) : null, account ? JSON.stringify(account) : null]);
-    if (info) await iaUsage.recordSample(req.runner.id, saved.limits_at, info);
     res.json({ ok: true });
   } catch (e) { next(e); }
 });

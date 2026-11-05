@@ -187,25 +187,17 @@ const SQL = `
   ALTER TABLE taskpilot.runners ADD COLUMN IF NOT EXISTS limits_at TIMESTAMPTZ;
   ALTER TABLE taskpilot.runners ADD COLUMN IF NOT EXISTS account JSONB;
 
-  -- Historial de esas lecturas, para graficar como viene la semana (panel IA de /infra).
-  -- utilization en 0-1; models = ventanas semanales por modelo: [{ name, utilization, resetsAt }].
-  CREATE TABLE IF NOT EXISTS taskpilot.limit_samples (
-    runner_id        INTEGER NOT NULL REFERENCES taskpilot.runners(id) ON DELETE CASCADE,
-    ts               TIMESTAMPTZ NOT NULL,
+  -- Lecturas de los limites del plan hechas por el servidor (utils/claudeLimits.js, panel IA de /infra).
+  -- utilization en 0-1. Reemplaza a limit_samples, que dependia de los runners.
+  DROP TABLE IF EXISTS taskpilot.limit_samples;
+  CREATE TABLE IF NOT EXISTS taskpilot.plan_limits (
+    ts               TIMESTAMPTZ PRIMARY KEY,
     five_hour        REAL,
     five_hour_resets BIGINT,
     seven_day        REAL,
     seven_day_resets BIGINT,
-    models           JSONB,
-    PRIMARY KEY (runner_id, ts)
+    info             JSONB NOT NULL
   );
-  INSERT INTO taskpilot.limit_samples (runner_id, ts, five_hour, five_hour_resets, seven_day, seven_day_resets)
-    SELECT id, limits_at,
-           (limits #>> '{unifiedWindows,five_hour,utilization}')::real, (limits #>> '{unifiedWindows,five_hour,resetsAt}')::bigint,
-           (limits #>> '{unifiedWindows,seven_day,utilization}')::real, (limits #>> '{unifiedWindows,seven_day,resetsAt}')::bigint
-      FROM taskpilot.runners
-     WHERE limits_at IS NOT NULL AND limits #> '{unifiedWindows}' IS NOT NULL
-    ON CONFLICT DO NOTHING;
 
   -- Una sesion = un chat persistente de una tarea con Claude en un runner.
   CREATE TABLE IF NOT EXISTS taskpilot.sessions (
