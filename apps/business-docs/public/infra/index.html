@@ -131,6 +131,21 @@
     .plan-actions{display:flex;gap:8px;margin-top:12px;align-items:center;flex-wrap:wrap}
     .plan-wrap{overflow-x:auto}
     @media (max-width:640px){.plan .hide-sm{display:none}}
+
+    .ia-acct + .ia-acct{margin-top:22px;padding-top:18px;border-top:1px solid var(--line)}
+    .ia-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+    .ia-head h3{font-size:14px;font-weight:600}
+    .ia-head .pills{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+    .ia-g .big{display:flex;align-items:center;justify-content:space-between;gap:8px}
+    .ia-g .big .pill{font-variant-numeric:normal}
+    .ia-bar{display:flex;gap:2px;height:20px;background:var(--rail);border-radius:5px;overflow:hidden;margin-bottom:12px}
+    .ia-bar span{display:block;height:100%}
+    .ia-section{margin-top:24px;padding-top:18px;border-top:1px solid var(--line)}
+    .ia-section h3{font-size:14px;font-weight:600;margin-bottom:10px}
+    .ia-row-link{color:var(--ink);text-decoration:none}
+    .ia-row-link:hover{text-decoration:underline}
+    .plan td.tarea{max-width:340px}
+    @media (max-width:640px){.plan td.tarea{max-width:150px}}
   </style>
 </head>
 <body>
@@ -145,7 +160,7 @@
 
     <nav class="nav" aria-label="Secciones">
       <a href="#hostCards">Servidor</a><a href="#sec-instancia">Instancia</a><a href="#sec-costos">Costos</a>
-      <a href="#sec-postgres">Postgres</a><a href="#sec-discos">Discos</a><a href="#sec-gpu">GPU</a>
+      <a href="#sec-postgres">Postgres</a><a href="#sec-discos">Discos</a><a href="#sec-gpu">GPU</a><a href="#sec-ia">IA</a>
       <a class="nav-alerts" id="navAlerts" href="#" hidden></a>
       <div class="nav-actions">
         <span class="stamp" id="stamp">Cargando…</span>
@@ -203,6 +218,12 @@
       <h2>GPU</h2>
       <p class="hint">RunPod y Vast.ai juntos: el total, una fila por proveedor y todas las máquinas con su etiqueta. Los filtros de período y proveedor aplican a totales, gráfico y máquinas.</p>
       <div id="gpu"></div>
+    </section>
+
+    <section class="panel" id="sec-ia">
+      <h2>IA</h2>
+      <p class="hint">Cómo vienen los límites del plan de Claude y qué trabajo se hizo con TaskPilot.</p>
+      <div id="ia"><p class="quiet">Cargando…</p></div>
     </section>
   </div>
 
@@ -761,6 +782,234 @@
         <p class="note">Días sin gasto no se muestran. La facturación de hoy puede tardar algunas horas en aparecer.</p>`;
     }
 
+    // ── IA: límites del plan de Claude por cuenta y trabajo hecho en TaskPilot. Solo datos informados por
+    // Claude o guardados por TaskPilot; el precio del plan es el único dato cargado a mano. ──
+    const PLAN_USD_MES = 100; // la cuenta no informa el precio: lo pagado por la suscripción Max
+    const WEEK_S = 7 * 86400;
+    const IA_VIEW_KEY = 'infra_ia_view';
+    const COLOR_MODEL = '#9085e9', COLOR_REST = '#3987e5', COLOR_WEEK = '#3987e5';
+    const MODEL_FAMILY = { opus: '#3987e5', sonnet: '#d95926', haiku: '#199e70', fable: '#9085e9' };
+    let iaData = null, iaPeriod = '7d';
+    try { iaPeriod = JSON.parse(localStorage.getItem(IA_VIEW_KEY) || '{}').period || iaPeriod; } catch (e) { /* sin preferencia guardada */ }
+    if (!PERIODS.some((x) => x.key === iaPeriod)) iaPeriod = '7d';
+
+    const pctOf = (r) => Math.round(r * 100);
+    const dateParts = (sec) => Object.fromEntries(new Intl.DateTimeFormat('es-AR', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: TZ })
+      .formatToParts(new Date(sec * 1000)).map((x) => [x.type, x.value.replace('.', '')]));
+    const fmtWeekDay = (sec) => { const d = dateParts(sec); return `${d.weekday} ${d.day}/${d.month}`; };
+    const fmtWhen = (sec) => { const d = dateParts(sec); return `${d.weekday} ${d.day}/${d.month} ${d.hour}:${d.minute}`; };
+    const fmtTokens = (n) => n >= 1e6 ? (n / 1e6).toFixed(2) + ' M' : n >= 1e3 ? (n / 1e3).toFixed(1) + ' K' : String(Math.round(n));
+    const fmtWork = (ms) => ms < 60000 ? `${Math.round(ms / 1000)} s` : fmtDur(ms / 1000);
+    const planName = (p) => !p ? 'Plan sin leer' : /claude/i.test(p) ? p : 'Claude ' + p[0].toUpperCase() + p.slice(1);
+    function modelInfo(id) {
+      const m = /^claude-([a-z]+)-(\d+)(?:-(\d+))?/.exec(id || '');
+      if (!m) return { label: id || 'Sin dato', color: 'var(--other)' };
+      return { label: `${m[1][0].toUpperCase()}${m[1].slice(1)} ${m[2]}${m[3] ? '.' + m[3] : ''}`, color: MODEL_FAMILY[m[1]] || 'var(--other)' };
+    }
+
+    function limitLevel(w) {
+      if (w.status === 'rejected' || w.utilization >= 0.95) return { label: 'Al límite', color: 'var(--crit)' };
+      if (w.status === 'allowed_warning' || w.utilization >= 0.75) return { label: 'Cerca del límite', color: 'var(--warn)' };
+      return { label: 'Normal', color: 'var(--good)' };
+    }
+
+    const nowS = () => Date.now() / 1000;
+    const isLive = (w) => Boolean(w && w.utilization != null && w.resetsAt > nowS());
+
+    function iaGauge(title, w, extraCap) {
+      if (!w || w.utilization == null || !w.resetsAt) return `<div class="card ia-g"><div class="lbl">${esc(title)}</div><div class="big">—</div><div class="cap">Sin datos</div></div>`;
+      if (!isLive(w)) {
+        return `<div class="card ia-g"><div class="lbl">${esc(title)}</div><div class="big">—</div>
+          <div class="cap">Se reinició el ${esc(fmtWhen(w.resetsAt))}. Falta una lectura nueva.</div></div>`;
+      }
+      const lvl = limitLevel(w);
+      return `<div class="card ia-g"><div class="lbl">${esc(title)}</div>
+        <div class="big"><span>${pctOf(w.utilization)}<small>%</small></span><span class="pill" style="color:${lvl.color};border-color:${lvl.color}">${lvl.label}</span></div>
+        <div class="meter"><span style="width:${Math.min(100, w.utilization * 100).toFixed(1)}%;background:${lvl.color}"></span></div>
+        <div class="cap">Se reinicia ${esc(fmtWhen(w.resetsAt))} · faltan ${fmtDur(w.resetsAt - nowS())}</div>
+        ${extraCap ? `<div class="cap">${esc(extraCap)}</div>` : ''}
+      </div>`;
+    }
+
+    function iaAlerts(a, several) {
+      const w = a.limits && a.limits.unifiedWindows;
+      if (!w) return '';
+      const who = several ? `${a.email || 'Cuenta sin identificar'}: ` : '';
+      let html = '';
+      if (isLive(w.seven_day)) {
+        const msg = `${who}${pctOf(w.seven_day.utilization)}% del límite de la semana usado, se reinicia ${fmtWhen(w.seven_day.resetsAt)}.`;
+        if (w.seven_day.status === 'rejected' || w.seven_day.utilization >= 0.95) html += alertBox('crit', msg);
+        else if (w.seven_day.status === 'allowed_warning' || w.seven_day.utilization >= 0.75) html += alertBox('warn', msg);
+      }
+      if (isLive(w.five_hour) && w.five_hour.status === 'rejected') html += alertBox('crit', `${who}se agotó la ventana de 5 horas, se reinicia ${fmtWhen(w.five_hour.resetsAt)}.`);
+      return html;
+    }
+
+    // Reparto del límite semanal: lo que Claude informa por modelo, el resto de los modelos y lo libre.
+    function iaModelShare(lim, week) {
+      if (!isLive(week)) return '';
+      const models = lim.models || [];
+      const total = week.utilization * 100;
+      const known = models.filter((m) => m.weeklyShare != null);
+      const title = '<div class="sub-h">Modelos en el límite de la semana</div>';
+      if (models.length && known.length < models.length) return `${title}<p class="quiet">Sin datos del reparto todavía: llega con la próxima lectura.</p>`;
+      const named = known.reduce((sum, m) => sum + m.weeklyShare, 0);
+      const rest = Math.max(0, total - named), free = Math.max(0, 100 - total);
+      const parts = known.map((m) => ({ label: m.name, value: m.weeklyShare, color: COLOR_MODEL, own: `Puede usar hasta el ${m.allowance}% de la semana` }));
+      parts.push({ label: known.length ? 'Resto de los modelos' : 'Todos los modelos', value: rest, color: COLOR_REST, own: 'No tiene' });
+      return `${title}
+        <div class="ia-bar" role="img" aria-label="Límite semanal: ${parts.map((p) => `${esc(p.label)} ${Math.round(p.value)}%`).join(', ')}, disponible ${Math.round(free)}%">
+          ${parts.map((p) => `<span style="width:${p.value.toFixed(1)}%;background:${p.color}"></span>`).join('')}
+        </div>
+        <div class="plan-wrap"><table class="plan"><thead><tr><th>Modelo</th><th>Del límite semanal</th><th class="hide-sm">Tope propio</th></tr></thead><tbody>
+          ${parts.map((p) => `<tr><td><span class="dot" style="background:${p.color}"></span><b>${esc(p.label)}</b></td><td class="r">${Math.round(p.value)}%</td><td class="hide-sm">${esc(p.own)}</td></tr>`).join('')}
+          <tr><td><span class="dot" style="background:var(--rail)"></span>Disponible</td><td class="r">${Math.round(free)}%</td><td class="hide-sm"></td></tr>
+        </tbody></table></div>
+        <p class="note">Claude solo informa por separado ${known.length ? esc(known.map((m) => m.name).join(' y ')) : 'el total'}: no dice cuánto del límite usó cada uno de los demás modelos.</p>`;
+    }
+
+    // Máximo de cada semana ya cerrada que tenga lecturas.
+    function iaPastWeeks(a, week) {
+      const byEnd = new Map();
+      for (const s of a.samples) {
+        if (s.week == null || !s.weekResets) continue;
+        const end = Math.round(s.weekResets / 3600) * 3600;
+        if (week && Math.abs(end - week.resetsAt) < 3600) continue;
+        byEnd.set(end, Math.max(byEnd.get(end) || 0, s.week));
+      }
+      if (!byEnd.size) return '';
+      return `<div class="sub-h">Semanas anteriores · máximo alcanzado</div><div class="rows">` + [...byEnd.entries()].sort((x, y) => y[0] - x[0]).map(([end, max]) => `
+        <div class="row"><div class="rl">${esc(fmtWeekDay(end))}<small>Se reinició</small></div>
+          <div class="track"><div class="fill" style="width:${Math.min(100, max * 100).toFixed(1)}%;background:${COLOR_WEEK}"></div></div>
+          <div class="rv">${pctOf(max)}%</div></div>`).join('') + `</div>`;
+    }
+
+    function iaAccount(a) {
+      const lim = a.limits || {};
+      const w = lim.unifiedWindows || {};
+      const week = w.seven_day;
+      const online = a.runners.some((r) => r.online);
+      const head = `<div class="ia-head"><div><h3>${esc(planName(a.plan))} · US$ ${PLAN_USD_MES} por mes</h3>
+          <p class="note" style="margin-top:2px">${a.email ? esc(a.email) + ' · ' : ''}${lim.extra && !lim.extra.enabled ? 'Precio fijo: los créditos extra están desactivados, así que el uso no genera cargos.' : 'Precio cargado a mano: la cuenta no lo informa.'}</p></div>
+        <div class="pills">
+          ${a.limitsAt ? `<span class="pill">Leído hace ${fmtAgo(a.limitsAt)}</span>` : ''}
+          <button class="ghost" type="button" data-ia-refresh="${esc(a.id)}" ${online ? '' : 'disabled title="No hay ninguna PC conectada para leer los límites"'}>Actualizar límites</button>
+        </div></div>`;
+      if (!w.seven_day && !w.five_hour) return `<div class="ia-acct">${head}<div class="empty">Sin datos: todavía no se leyeron los límites de esta cuenta.</div></div>`;
+      const start = lim.weekStartedAt || (week ? week.resetsAt - WEEK_S : null);
+      const elapsed = isLive(week) && start ? Math.min(100, Math.round((nowS() - start) / (week.resetsAt - start) * 100)) : null;
+      const facts = (lim.breakdown || []).length ? `<p class="note">Uso de la semana por producto: ${lim.breakdown.map((b) => `${esc(b.name)} ${b.percent}%`).join(' · ')}.</p>` : '';
+      return `<div class="ia-acct">${head}
+        <div class="grid" style="margin-bottom:0">
+          ${iaGauge('Límite de la semana', week, elapsed != null ? `Pasó el ${elapsed}% del tiempo de la semana` : '')}
+          ${iaGauge('Ventana de 5 horas', w.five_hour)}
+        </div>
+        ${iaModelShare(lim, week)}${facts}${iaPastWeeks(a, week)}
+      </div>`;
+    }
+
+    function iaWork(rows) {
+      const range = periodRange(iaPeriod);
+      const inRange = rows.filter((x) => x.date >= range.from && x.date <= range.to);
+      const toolbar = `<div class="toolbar"><span class="tog-l">Período</span><div class="tog" role="group">${PERIODS.map((x) =>
+        `<button type="button" data-ia-period="${x.key}" class="${x.key === iaPeriod ? 'on' : ''}" aria-pressed="${x.key === iaPeriod}">${x.label}</button>`).join('')}</div></div>`;
+      const head = `<div class="ia-section"><h3>Trabajo en TaskPilot</h3>${toolbar}`;
+      if (!inRange.length) return `${head}<p class="quiet">Sin sesiones en el período elegido.</p></div>`;
+      const sum = (f) => inRange.reduce((n, x) => n + (f(x) || 0), 0);
+
+      const bySession = new Map();
+      for (const x of inRange) {
+        const s = bySession.get(x.session_id) || { id: x.session_id, issue: x.issue_id, subject: x.subject, model: x.model, ms: 0, steps: 0, tokens: 0, last: x.last_at };
+        s.ms += x.duracion_ms; s.steps += x.turnos; s.tokens += x.tokens_in + x.tokens_out;
+        if (x.last_at > s.last) s.last = x.last_at;
+        bySession.set(x.session_id, s);
+      }
+      const sessions = [...bySession.values()].sort((a, b) => (a.last < b.last ? 1 : -1));
+      const byModel = new Map();
+      for (const s of sessions) {
+        const m = byModel.get(s.model) || { ...modelInfo(s.model), tokens: 0, ms: 0, count: 0 };
+        m.tokens += s.tokens; m.ms += s.ms; m.count += 1;
+        byModel.set(s.model, m);
+      }
+      const models = [...byModel.values()].sort((a, b) => b.tokens - a.tokens);
+      const totalTokens = models.reduce((n, m) => n + m.tokens, 0);
+      const maxTokens = Math.max(1, models[0].tokens);
+
+      return head + `<div class="grid">` +
+        card('Tareas', String(new Set(sessions.map((s) => s.issue)).size), `Del ${fmtDay(range.from)} al ${fmtDay(range.to)}`, null) +
+        card('Sesiones', String(sessions.length), `${sum((x) => x.turnos)} pasos de Claude`, null) +
+        card('Tiempo de Claude', fmtWork(sum((x) => x.duracion_ms)), 'Trabajando, sin contar esperas', null) +
+        card('Tokens', fmtTokens(totalTokens), `${fmtTokens(sum((x) => x.tokens_out))} generados`, null) +
+        `</div>` +
+        `<div class="sub-h">Modelos usados</div><div class="rows">` + models.map((m) => `
+          <div class="row">
+            <div class="rl">${esc(m.label)}<small>${m.count} sesi${m.count === 1 ? 'ón' : 'ones'} · ${fmtWork(m.ms)}</small></div>
+            <div class="track"><div class="fill" style="width:${(m.tokens / maxTokens * 100).toFixed(1)}%;background:${m.color}"></div></div>
+            <div class="rv">${fmtTokens(m.tokens)}<div class="cpu">${totalTokens > 0 ? Math.round(m.tokens / totalTokens * 100) : 0}%</div></div>
+          </div>`).join('') + `</div>
+        <p class="note">Solo sesiones de TaskPilot, medido en tokens. Claude no informa cuánto del límite usó cada sesión.</p>` +
+        `<div class="sub-h">Sesiones</div><div class="plan-wrap"><table class="plan"><thead><tr><th>Tarea</th><th>Modelo</th><th class="hide-sm">Fecha</th><th class="hide-sm">Tiempo</th><th class="hide-sm">Pasos</th><th>Tokens</th></tr></thead><tbody>` +
+        sessions.slice(0, 15).map((s) => `<tr><td class="tarea"><a class="ia-row-link ellip" style="display:block" href="/taskpilot/tarea?session=${s.id}" title="${esc(s.subject)}">#${s.issue} ${esc(s.subject)}</a></td>
+          <td>${esc(modelInfo(s.model).label)}</td><td class="hide-sm">${esc(fmtWhen(new Date(s.last).getTime() / 1000))}</td><td class="r hide-sm">${fmtWork(s.ms)}</td><td class="r hide-sm">${s.steps}</td><td class="r">${fmtTokens(s.tokens)}</td></tr>`).join('') + `</tbody></table></div></div>`;
+    }
+
+    function renderIa() {
+      const d = iaData;
+      const several = d.accounts.length > 1;
+      $('ia').innerHTML = (d.accounts.length
+        ? d.accounts.map((a) => iaAlerts(a, several)).join('') + d.accounts.map(iaAccount).join('')
+        : `<div class="empty">Sin datos: todavía no hay ninguna cuenta de Claude conectada a TaskPilot.</div>`) + iaWork(d.sessions);
+      for (const b of $('ia').querySelectorAll('[data-ia-period]')) {
+        b.addEventListener('click', () => {
+          iaPeriod = b.dataset.iaPeriod;
+          try { localStorage.setItem(IA_VIEW_KEY, JSON.stringify({ period: iaPeriod })); } catch (e) { /* sin almacenamiento */ }
+          renderIa();
+        });
+      }
+      for (const b of $('ia').querySelectorAll('[data-ia-refresh]')) b.addEventListener('click', () => refreshIaLimits(b.dataset.iaRefresh, b));
+      updateNavAlerts();
+    }
+
+    async function fetchIa() {
+      const res = await fetch('/api/sysmetrics/ia');
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    }
+
+    async function loadIa() {
+      try {
+        iaData = await fetchIa();
+        renderIa();
+      } catch (e) {
+        if (!iaData) $('ia').innerHTML = `<div class="err">No se pudieron leer los datos de IA: ${esc(e.message)}</div>`;
+      }
+    }
+
+    // Pide una lectura a una PC conectada de la cuenta y espera a que llegue.
+    async function refreshIaLimits(id, btn) {
+      const account = iaData.accounts.find((a) => a.id === id) || { runners: [] };
+      const before = account.limitsAt;
+      const runner = account.runners.find((r) => r.online);
+      if (!runner) return;
+      btn.disabled = true; btn.textContent = 'Consultando…';
+      let changed = false;
+      try {
+        const res = await fetch(`/api/taskpilot/runners/${runner.id}/limits-refresh`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+        if (!res.ok && res.status !== 409) { const d = await res.json().catch(() => ({})); throw new Error(d.error || 'HTTP ' + res.status); }
+        for (let i = 0; i < 25 && !changed; i++) {
+          await new Promise((ok) => setTimeout(ok, 2000));
+          const d = await fetchIa();
+          changed = (d.accounts.find((a) => a.id === id) || {}).limitsAt !== before;
+          if (changed) iaData = d;
+        }
+        if (changed) return renderIa();
+        btn.textContent = 'Sin respuesta';
+      } catch (e) {
+        btn.textContent = 'No se pudo: ' + e.message;
+      }
+      btn.disabled = false;
+    }
+
     // Contador de alertas en la barra de navegación; al tocarlo lleva a la primera.
     function updateNavAlerts() {
       const alerts = document.querySelectorAll('.alert');
@@ -798,10 +1047,11 @@
     }
 
     if (user && user.rol === 'admin') {
-      $('refresh').addEventListener('click', () => load(true));
+      $('refresh').addEventListener('click', () => { load(true); loadIa(); });
       $('planEdit').addEventListener('click', () => { editing = true; renderPlan(); });
       load(false);
-      setInterval(() => load(false), 5 * 60 * 1000); // RunPod cada 5 min; el servidor sigue con cache de 1 hora
+      loadIa();
+      setInterval(() => { load(false); loadIa(); }, 5 * 60 * 1000); // RunPod cada 5 min; el servidor sigue con cache de 1 hora
     }
   </script>
 </body>

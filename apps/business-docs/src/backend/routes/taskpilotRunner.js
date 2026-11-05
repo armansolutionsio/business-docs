@@ -14,6 +14,7 @@ const express = require('express');
 const db = require('../utils/db');
 const log = require('../utils/logger');
 const events = require('../utils/taskpilotEvents');
+const iaUsage = require('../utils/iaUsage');
 const { helpers } = require('./taskpilotSessions');
 
 const router = express.Router();
@@ -61,10 +62,13 @@ router.post('/limits', async (req, res, next) => {
     const b = req.body || {};
     const info = b.info && typeof b.info === 'object' ? b.info : null;
     const account = b.account && typeof b.account === 'object' ? b.account : null;
-    await db.query(
-      `UPDATE taskpilot.runners SET limits = COALESCE($2::jsonb, limits), limits_at = CASE WHEN $2::jsonb IS NULL THEN limits_at ELSE NOW() END,
-              account = COALESCE($3::jsonb, account), last_seen_at = NOW() WHERE id = $1`,
+    // Se combina con lo anterior: el evento de un turno no trae los limites por modelo que da la lectura completa.
+    const { rows: [saved] } = await db.query(
+      `UPDATE taskpilot.runners SET limits = CASE WHEN $2::jsonb IS NULL THEN limits ELSE COALESCE(limits, '{}'::jsonb) || $2::jsonb END,
+              limits_at = CASE WHEN $2::jsonb IS NULL THEN limits_at ELSE NOW() END,
+              account = COALESCE(account, '{}'::jsonb) || COALESCE($3::jsonb, '{}'::jsonb), last_seen_at = NOW() WHERE id = $1 RETURNING limits_at`,
       [req.runner.id, info ? JSON.stringify(info) : null, account ? JSON.stringify(account) : null]);
+    if (info) await iaUsage.recordSample(req.runner.id, saved.limits_at, info);
     res.json({ ok: true });
   } catch (e) { next(e); }
 });
@@ -149,8 +153,9 @@ router.post('/sessions/:id/events', async (req, res, next) => {
         await helpers.addMessage(s.id, 'tool', ev.summary ? String(ev.summary).slice(0, 4000) : '',
           { tool: ev.tool || null, is_error: Boolean(ev.is_error), kind: 'result' });
       } else if (t === 'result') {
+        // total_cost_usd es acumulado de la sesion (tambien al retomarla), no el costo de este turno.
         await db.query(
-          `UPDATE taskpilot.sessions SET costo_usd = costo_usd + $2, duracion_ms = duracion_ms + $3, turnos = turnos + $4,
+          `UPDATE taskpilot.sessions SET costo_usd = GREATEST(costo_usd, $2), duracion_ms = duracion_ms + $3, turnos = turnos + $4,
                   tokens_in = tokens_in + $5, tokens_out = tokens_out + $6, last_event_at = NOW(), updated_at = NOW() WHERE id = $1`,
           [s.id, num(ev.costo_usd), num(ev.duracion_ms), num(ev.turnos), num(ev.tokens_in), num(ev.tokens_out)]);
         await helpers.addMessage(s.id, 'result', ev.text ? String(ev.text) : null,

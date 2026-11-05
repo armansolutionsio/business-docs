@@ -11,6 +11,7 @@
 //   y tamano de cada base del cluster al que se conecta business-docs.
 // - GPU: RunPod y Vast.ai (utils/runpod.js, utils/vast.js), cada uno con su cache de 5 min para no
 //   perder de vista una maquina prendida. Van en `gpu.runpod` y `gpu.vast`.
+// - IA: limites del plan de Claude y trabajo de TaskPilot (utils/iaUsage.js), en GET /ia.
 // - En desarrollo, SYSMETRICS_SSH_HOST reemplaza host + contenedores por una lectura via SSH.
 // - Plan: limites de la licencia / free tier (admin_core.infra_plan), editable via PUT /plan.
 // - Costos: una muestra por hora de CPU/RAM de cada contenedor (admin_core.infra_samples) para
@@ -29,6 +30,7 @@ const infraSamples = require('../utils/infraSamples');
 const infraDisks = require('../utils/infraDisks');
 const runpod = require('../utils/runpod');
 const vast = require('../utils/vast');
+const iaUsage = require('../utils/iaUsage');
 const { requestJson } = require('../utils/httpJson');
 const log = require('../utils/logger');
 
@@ -395,6 +397,14 @@ router.get('/', async (req, res, next) => {
     }
     const data = await inflight;
     res.json({ ...data, plan: await planP, gpu: await gpuP, costs: await costData(), cached: false });
+  } catch (err) { next(err); }
+});
+
+// ── GET /api/sysmetrics/ia ───────────────────────────────────────────
+// Limites del plan de Claude por cuenta, su historial y el trabajo de las sesiones de TaskPilot.
+router.get('/ia', async (req, res, next) => {
+  try {
+    res.json(await iaUsage.getOverview());
   } catch (err) { next(err); }
 });
 
