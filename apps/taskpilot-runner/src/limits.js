@@ -22,8 +22,6 @@ const money = (m) => (m && m.amount_minor != null ? m.amount_minor / 10 ** (m.ex
 function normalize(usage) {
   const r = usage.rate_limits || {};
   const limits = Array.isArray(r.limits) ? r.limits : [];
-  // Cuanto del limite semanal consumio cada modelo con limite propio (weeklyShare) y que parte tiene asignada (allowance).
-  const shareOf = (name) => (r.weekly_scoped_shares || []).find((s) => limits[s.limit_index]?.scope?.model?.display_name === name);
   const info = {
     source: 'usage',
     unifiedWindows: {
@@ -31,10 +29,7 @@ function normalize(usage) {
       seven_day: usageWindow(r.seven_day, limits.find((l) => l.kind === 'weekly_all')),
     },
     models: (r.model_scoped || []).filter((m) => m.utilization != null)
-      .map((m) => {
-        const share = shareOf(m.display_name);
-        return { name: m.display_name, utilization: Number(m.utilization) / 100, resetsAt: epoch(m.resets_at), weeklyShare: share?.used_percent_of_weekly ?? null, allowance: share?.allowance_percent_of_weekly ?? null };
-      }),
+      .map((m) => ({ name: m.display_name, utilization: Number(m.utilization) / 100, resetsAt: epoch(m.resets_at) })),
   };
   const b = r.seven_day_breakdown;
   if (b) {

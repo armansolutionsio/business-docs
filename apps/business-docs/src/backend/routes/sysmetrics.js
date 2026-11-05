@@ -404,7 +404,7 @@ router.get('/', async (req, res, next) => {
 // Limites del plan de Claude por cuenta, su historial y el trabajo de las sesiones de TaskPilot.
 router.get('/ia', async (req, res, next) => {
   try {
-    res.json(await iaUsage.getOverview());
+    res.json(await iaUsage.getOverview({ force: req.query.refresh === '1' }));
   } catch (err) { next(err); }
 });
 
