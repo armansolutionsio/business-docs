@@ -187,6 +187,26 @@ const SQL = `
   ALTER TABLE taskpilot.runners ADD COLUMN IF NOT EXISTS limits_at TIMESTAMPTZ;
   ALTER TABLE taskpilot.runners ADD COLUMN IF NOT EXISTS account JSONB;
 
+  -- Historial de esas lecturas, para graficar como viene la semana (panel IA de /infra).
+  -- utilization en 0-1; models = ventanas semanales por modelo: [{ name, utilization, resetsAt }].
+  CREATE TABLE IF NOT EXISTS taskpilot.limit_samples (
+    runner_id        INTEGER NOT NULL REFERENCES taskpilot.runners(id) ON DELETE CASCADE,
+    ts               TIMESTAMPTZ NOT NULL,
+    five_hour        REAL,
+    five_hour_resets BIGINT,
+    seven_day        REAL,
+    seven_day_resets BIGINT,
+    models           JSONB,
+    PRIMARY KEY (runner_id, ts)
+  );
+  INSERT INTO taskpilot.limit_samples (runner_id, ts, five_hour, five_hour_resets, seven_day, seven_day_resets)
+    SELECT id, limits_at,
+           (limits #>> '{unifiedWindows,five_hour,utilization}')::real, (limits #>> '{unifiedWindows,five_hour,resetsAt}')::bigint,
+           (limits #>> '{unifiedWindows,seven_day,utilization}')::real, (limits #>> '{unifiedWindows,seven_day,resetsAt}')::bigint
+      FROM taskpilot.runners
+     WHERE limits_at IS NOT NULL AND limits #> '{unifiedWindows}' IS NOT NULL
+    ON CONFLICT DO NOTHING;
+
   -- Una sesion = un chat persistente de una tarea con Claude en un runner.
   CREATE TABLE IF NOT EXISTS taskpilot.sessions (
     id                SERIAL PRIMARY KEY,
@@ -280,6 +300,13 @@ const SQL = `
   CREATE INDEX IF NOT EXISTS idx_tp_jobs_runner ON taskpilot.jobs (runner_id, estado, id);
   -- Jobs del runner sin sesion (por ej. "limits": consultar los limites del plan).
   ALTER TABLE taskpilot.jobs ALTER COLUMN session_id DROP NOT NULL;
+
+  -- total_cost_usd del SDK es acumulado de la sesion: antes se sumaba en cada turno y quedaba inflado.
+  -- El costo real es el maximo reportado. Corrige lo ya guardado; es idempotente.
+  UPDATE taskpilot.sessions s SET costo_usd = c.max_usd
+    FROM (SELECT session_id, MAX((metadata->>'costo_usd')::numeric) AS max_usd
+            FROM taskpilot.messages WHERE rol = 'result' AND metadata ? 'costo_usd' GROUP BY session_id) c
+   WHERE c.session_id = s.id AND s.costo_usd <> c.max_usd;
 `;
 
 function envAccounts() {

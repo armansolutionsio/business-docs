@@ -28,6 +28,7 @@ export const config = {
   maxTurns: Number(process.env.RUNNER_MAX_TURNS) || 80,
   effort: (process.env.RUNNER_EFFORT || '').trim() || undefined,
   pollWait: 25,
+  limitsPollMin: process.env.RUNNER_LIMITS_POLL_MIN === undefined ? 15 : Number(process.env.RUNNER_LIMITS_POLL_MIN) || 0, // 0 = no leer periodicamente
 };
 
 // Entorno para el subproceso de Claude Code: con API key se inyecta; sin ella se saca cualquier

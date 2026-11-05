@@ -7,7 +7,7 @@ import { api } from './api.js';
 import { config, loadRepos, claudeEnv, authMode } from './config.js';
 import { listModelsViaApiKey, listModelsViaLogin } from './models.js';
 import { gitInfo, gitOp } from './git.js';
-import { probeLimits } from './limits.js';
+import { probeLimits, readUsage } from './limits.js';
 import { Session } from './session.js';
 
 const require = createRequire(import.meta.url);
@@ -121,6 +121,25 @@ async function handle(job) {
   });
 }
 
+// Lectura periodica de los limites del plan, para el historial del panel IA de /infra. No consume el
+// plan; si falla no gasta un turno: el historial sigue con lo que reporten las tareas.
+function startLimitsPolling() {
+  if (!config.limitsPollMin || config.apiKey) return;
+  let warned = false;
+  const tick = async () => {
+    try {
+      const { info, account } = await readUsage();
+      await api.limits({ info, account });
+      warned = false;
+    } catch (e) {
+      if (!warned) console.warn('[runner] no se pudieron leer los límites del plan:', e.message);
+      warned = true;
+    }
+  };
+  tick();
+  setInterval(tick, config.limitsPollMin * 60000);
+}
+
 async function main() {
   console.log(`[runner] TaskPilot runner v${version} · Node ${process.version} · ${process.platform}`);
   for (;;) {
@@ -128,6 +147,7 @@ async function main() {
     catch (e) { console.error('[runner] No se pudo registrar:', e.message, '· reintento en 15 s'); await sleep(15000); }
   }
   setInterval(() => api.heartbeat().catch(() => {}), 45000);
+  startLimitsPolling();
   console.log('[runner] Esperando trabajos...');
   for (;;) {
     try {
