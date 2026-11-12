@@ -1,6 +1,6 @@
 // Arman Marketing: estado de Meta (pagina, Instagram, cuenta publicitaria, campanas) y fal.ai.
 // No genera imagenes, no crea campanas y no gasta plata.
-// Galeria: GET /media (lista) y GET /media/file/:name (archivo, con el mismo JWT).
+// Galeria: GET /media (lista), GET /media/file/:name (archivo, con el mismo JWT) y POST /media/upload.
 // Instagram: GET /instagram (estado + historial) y POST /instagram/publish (publico, exige confirm:true).
 // Cache de 5 minutos; ?refresh=1 fuerza una lectura nueva.
 
@@ -31,6 +31,19 @@ router.get('/', async (req, res, next) => {
 // Galeria de piezas (sin cache: es una lectura de disco).
 router.get('/media', (req, res) => {
   res.json({ items: marketingMedia.list() });
+});
+
+// Subir una pieza: el cuerpo es el archivo crudo; los datos van en el header X-Pieza (JSON con encodeURIComponent).
+router.post('/media/upload', express.raw({ type: () => true, limit: marketingMedia.MAX_BYTES }), (req, res) => {
+  let meta;
+  try { meta = JSON.parse(decodeURIComponent(req.get('X-Pieza') || '')); }
+  catch { return res.status(400).json({ error: 'Faltan los datos de la pieza' }); }
+  try {
+    const entry = marketingMedia.add(req.body, { ...meta, by: req.user && req.user.email });
+    res.json(entry);
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message });
+  }
 });
 
 router.get('/media/file/:name', (req, res) => {

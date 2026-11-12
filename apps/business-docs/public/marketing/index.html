@@ -122,6 +122,13 @@
     dialog.pub .msg.bad{color:var(--crit)} dialog.pub .msg.good{color:var(--good)}
     dialog.pub .msg a{color:var(--ink)}
     .pubd{font-size:12px;color:var(--good)} .pubd a{color:var(--good)}
+    .matbar{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap}
+    dialog.pub .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    @media (max-width:520px){dialog.pub .grid2{grid-template-columns:1fr}}
+    dialog.pub .fld label{display:block;font-size:12px;color:var(--ink-2);margin-bottom:4px}
+    dialog.pub .fld input[type=text],dialog.pub .fld select{width:100%;background:var(--rail);border:1px solid var(--line);color:var(--ink);border-radius:9px;padding:8px 10px;font:inherit;font-size:13px}
+    dialog.pub .fld input[type=file]{width:100%;font-size:12.5px;color:var(--ink-2)}
+    dialog.pub textarea.short{min-height:90px}
     .media .tags{display:flex;flex-wrap:wrap;gap:5px}
     .media .meta{font-size:11.5px;color:var(--muted);line-height:1.45}
     .media .acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:auto;padding-top:6px}
@@ -164,9 +171,12 @@
     <section class="panel" id="sec-material">
       <h2>Material para campañas</h2>
       <p class="hint">Imágenes, videos y capturas reales de la app, listos para usar en anuncios y publicaciones.</p>
+      <div class="matbar">
       <div class="tog" id="matTog" role="group" aria-label="Filtrar material">
         <button type="button" class="on" data-k="">Todo</button><button type="button" data-k="imagen">Imágenes</button>
         <button type="button" data-k="video">Videos</button><button type="button" data-k="captura">Capturas</button>
+      </div>
+      <button type="button" class="primary" id="upOpen">Subir material</button>
       </div>
       <div class="gallery" id="material"></div>
       <div class="note" id="igNote">Las imágenes y los videos se pueden publicar en Instagram desde acá. Siempre se pide confirmación antes de publicar.</div>
@@ -209,6 +219,32 @@
       <div class="btns">
         <button type="button" class="sec" id="pubCancel">Cancelar</button>
         <button type="button" class="primary" id="pubGo" disabled>Publicar ahora</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog class="pub" id="upDlg" aria-labelledby="upTitle">
+    <div class="in">
+      <h2 id="upTitle">Subir material</h2>
+      <div class="sub">Imágenes (JPG, PNG, WEBP) o videos (MP4) de hasta 300 MB. Quedan guardados en la galería.</div>
+      <div class="fld"><label for="upFile">Archivo</label><input type="file" id="upFile" accept="image/jpeg,image/png,image/webp,video/mp4"></div>
+      <div class="prev" id="upPrev"><span class="ph">Elegí un archivo para ver la vista previa</span></div>
+      <div class="fld"><label for="upTitleIn">Título</label><input type="text" id="upTitleIn" maxlength="120" placeholder="Ej: Cerrá la caja en un minuto"></div>
+      <div class="grid2">
+        <div class="fld"><label for="upKind">Tipo</label>
+          <select id="upKind"><option value="imagen">Imagen</option><option value="video">Video</option><option value="captura">Captura de pantalla</option></select></div>
+        <div class="fld"><label for="upFormat">Formato</label>
+          <select id="upFormat"><option>Feed 4:5</option><option>Feed 1:1</option><option>Reel / Historia 9:16</option><option>Pantalla de celular</option><option>Otro</option></select></div>
+      </div>
+      <div class="fld"><label for="upOrigin">Origen</label>
+        <select id="upOrigin"><option>Grabación real</option><option>Captura real</option><option>Captura real + diseño</option><option>Generado con IA</option><option>Subido a mano</option></select></div>
+      <div><label class="sub-h" for="upCaption" style="display:block;margin:0 0 6px">Texto sugerido para Instagram (opcional)</label>
+        <textarea id="upCaption" class="short" maxlength="2200"></textarea></div>
+      <div class="fld"><label for="upNotes">Notas (opcional)</label><input type="text" id="upNotes" maxlength="500"></div>
+      <div class="msg" id="upMsg" role="status"></div>
+      <div class="btns">
+        <button type="button" class="sec" id="upCancel">Cancelar</button>
+        <button type="button" class="primary" id="upGo" disabled>Subir</button>
       </div>
     </div>
   </dialog>
@@ -428,6 +464,77 @@
         go.disabled = false; $('pubOk').disabled = false;
       } finally {
         $('pubCancel').disabled = false;
+      }
+    });
+
+    // Subir material: el archivo va crudo en el cuerpo y los datos en el header X-Pieza.
+    let upDims = { width: null, height: null }, upUrl = null;
+    function upCheck() { $('upGo').disabled = !$('upFile').files[0] || !$('upTitleIn').value.trim(); }
+    function guessFormat(w, h, isVideo) {
+      const r = w / h;
+      if (Math.abs(r - 0.8) < 0.03) return 'Feed 4:5';
+      if (Math.abs(r - 1) < 0.03) return 'Feed 1:1';
+      if (Math.abs(r - 9 / 16) < 0.03) return 'Reel / Historia 9:16';
+      if (r < 0.52) return 'Pantalla de celular';
+      return 'Otro';
+    }
+    $('upOpen').addEventListener('click', () => {
+      for (const id of ['upFile', 'upTitleIn', 'upCaption', 'upNotes']) $(id).value = '';
+      $('upPrev').innerHTML = '<span class="ph">Elegí un archivo para ver la vista previa</span>';
+      $('upMsg').textContent = ''; $('upMsg').className = 'msg';
+      $('upCancel').textContent = 'Cancelar';
+      upCheck();
+      $('upDlg').showModal();
+    });
+    $('upFile').addEventListener('change', () => {
+      const f = $('upFile').files[0];
+      if (upUrl) URL.revokeObjectURL(upUrl);
+      upDims = { width: null, height: null };
+      if (!f) { upCheck(); return; }
+      upUrl = URL.createObjectURL(f);
+      const isVideo = f.type === 'video/mp4';
+      $('upKind').value = isVideo ? 'video' : 'imagen';
+      $('upOrigin').value = isVideo ? 'Grabación real' : 'Captura real + diseño';
+      if (!$('upTitleIn').value) $('upTitleIn').value = f.name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ');
+      const el = document.createElement(isVideo ? 'video' : 'img');
+      el.src = upUrl;
+      if (isVideo) { el.controls = true; el.muted = true; el.playsInline = true; }
+      el.addEventListener(isVideo ? 'loadedmetadata' : 'load', () => {
+        upDims = isVideo ? { width: el.videoWidth, height: el.videoHeight } : { width: el.naturalWidth, height: el.naturalHeight };
+        if (upDims.width) $('upFormat').value = guessFormat(upDims.width, upDims.height, isVideo);
+      });
+      $('upPrev').innerHTML = ''; $('upPrev').appendChild(el);
+      upCheck();
+    });
+    $('upTitleIn').addEventListener('input', upCheck);
+    $('upCancel').addEventListener('click', () => $('upDlg').close());
+    $('upGo').addEventListener('click', async () => {
+      const f = $('upFile').files[0];
+      if (!f) return;
+      const meta = {
+        originalName: f.name, title: $('upTitleIn').value, kind: $('upKind').value, format: $('upFormat').value,
+        origin: $('upOrigin').value, caption: $('upCaption').value, notes: $('upNotes').value, ...upDims,
+      };
+      $('upGo').disabled = true; $('upCancel').disabled = true;
+      $('upMsg').className = 'msg';
+      $('upMsg').textContent = `Subiendo ${(f.size / 1048576).toFixed(1)} MB…`;
+      try {
+        const r = await fetch('/api/marketing/media/upload', {
+          method: 'POST', headers: { 'Content-Type': 'application/octet-stream', 'X-Pieza': encodeURIComponent(JSON.stringify(meta)) }, body: f,
+        });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(d.error || 'HTTP ' + r.status);
+        $('upMsg').className = 'msg good';
+        $('upMsg').textContent = `Listo, "${d.title}" quedó en la galería.`;
+        $('upCancel').textContent = 'Cerrar';
+        $('upFile').value = '';
+        loadMaterial();
+      } catch (e) {
+        $('upMsg').className = 'msg bad';
+        $('upMsg').textContent = 'No se subió: ' + e.message;
+        upCheck();
+      } finally {
+        $('upCancel').disabled = false;
       }
     });
 
