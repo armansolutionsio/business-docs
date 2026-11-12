@@ -19,3 +19,6 @@ services/**/.env.local
 
 # Archivos de prueba con datos reales de pasajeros
 prueba-voucher/
+
+# Arman Marketing: piezas generadas (imagenes/videos), no van al repo
+apps/business-docs/uploads/marketing/

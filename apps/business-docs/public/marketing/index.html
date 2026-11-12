@@ -1,0 +1,587 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Arman — Marketing</title>
+  <link rel="icon" href="/favicon.ico" />
+  <style>
+    :root{
+      --bg:#0b0f1a; --panel:#111a2e; --panel-2:#19233d; --line:#2a3656; --rail:#1d2843;
+      --ink:#e8edf5; --ink-2:#a6b6d6; --muted:#7d92bd;
+      --brand:#c46fd8; --good:#16b816; --warn:#fab219; --crit:#e66767; --info:#5b9ae6;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+      background:radial-gradient(1200px 600px at 20% 0%,#1f2a44,var(--bg) 70%) fixed;color:var(--ink);min-height:100vh}
+    .wrap{max-width:1040px;margin:0 auto;padding:28px 20px 48px}
+    .top{margin-bottom:14px}
+    .top a.back{color:var(--muted);text-decoration:none;font-size:13px}
+    .top a.back:hover{color:var(--ink)}
+    h1{font-size:26px;font-weight:600;margin:6px 0 4px}
+    .sub{color:var(--ink-2);font-size:13.5px}
+
+    html{scroll-behavior:smooth;scroll-padding-top:60px}
+    .nav{position:sticky;top:0;z-index:5;display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:8px 0 10px;margin-bottom:12px;
+      background:rgba(11,15,26,.92);backdrop-filter:blur(6px)}
+    .nav a{color:var(--ink-2);text-decoration:none;font-size:12.5px;padding:5px 11px;border:1px solid var(--line);border-radius:20px;background:var(--panel)}
+    .nav a:hover{color:var(--ink);border-color:#5b7bd6}
+    .nav-actions{display:flex;align-items:center;gap:10px;margin-left:auto}
+    @media (max-width:640px){.nav-actions{width:100%;justify-content:space-between;margin-left:0}}
+    .stamp{color:var(--muted);font-size:11.5px;text-align:right}
+    button.refresh{background:#3d5fc4;border:1px solid #3d5fc4;color:#fff;padding:5px 13px;border-radius:20px;
+      cursor:pointer;font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
+    button.refresh:hover{background:#4a6dd6}
+    button.refresh:disabled{opacity:.6;cursor:progress}
+    button:focus-visible,a:focus-visible,textarea:focus-visible{outline:2px solid #5b7bd6;outline-offset:2px}
+    .spin{width:12px;height:12px;border:2px solid #fff;border-top-color:transparent;border-radius:50%;animation:s 1s linear infinite;display:none}
+    button.loading .spin{display:inline-block}
+    @keyframes s{to{transform:rotate(360deg)}}
+    @media (prefers-reduced-motion: reduce){.spin{animation:none}}
+
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:18px}
+    .card{background:linear-gradient(135deg,var(--panel-2),var(--panel));border:1px solid var(--line);border-radius:14px;padding:18px}
+    .card .lbl{font-size:11px;text-transform:uppercase;letter-spacing:1.4px;color:var(--muted)}
+    .card .big{font-size:28px;font-weight:700;margin-top:6px;font-variant-numeric:tabular-nums}
+    .card .big small{font-size:14px;color:var(--ink-2);font-weight:500}
+    .card .cap{color:var(--ink-2);font-size:12.5px;margin-top:3px}
+
+    .panel{background:linear-gradient(135deg,var(--panel-2),var(--panel));border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:18px}
+    .panel h2{font-size:16px;font-weight:600}
+    .panel .hint{color:var(--muted);font-size:12.5px;margin:3px 0 14px;line-height:1.5}
+
+    .pods{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+    .pod{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;min-width:0}
+    .pod h3{font-size:14px;font-weight:600;display:flex;justify-content:space-between;align-items:center;gap:8px}
+    .pod .who{color:var(--ink-2);font-size:12.5px;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .pod .who a{color:var(--ink-2)}
+    .kv{display:grid;grid-template-columns:1fr auto;gap:5px 10px;font-size:12.5px;margin-top:10px;color:var(--ink-2)}
+    .kv b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums;text-align:right}
+    .pill{font-size:10.5px;padding:2px 8px;border-radius:20px;border:1px solid var(--line);color:var(--ink-2);font-weight:500;white-space:nowrap}
+    .pill.ok{color:var(--good);border-color:rgba(22,184,22,.4)}
+    .pill.warn{color:var(--warn);border-color:rgba(250,178,25,.45)}
+    .pill.crit{color:var(--crit);border-color:rgba(230,103,103,.5)}
+    .pill.paused{color:var(--ink-2)}
+
+    .alert{display:flex;gap:10px;align-items:baseline;font-size:13px;line-height:1.5;padding:10px 14px;border-radius:10px;margin-bottom:10px;border:1px solid}
+    .alert b{font-size:11px;text-transform:uppercase;letter-spacing:1px;white-space:nowrap}
+    .alert.crit{background:rgba(230,103,103,.1);border-color:rgba(230,103,103,.5)} .alert.crit b{color:var(--crit)}
+    .alert.warn{background:rgba(250,178,25,.08);border-color:rgba(250,178,25,.45)} .alert.warn b{color:var(--warn)}
+    .alert.info{background:rgba(91,154,230,.08);border-color:rgba(91,154,230,.45)} .alert.info b{color:var(--info)}
+
+    .tbl-wrap{overflow-x:auto}
+    table.tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+    .tbl th{text-align:left;font-weight:500;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:1px;padding:0 10px 8px 0;white-space:nowrap}
+    .tbl td{padding:9px 10px 9px 0;border-top:1px solid var(--line);vertical-align:top;color:var(--ink-2)}
+    .tbl td.r,.tbl th.r{text-align:right;font-variant-numeric:tabular-nums}
+    .tbl td b{color:var(--ink);font-weight:600}
+    @media (max-width:640px){.tbl .hide-sm{display:none}}
+
+    .empty{color:var(--ink-2);font-size:13px;line-height:1.55;background:var(--panel);border:1px dashed var(--line);border-radius:12px;padding:16px}
+    .err{color:var(--warn);font-size:12.5px;margin-top:8px}
+    .note{color:var(--muted);font-size:12px;margin-top:10px;line-height:1.5}
+
+    .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:16px;counter-reset:st}
+    .step{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:12.5px;color:var(--ink-2);line-height:1.5}
+    .step::before{counter-increment:st;content:counter(st);display:inline-flex;align-items:center;justify-content:center;
+      width:22px;height:22px;border-radius:50%;background:rgba(196,111,216,.18);color:var(--brand);font-weight:700;font-size:12px;margin-bottom:6px}
+    .step b{display:block;color:var(--ink);font-size:13px;margin-bottom:2px}
+    .composer textarea{width:100%;min-height:92px;resize:vertical;background:var(--rail);border:1px solid var(--line);color:var(--ink);
+      border-radius:10px;padding:10px 12px;font:inherit;font-size:13px;line-height:1.5}
+    .composer textarea:disabled{opacity:.6;cursor:not-allowed}
+    .composer .row{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px}
+    button.primary{background:linear-gradient(135deg,#7b4397,#c46fd8);border:0;color:#fff;padding:8px 16px;border-radius:9px;cursor:pointer;font-size:13px;font-weight:600}
+    button.primary:disabled{opacity:.45;cursor:not-allowed}
+    .soon{font-size:12px;color:var(--muted)}
+    .sub-h{font-size:13px;font-weight:600;color:var(--ink-2);margin:20px 0 10px}
+
+    .tog{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;background:var(--panel);margin-bottom:14px}
+    .tog button{background:transparent;border:0;border-right:1px solid var(--line);color:var(--ink-2);padding:6px 12px;font:inherit;font-size:12.5px;cursor:pointer}
+    .tog button:last-child{border-right:0}
+    .tog button.on{background:#3d5fc4;color:#fff}
+    .gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+    .media{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;min-width:0}
+    .media .thumb{height:300px;background:#070a12;display:flex;align-items:center;justify-content:center}
+    .media .thumb img,.media .thumb video{max-width:100%;max-height:100%;display:block}
+    .media .thumb .ph{color:var(--muted);font-size:12px}
+    .media .body{padding:12px;display:flex;flex-direction:column;gap:6px;flex:1}
+    .media h3{font-size:13.5px;font-weight:600;line-height:1.35}
+    dialog.pub{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:14px;padding:0;width:min(560px,calc(100vw - 32px));max-height:calc(100vh - 32px)}
+    dialog.pub::backdrop{background:rgba(5,8,15,.7)}
+    dialog.pub .in{padding:18px;display:flex;flex-direction:column;gap:12px}
+    dialog.pub h2{font-size:16px}
+    dialog.pub .prev{background:#070a12;border-radius:10px;height:280px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+    dialog.pub .prev img,dialog.pub .prev video{max-width:100%;max-height:100%}
+    dialog.pub .prev .ph{color:var(--muted);font-size:12px}
+    dialog.pub textarea{width:100%;min-height:150px;resize:vertical;background:var(--rail);border:1px solid var(--line);color:var(--ink);border-radius:9px;padding:10px;font:inherit;font-size:13px;line-height:1.5}
+    dialog.pub .cnt{color:var(--muted);font-size:11.5px;text-align:right}
+    dialog.pub label.ok{display:flex;gap:8px;align-items:flex-start;font-size:13px;color:var(--ink-2);line-height:1.45}
+    dialog.pub .btns{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}
+    dialog.pub button.sec{background:transparent;border:1px solid var(--line);color:var(--ink-2);padding:8px 16px;border-radius:9px;cursor:pointer;font-size:13px}
+    dialog.pub .msg{font-size:13px;line-height:1.5}
+    dialog.pub .msg.bad{color:var(--crit)} dialog.pub .msg.good{color:var(--good)}
+    dialog.pub .msg a{color:var(--ink)}
+    .pubd{font-size:12px;color:var(--good)} .pubd a{color:var(--good)}
+    .matbar{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap}
+    dialog.pub .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    @media (max-width:520px){dialog.pub .grid2{grid-template-columns:1fr}}
+    dialog.pub .fld label{display:block;font-size:12px;color:var(--ink-2);margin-bottom:4px}
+    dialog.pub .fld input[type=text],dialog.pub .fld select{width:100%;background:var(--rail);border:1px solid var(--line);color:var(--ink);border-radius:9px;padding:8px 10px;font:inherit;font-size:13px}
+    dialog.pub .fld input[type=file]{width:100%;font-size:12.5px;color:var(--ink-2)}
+    dialog.pub textarea.short{min-height:90px}
+    .media .tags{display:flex;flex-wrap:wrap;gap:5px}
+    .media .meta{font-size:11.5px;color:var(--muted);line-height:1.45}
+    .media .acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:auto;padding-top:6px}
+    .media .acts a,.media .acts button{font:inherit;font-size:12px;padding:5px 10px;border-radius:7px;border:1px solid var(--line);background:transparent;color:var(--ink-2);text-decoration:none;cursor:pointer}
+    .media .acts a:hover{color:var(--ink);border-color:#5b7bd6}
+    .media .acts button:disabled{opacity:.5;cursor:not-allowed}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <a class="back" href="/">← Arman Suite</a>
+      <h1>Arman Marketing</h1>
+      <div class="sub" id="sub">Campañas de Facebook e Instagram</div>
+    </div>
+
+    <nav class="nav" aria-label="Secciones">
+      <a href="#resumen">Resumen</a><a href="#sec-cuentas">Cuentas</a><a href="#sec-campanias">Campañas</a><a href="#sec-material">Material</a><a href="#sec-estudio">Estudio</a>
+      <div class="nav-actions">
+        <span class="stamp" id="stamp">Cargando…</span>
+        <button class="refresh" id="refresh" type="button"><span class="spin"></span>Actualizar</button>
+      </div>
+    </nav>
+
+    <div id="alerts"></div>
+    <div class="grid" id="resumen"></div>
+
+    <section class="panel" id="sec-cuentas">
+      <h2>Cuentas conectadas</h2>
+      <p class="hint">Lo que el sistema ve hoy en Meta y en fal.ai. Se lee en modo solo lectura.</p>
+      <div class="pods" id="cuentas"></div>
+    </section>
+
+    <section class="panel" id="sec-campanias">
+      <h2>Campañas</h2>
+      <p class="hint">Todas las campañas de la cuenta publicitaria, con resultados de los últimos 30 días.</p>
+      <div id="campanias"></div>
+    </section>
+
+    <section class="panel" id="sec-material">
+      <h2>Material para campañas</h2>
+      <p class="hint">Imágenes, videos y capturas reales de la app, listos para usar en anuncios y publicaciones.</p>
+      <div class="matbar">
+      <div class="tog" id="matTog" role="group" aria-label="Filtrar material">
+        <button type="button" class="on" data-k="">Todo</button><button type="button" data-k="imagen">Imágenes</button>
+        <button type="button" data-k="video">Videos</button><button type="button" data-k="captura">Capturas</button>
+      </div>
+      <button type="button" class="primary" id="upOpen">Subir material</button>
+      </div>
+      <div class="gallery" id="material"></div>
+      <div class="note" id="igNote">Las imágenes y los videos se pueden publicar en Instagram desde acá. Siempre se pide confirmación antes de publicar.</div>
+    </section>
+
+    <section class="panel" id="sec-estudio">
+      <h2>Estudio de campañas</h2>
+      <p class="hint">Así va a funcionar el armado de una campaña con Claude. Nada se publica ni gasta plata sin tu aprobación.</p>
+      <div class="steps">
+        <div class="step"><b>Contás qué querés</b>Qué promocionar, a quién y con cuánto presupuesto.</div>
+        <div class="step"><b>Claude propone</b>Textos, público, presupuesto diario y la idea de cada imagen o video.</div>
+        <div class="step"><b>La IA genera el material</b>fal.ai crea las imágenes y videos. Ves el costo antes de generar.</div>
+        <div class="step"><b>Se sube en pausa</b>La campaña queda armada en Meta, apagada, hasta que la apruebes acá.</div>
+      </div>
+      <div class="composer">
+        <label class="sub-h" for="brief" style="display:block;margin-top:0">Nueva campaña</label>
+        <textarea id="brief" disabled placeholder="Ej: quiero conseguir comercios de Buenos Aires que prueben ARVO gratis 14 días, con un presupuesto de $5.000 por día durante una semana."></textarea>
+        <div class="row">
+          <span class="soon">Se habilita en el próximo paso, después de probar la generación de imágenes.</span>
+          <button class="primary" type="button" disabled>Proponer campaña</button>
+        </div>
+      </div>
+      <h3 class="sub-h">Modelos de imagen disponibles</h3>
+      <div id="modelos"></div>
+    </section>
+  </div>
+
+  <dialog class="pub" id="pubDlg" aria-labelledby="pubTitle">
+    <div class="in">
+      <h2 id="pubTitle">Publicar en Instagram</h2>
+      <div class="sub" id="pubWhat"></div>
+      <div class="prev" id="pubPrev"></div>
+      <div>
+        <label class="sub-h" for="pubCaption" style="display:block;margin:0 0 6px">Texto de la publicación</label>
+        <textarea id="pubCaption" maxlength="2200"></textarea>
+        <div class="cnt" id="pubCnt"></div>
+      </div>
+      <label class="ok"><input type="checkbox" id="pubOk"> <span id="pubOkTxt"></span></label>
+      <div class="msg" id="pubMsg" role="status"></div>
+      <div class="btns">
+        <button type="button" class="sec" id="pubCancel">Cancelar</button>
+        <button type="button" class="primary" id="pubGo" disabled>Publicar ahora</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog class="pub" id="upDlg" aria-labelledby="upTitle">
+    <div class="in">
+      <h2 id="upTitle">Subir material</h2>
+      <div class="sub">Imágenes (JPG, PNG, WEBP) o videos (MP4) de hasta 300 MB. Quedan guardados en la galería.</div>
+      <div class="fld"><label for="upFile">Archivo</label><input type="file" id="upFile" accept="image/jpeg,image/png,image/webp,video/mp4"></div>
+      <div class="prev" id="upPrev"><span class="ph">Elegí un archivo para ver la vista previa</span></div>
+      <div class="fld"><label for="upTitleIn">Título</label><input type="text" id="upTitleIn" maxlength="120" placeholder="Ej: Cerrá la caja en un minuto"></div>
+      <div class="grid2">
+        <div class="fld"><label for="upKind">Tipo</label>
+          <select id="upKind"><option value="imagen">Imagen</option><option value="video">Video</option><option value="captura">Captura de pantalla</option></select></div>
+        <div class="fld"><label for="upFormat">Formato</label>
+          <select id="upFormat"><option>Feed 4:5</option><option>Feed 1:1</option><option>Reel / Historia 9:16</option><option>Pantalla de celular</option><option>Otro</option></select></div>
+      </div>
+      <div class="fld"><label for="upOrigin">Origen</label>
+        <select id="upOrigin"><option>Grabación real</option><option>Captura real</option><option>Captura real + diseño</option><option>Generado con IA</option><option>Subido a mano</option></select></div>
+      <div><label class="sub-h" for="upCaption" style="display:block;margin:0 0 6px">Texto sugerido para Instagram (opcional)</label>
+        <textarea id="upCaption" class="short" maxlength="2200"></textarea></div>
+      <div class="fld"><label for="upNotes">Notas (opcional)</label><input type="text" id="upNotes" maxlength="500"></div>
+      <div class="msg" id="upMsg" role="status"></div>
+      <div class="btns">
+        <button type="button" class="sec" id="upCancel">Cancelar</button>
+        <button type="button" class="primary" id="upGo" disabled>Subir</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script src="/_shared/auth.js"></script>
+  <script>
+    const user = ArmanAuth.requireSession({ vertical: 'marketing' });
+
+    const $ = (id) => document.getElementById(id);
+    const TZ = 'America/Argentina/Buenos_Aires';
+    const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const fmtTime = (iso) => new Date(iso).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', timeZone: TZ });
+    const fmtDate = (iso) => new Date(iso).toLocaleDateString('es-AR', { timeZone: TZ });
+    const fmtInt = (n) => n == null ? 'sin datos' : Number(n).toLocaleString('es-AR');
+    function fmtMoney(n, cur) {
+      if (n == null) return 'sin datos';
+      const sym = cur === 'USD' ? 'US$ ' : cur === 'ARS' ? '$ ' : (cur ? cur + ' ' : '');
+      return sym + Number(n).toLocaleString('es-AR', { minimumFractionDigits: cur === 'USD' ? 2 : 0, maximumFractionDigits: 2 });
+    }
+    const OBJECTIVE = {
+      OUTCOME_AWARENESS: 'Reconocimiento', OUTCOME_TRAFFIC: 'Tráfico', OUTCOME_ENGAGEMENT: 'Interacción',
+      OUTCOME_LEADS: 'Clientes potenciales', OUTCOME_APP_PROMOTION: 'Promoción de app', OUTCOME_SALES: 'Ventas',
+    };
+    const STATUS = {
+      ACTIVE: ['Activa', 'ok'], PAUSED: ['En pausa', 'paused'], CAMPAIGN_PAUSED: ['En pausa', 'paused'],
+      DELETED: ['Borrada', 'crit'], ARCHIVED: ['Archivada', 'paused'], IN_PROCESS: ['Procesando', 'warn'],
+      WITH_ISSUES: ['Con problemas', 'crit'], PENDING_REVIEW: ['En revisión', 'warn'], DISAPPROVED: ['Rechazada', 'crit'],
+    };
+
+    function card(lbl, big, cap) {
+      return `<div class="card"><div class="lbl">${lbl}</div><div class="big">${big}</div><div class="cap">${cap}</div></div>`;
+    }
+    function alertBox(kind, tag, text) { return `<div class="alert ${kind}"><b>${tag}</b><span>${text}</span></div>`; }
+    function errLine(e) { return e ? `<div class="err">No se pudo leer: ${esc(e)}</div>` : ''; }
+
+    function renderAlerts(meta, fal) {
+      const out = [];
+      if (!meta.configured) out.push(alertBox('crit', 'Meta', 'Falta configurar META_ACCESS_TOKEN y META_AD_ACCOUNT_ID en el .env.'));
+      const a = meta.account && meta.account.data;
+      if (a && !a.active) out.push(alertBox('crit', 'Cuenta', `La cuenta publicitaria está en estado "${esc(a.status)}".`));
+      if (a && !a.hasPaymentMethod) out.push(alertBox('info', 'Pago', 'La cuenta publicitaria no tiene tarjeta. Hace falta cargarla antes de prender la primera campaña.'));
+      if (a && a.spendCap == null) out.push(alertBox('warn', 'Tope', 'La cuenta publicitaria no tiene límite de gasto. Conviene ponerle uno en Meta (Facturación y pagos).'));
+      if (fal.balance && fal.balance.amount < 2) out.push(alertBox('warn', 'fal.ai', `Queda poco saldo para generar imágenes: ${fmtMoney(fal.balance.amount, fal.balance.currency)}.`));
+      $('alerts').innerHTML = out.join('');
+    }
+
+    function renderResumen(meta, fal) {
+      const a = meta.account && meta.account.data;
+      const cur = a ? a.currency : null;
+      const ins = meta.insights && meta.insights.data;
+      const camps = (meta.campaigns && meta.campaigns.data) || [];
+      const active = camps.filter((c) => c.effectiveStatus === 'ACTIVE').length;
+      $('resumen').innerHTML =
+        card('Gasto 30 días', ins ? fmtMoney(ins.spend, cur) : 'sin datos', a && a.spendCap != null ? `Tope de la cuenta ${fmtMoney(a.spendCap, cur)}` : 'Cuenta sin tope de gasto') +
+        card('Alcance 30 días', ins ? fmtInt(ins.reach) : 'sin datos', ins ? `${fmtInt(ins.impressions)} impresiones · ${fmtInt(ins.clicks)} clics` : '') +
+        card('Campañas', String(camps.length), meta.campaigns && meta.campaigns.error ? 'No se pudieron leer' : `${active} activa${active === 1 ? '' : 's'} en la cuenta publicitaria`) +
+        card('Saldo fal.ai', fal.balance ? fmtMoney(fal.balance.amount, fal.balance.currency) : 'sin datos', fal.balance ? 'Prepago para imágenes y videos' : esc(fal.balanceError || ''));
+    }
+
+    function renderCuentas(meta, fal) {
+      if (!meta.configured) { $('cuentas').innerHTML = '<div class="empty">Meta no está configurado.</div>'; return; }
+      const p = meta.page.data, i = meta.instagram.data, a = meta.account.data;
+      const page = `<div class="pod"><h3>Página de Facebook<span class="pill ${p ? 'ok' : 'crit'}">${p ? 'Conectada' : 'Sin acceso'}</span></h3>` +
+        (p ? `<div class="who"><a href="${esc(p.link)}" target="_blank" rel="noopener">${esc(p.name)}</a></div>
+          <div class="kv"><span>Seguidores</span><b>${fmtInt(p.followers)}</b><span>Me gusta</span><b>${fmtInt(p.likes)}</b></div>` : errLine(meta.page.error)) + `</div>`;
+      const ig = `<div class="pod"><h3>Instagram<span class="pill ${i ? 'ok' : 'crit'}">${i ? 'Conectado' : 'Sin acceso'}</span></h3>` +
+        (i ? `<div class="who"><a href="https://www.instagram.com/${encodeURIComponent(i.username)}/" target="_blank" rel="noopener">@${esc(i.username)}</a> · ${esc(i.name)}</div>
+          <div class="kv"><span>Seguidores</span><b>${fmtInt(i.followers)}</b><span>Publicaciones</span><b>${fmtInt(i.posts)}</b></div>` : errLine(meta.instagram.error)) + `</div>`;
+      const acct = `<div class="pod"><h3>Cuenta publicitaria${a ? `<span class="pill ${a.active ? 'ok' : 'crit'}">${esc(a.status)}</span>` : '<span class="pill crit">Sin acceso</span>'}</h3>` +
+        (a ? `<div class="who">${esc(a.name)} · ${esc(a.currency)}</div>
+          <div class="kv"><span>Gastado desde el inicio</span><b>${fmtMoney(a.spentTotal, a.currency)}</b>
+          <span>Límite de gasto</span><b>${a.spendCap == null ? 'Sin límite' : fmtMoney(a.spendCap, a.currency)}</b>
+          <span>Tarjeta</span><b>${a.hasPaymentMethod ? esc(a.paymentMethod || 'Cargada') : 'No cargada'}</b></div>` : errLine(meta.account.error)) + `</div>`;
+      const falPod = `<div class="pod"><h3>fal.ai<span class="pill ${fal.configured ? 'ok' : 'crit'}">${fal.configured ? 'Conectado' : 'Sin llave'}</span></h3>
+          <div class="who">Imágenes y videos con IA</div>
+          <div class="kv"><span>Saldo</span><b>${fal.balance ? fmtMoney(fal.balance.amount, fal.balance.currency) : 'sin datos'}</b></div>
+          ${fal.balance ? '' : errLine(fal.balanceError)}</div>`;
+      $('cuentas').innerHTML = page + ig + acct + falPod;
+    }
+
+    function renderCampanias(meta) {
+      if (!meta.configured) { $('campanias').innerHTML = ''; return; }
+      if (meta.campaigns.error) { $('campanias').innerHTML = errLine(meta.campaigns.error); return; }
+      const cur = meta.account.data ? meta.account.data.currency : null;
+      const camps = meta.campaigns.data;
+      if (!camps.length) {
+        $('campanias').innerHTML = '<div class="empty">Todavía no hay campañas. Las que armes desde el Estudio van a aparecer acá, siempre en pausa hasta que las apruebes.</div>';
+        return;
+      }
+      $('campanias').innerHTML = `<div class="tbl-wrap"><table class="tbl"><thead><tr>
+        <th>Campaña</th><th>Estado</th><th class="hide-sm">Objetivo</th><th class="r">Presupuesto</th>
+        <th class="r">Gasto</th><th class="r hide-sm">Alcance</th><th class="r">Clics</th></tr></thead><tbody>` +
+        camps.map((c) => {
+          const [label, kind] = STATUS[c.effectiveStatus] || [c.effectiveStatus, 'paused'];
+          const budget = c.dailyBudget != null ? fmtMoney(c.dailyBudget, cur) + ' / día' : c.lifetimeBudget != null ? fmtMoney(c.lifetimeBudget, cur) + ' total' : 'En conjuntos';
+          return `<tr><td><b>${esc(c.name)}</b><br><span style="font-size:11px;color:var(--muted)">Creada ${fmtDate(c.createdAt)}</span></td>
+            <td><span class="pill ${kind}">${esc(label)}</span></td>
+            <td class="hide-sm">${esc(OBJECTIVE[c.objective] || c.objective)}</td>
+            <td class="r">${budget}</td><td class="r">${fmtMoney(c.last30d.spend, cur)}</td>
+            <td class="r hide-sm">${fmtInt(c.last30d.reach)}</td><td class="r">${fmtInt(c.last30d.clicks)}</td></tr>`;
+        }).join('') + `</tbody></table></div>`;
+    }
+
+    function renderModelos(fal) {
+      const rows = fal.models.map((m) => {
+        const price = m.price ? `${fmtMoney(m.price.amount, m.price.currency)} por ${m.price.unit === 'images' ? 'imagen' : m.price.unit === 'processed megapixels' ? 'megapíxel' : esc(m.price.unit)}` : 'sin datos';
+        return `<tr><td><b>${esc(m.label)}</b></td><td class="hide-sm">${esc(m.use)}</td><td class="r">${price}</td></tr>`;
+      }).join('');
+      $('modelos').innerHTML = `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Modelo</th><th class="hide-sm">Para qué sirve</th><th class="r">Precio actual</th></tr></thead><tbody>${rows}</tbody></table></div>` +
+        (fal.pricesError ? errLine(fal.pricesError) : '<div class="note">Precios leídos en vivo de fal.ai.</div>');
+    }
+
+    // Galeria: los archivos piden el JWT, asi que se bajan con fetch y se muestran como blob.
+    let media = [], matFilter = '';
+    const blobs = {};
+    const ORIGIN_KIND = { 'Captura real': 'ok', 'Grabación real': 'ok', 'Captura real + diseño': 'ok' };
+    async function blobUrl(file) {
+      if (!blobs[file]) {
+        const r = await fetch('/api/marketing/media/file/' + encodeURIComponent(file));
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        blobs[file] = URL.createObjectURL(await r.blob());
+      }
+      return blobs[file];
+    }
+    function renderMaterial() {
+      const items = media.filter((m) => !matFilter || m.kind === matFilter);
+      if (!items.length) { $('material').innerHTML = '<div class="empty">No hay material en esta categoría.</div>'; return; }
+      $('material').innerHTML = items.map((m, i) => `<article class="media">
+          <div class="thumb" data-file="${esc(m.file)}" data-kind="${esc(m.kind)}"><span class="ph">Cargando…</span></div>
+          <div class="body">
+            <h3>${esc(m.title)}</h3>
+            <div class="tags"><span class="pill">${esc(m.format)}</span><span class="pill ${ORIGIN_KIND[m.origin] || 'warn'}">${esc(m.origin)}</span></div>
+            <div class="meta">${m.width}x${m.height} · ${(m.bytes / 1048576).toFixed(1)} MB · ${m.costUsd ? 'Costo ' + fmtMoney(m.costUsd, 'USD') : 'Sin costo'}<br>${esc(m.notes || '')}</div>
+            ${pubDone(m)}
+            <div class="acts">
+              <a href="#" data-dl="${esc(m.file)}">Descargar</a>
+              ${pubButton(m)}
+            </div>
+          </div></article>`).join('');
+      for (const t of $('material').querySelectorAll('.thumb')) {
+        blobUrl(t.dataset.file).then((u) => {
+          t.innerHTML = t.dataset.kind === 'video'
+            ? `<video src="${u}" controls muted playsinline preload="metadata"></video>`
+            : `<img src="${u}" alt="" loading="lazy">`;
+        }).catch((e) => { t.innerHTML = `<span class="ph">No se pudo cargar (${esc(e.message)})</span>`; });
+      }
+      for (const b of $('material').querySelectorAll('[data-pub]')) b.addEventListener('click', () => openPub(b.dataset.pub));
+      for (const a of $('material').querySelectorAll('[data-dl]')) {
+        a.addEventListener('click', async (e) => {
+          e.preventDefault();
+          const link = document.createElement('a');
+          link.href = await blobUrl(a.dataset.dl); link.download = a.dataset.dl; link.click();
+        });
+      }
+    }
+    // Instagram: estado (que se puede publicar desde este servidor) y publicaciones hechas.
+    let ig = null, pubItem = null;
+    function pubButton(m) {
+      if (!['imagen', 'video'].includes(m.kind)) return '';
+      if (m.kind === 'video' && !/^Reel/.test(m.format || '')) return '';
+      if (!ig || !ig.configured) return '<button type="button" disabled title="Falta configurar Instagram">Publicar en Instagram</button>';
+      if (m.kind === 'imagen' && !ig.images) return `<button type="button" disabled title="${esc(ig.imagesHint)}">Publicar en Instagram</button>`;
+      return `<button type="button" data-pub="${esc(m.file)}">Publicar en Instagram</button>`;
+    }
+    function pubDone(m) {
+      const p = ig && ig.published.find((x) => x.file === m.file);
+      if (!p) return '';
+      return `<div class="pubd">Publicado el ${fmtDate(p.publishedAt)} ${fmtTime(p.publishedAt)}${p.permalink ? ` · <a href="${esc(p.permalink)}" target="_blank" rel="noopener">ver en Instagram</a>` : ''}</div>`;
+    }
+    function pubCheck() {
+      const n = $('pubCaption').value.length;
+      $('pubCnt').textContent = `${n.toLocaleString('es-AR')} / 2.200`;
+      $('pubGo').disabled = !$('pubOk').checked || !pubItem;
+    }
+    async function openPub(file) {
+      pubItem = media.find((m) => m.file === file);
+      if (!pubItem) return;
+      const again = ig.published.find((x) => x.file === file);
+      const asWhat = pubItem.kind === 'video' ? 'Reel' : 'publicación con imagen';
+      $('pubWhat').textContent = `${pubItem.title} · se publica como ${asWhat} en @arvo.arman`;
+      $('pubCaption').value = pubItem.caption || '';
+      $('pubOk').checked = false; $('pubOk').disabled = false;
+      $('pubOkTxt').textContent = (again ? 'Esta pieza ya se publicó antes. ' : '') + 'Entiendo que se publica ahora mismo y queda visible para todos en Instagram.';
+      $('pubMsg').textContent = ''; $('pubMsg').className = 'msg';
+      $('pubCancel').textContent = 'Cancelar';
+      $('pubPrev').innerHTML = '<span class="ph">Cargando…</span>';
+      pubCheck();
+      $('pubDlg').showModal();
+      const u = await blobUrl(file).catch(() => null);
+      $('pubPrev').innerHTML = !u ? '<span class="ph">Sin vista previa</span>' : pubItem.kind === 'video'
+        ? `<video src="${u}" controls muted playsinline></video>` : `<img src="${u}" alt="Vista previa">`;
+    }
+    $('pubCaption').addEventListener('input', pubCheck);
+    $('pubOk').addEventListener('change', pubCheck);
+    $('pubCancel').addEventListener('click', () => $('pubDlg').close());
+    $('pubGo').addEventListener('click', async () => {
+      if (!pubItem || !$('pubOk').checked) return;
+      const go = $('pubGo');
+      go.disabled = true; $('pubCancel').disabled = true; $('pubOk').disabled = true;
+      $('pubMsg').className = 'msg';
+      $('pubMsg').textContent = pubItem.kind === 'video' ? 'Subiendo el video y esperando que Instagram lo procese. Puede tardar 1 o 2 minutos…' : 'Publicando…';
+      try {
+        const r = await fetch('/api/marketing/instagram/publish', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ file: pubItem.file, caption: $('pubCaption').value, confirm: true }),
+        });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(d.error || 'HTTP ' + r.status);
+        $('pubMsg').className = 'msg good';
+        $('pubMsg').innerHTML = 'Publicado.' + (d.permalink ? ` <a href="${esc(d.permalink)}" target="_blank" rel="noopener">Ver en Instagram</a>` : '');
+        $('pubCancel').textContent = 'Cerrar';
+        pubItem = null;
+        loadMaterial();
+      } catch (e) {
+        $('pubMsg').className = 'msg bad';
+        $('pubMsg').textContent = 'No se publicó: ' + e.message;
+        go.disabled = false; $('pubOk').disabled = false;
+      } finally {
+        $('pubCancel').disabled = false;
+      }
+    });
+
+    // Subir material: el archivo va crudo en el cuerpo y los datos en el header X-Pieza.
+    let upDims = { width: null, height: null }, upUrl = null;
+    function upCheck() { $('upGo').disabled = !$('upFile').files[0] || !$('upTitleIn').value.trim(); }
+    function guessFormat(w, h, isVideo) {
+      const r = w / h;
+      if (Math.abs(r - 0.8) < 0.03) return 'Feed 4:5';
+      if (Math.abs(r - 1) < 0.03) return 'Feed 1:1';
+      if (Math.abs(r - 9 / 16) < 0.03) return 'Reel / Historia 9:16';
+      if (r < 0.52) return 'Pantalla de celular';
+      return 'Otro';
+    }
+    $('upOpen').addEventListener('click', () => {
+      for (const id of ['upFile', 'upTitleIn', 'upCaption', 'upNotes']) $(id).value = '';
+      $('upPrev').innerHTML = '<span class="ph">Elegí un archivo para ver la vista previa</span>';
+      $('upMsg').textContent = ''; $('upMsg').className = 'msg';
+      $('upCancel').textContent = 'Cancelar';
+      upCheck();
+      $('upDlg').showModal();
+    });
+    $('upFile').addEventListener('change', () => {
+      const f = $('upFile').files[0];
+      if (upUrl) URL.revokeObjectURL(upUrl);
+      upDims = { width: null, height: null };
+      if (!f) { upCheck(); return; }
+      upUrl = URL.createObjectURL(f);
+      const isVideo = f.type === 'video/mp4';
+      $('upKind').value = isVideo ? 'video' : 'imagen';
+      $('upOrigin').value = isVideo ? 'Grabación real' : 'Captura real + diseño';
+      if (!$('upTitleIn').value) $('upTitleIn').value = f.name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ');
+      const el = document.createElement(isVideo ? 'video' : 'img');
+      el.src = upUrl;
+      if (isVideo) { el.controls = true; el.muted = true; el.playsInline = true; }
+      el.addEventListener(isVideo ? 'loadedmetadata' : 'load', () => {
+        upDims = isVideo ? { width: el.videoWidth, height: el.videoHeight } : { width: el.naturalWidth, height: el.naturalHeight };
+        if (upDims.width) $('upFormat').value = guessFormat(upDims.width, upDims.height, isVideo);
+      });
+      $('upPrev').innerHTML = ''; $('upPrev').appendChild(el);
+      upCheck();
+    });
+    $('upTitleIn').addEventListener('input', upCheck);
+    $('upCancel').addEventListener('click', () => $('upDlg').close());
+    $('upGo').addEventListener('click', async () => {
+      const f = $('upFile').files[0];
+      if (!f) return;
+      const meta = {
+        originalName: f.name, title: $('upTitleIn').value, kind: $('upKind').value, format: $('upFormat').value,
+        origin: $('upOrigin').value, caption: $('upCaption').value, notes: $('upNotes').value, ...upDims,
+      };
+      $('upGo').disabled = true; $('upCancel').disabled = true;
+      $('upMsg').className = 'msg';
+      $('upMsg').textContent = `Subiendo ${(f.size / 1048576).toFixed(1)} MB…`;
+      try {
+        const r = await fetch('/api/marketing/media/upload', {
+          method: 'POST', headers: { 'Content-Type': 'application/octet-stream', 'X-Pieza': encodeURIComponent(JSON.stringify(meta)) }, body: f,
+        });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(d.error || 'HTTP ' + r.status);
+        $('upMsg').className = 'msg good';
+        $('upMsg').textContent = `Listo, "${d.title}" quedó en la galería.`;
+        $('upCancel').textContent = 'Cerrar';
+        $('upFile').value = '';
+        loadMaterial();
+      } catch (e) {
+        $('upMsg').className = 'msg bad';
+        $('upMsg').textContent = 'No se subió: ' + e.message;
+        upCheck();
+      } finally {
+        $('upCancel').disabled = false;
+      }
+    });
+
+    async function loadMaterial() {
+      try {
+        const [r, s] = await Promise.all([fetch('/api/marketing/media'), fetch('/api/marketing/instagram')]);
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        ig = s.ok ? await s.json() : null;
+        if (ig && ig.imagesHint) $('igNote').textContent = 'Siempre se pide confirmación antes de publicar. ' + ig.imagesHint;
+        media = (await r.json()).items;
+        renderMaterial();
+      } catch (e) { $('material').innerHTML = errLine(e.message); }
+    }
+    $('matTog').addEventListener('click', (e) => {
+      const b = e.target.closest('button'); if (!b) return;
+      matFilter = b.dataset.k;
+      for (const x of $('matTog').querySelectorAll('button')) x.classList.toggle('on', x === b);
+      renderMaterial();
+    });
+
+    async function load(force) {
+      const btn = $('refresh');
+      btn.disabled = true; btn.classList.add('loading');
+      try {
+        const res = await fetch('/api/marketing' + (force ? '?refresh=1' : ''));
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const d = await res.json();
+        const brand = d.meta.page && d.meta.page.data ? d.meta.page.data.name : null;
+        $('sub').textContent = brand ? `${brand} · Facebook, Instagram y anuncios` : 'Campañas de Facebook e Instagram';
+        renderAlerts(d.meta, d.fal);
+        renderResumen(d.meta, d.fal);
+        renderCuentas(d.meta, d.fal);
+        renderCampanias(d.meta);
+        renderModelos(d.fal);
+        $('stamp').textContent = 'Lectura ' + fmtTime(d.collectedAt);
+      } catch (e) {
+        $('stamp').textContent = 'No se pudo actualizar: ' + e.message;
+      } finally {
+        btn.disabled = false; btn.classList.remove('loading');
+      }
+    }
+
+    if (user) {
+      $('refresh').addEventListener('click', () => { load(true); loadMaterial(); });
+      load(false);
+      loadMaterial();
+    }
+  </script>
+</body>
+</html>
