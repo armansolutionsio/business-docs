@@ -75,6 +75,13 @@ app.get(['/infra', '/infra/'],         (req, res) => res.sendFile(path.join(PUBL
 app.get(['/taskpilot', '/taskpilot/'], (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'taskpilot', 'index.html')));
 app.get('/taskpilot/tarea',            (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'taskpilot', 'tarea.html')));
 app.get(['/marketing', '/marketing/'], (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'marketing', 'index.html')));
+// Link firmado y temporal para que Instagram descargue una imagen del material (sin JWT).
+app.get('/marketing-publico/:file', (req, res) => {
+  const { checkLink } = require('./utils/instagramPublish');
+  const full = require('./utils/marketingMedia').resolveFile(req.params.file);
+  if (!full || !checkLink(path.basename(full), req.query.exp, req.query.sig)) return res.status(404).end();
+  res.sendFile(full);
+});
 
 app.use(express.static(PUBLIC_DIR, { etag: false, maxAge: 0, index: false }));
 

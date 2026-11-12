@@ -106,6 +106,22 @@
     .media .thumb .ph{color:var(--muted);font-size:12px}
     .media .body{padding:12px;display:flex;flex-direction:column;gap:6px;flex:1}
     .media h3{font-size:13.5px;font-weight:600;line-height:1.35}
+    dialog.pub{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:14px;padding:0;width:min(560px,calc(100vw - 32px));max-height:calc(100vh - 32px)}
+    dialog.pub::backdrop{background:rgba(5,8,15,.7)}
+    dialog.pub .in{padding:18px;display:flex;flex-direction:column;gap:12px}
+    dialog.pub h2{font-size:16px}
+    dialog.pub .prev{background:#070a12;border-radius:10px;height:280px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+    dialog.pub .prev img,dialog.pub .prev video{max-width:100%;max-height:100%}
+    dialog.pub .prev .ph{color:var(--muted);font-size:12px}
+    dialog.pub textarea{width:100%;min-height:150px;resize:vertical;background:var(--rail);border:1px solid var(--line);color:var(--ink);border-radius:9px;padding:10px;font:inherit;font-size:13px;line-height:1.5}
+    dialog.pub .cnt{color:var(--muted);font-size:11.5px;text-align:right}
+    dialog.pub label.ok{display:flex;gap:8px;align-items:flex-start;font-size:13px;color:var(--ink-2);line-height:1.45}
+    dialog.pub .btns{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}
+    dialog.pub button.sec{background:transparent;border:1px solid var(--line);color:var(--ink-2);padding:8px 16px;border-radius:9px;cursor:pointer;font-size:13px}
+    dialog.pub .msg{font-size:13px;line-height:1.5}
+    dialog.pub .msg.bad{color:var(--crit)} dialog.pub .msg.good{color:var(--good)}
+    dialog.pub .msg a{color:var(--ink)}
+    .pubd{font-size:12px;color:var(--good)} .pubd a{color:var(--good)}
     .media .tags{display:flex;flex-wrap:wrap;gap:5px}
     .media .meta{font-size:11.5px;color:var(--muted);line-height:1.45}
     .media .acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:auto;padding-top:6px}
@@ -153,7 +169,7 @@
         <button type="button" data-k="video">Videos</button><button type="button" data-k="captura">Capturas</button>
       </div>
       <div class="gallery" id="material"></div>
-      <div class="note">Publicar en Instagram desde acá se habilita cuando la app de Meta tenga el permiso de publicación. Mientras tanto podés descargar cada pieza.</div>
+      <div class="note" id="igNote">Las imágenes y los videos se pueden publicar en Instagram desde acá. Siempre se pide confirmación antes de publicar.</div>
     </section>
 
     <section class="panel" id="sec-estudio">
@@ -177,6 +193,25 @@
       <div id="modelos"></div>
     </section>
   </div>
+
+  <dialog class="pub" id="pubDlg" aria-labelledby="pubTitle">
+    <div class="in">
+      <h2 id="pubTitle">Publicar en Instagram</h2>
+      <div class="sub" id="pubWhat"></div>
+      <div class="prev" id="pubPrev"></div>
+      <div>
+        <label class="sub-h" for="pubCaption" style="display:block;margin:0 0 6px">Texto de la publicación</label>
+        <textarea id="pubCaption" maxlength="2200"></textarea>
+        <div class="cnt" id="pubCnt"></div>
+      </div>
+      <label class="ok"><input type="checkbox" id="pubOk"> <span id="pubOkTxt"></span></label>
+      <div class="msg" id="pubMsg" role="status"></div>
+      <div class="btns">
+        <button type="button" class="sec" id="pubCancel">Cancelar</button>
+        <button type="button" class="primary" id="pubGo" disabled>Publicar ahora</button>
+      </div>
+    </div>
+  </dialog>
 
   <script src="/_shared/auth.js"></script>
   <script>
@@ -307,9 +342,10 @@
             <h3>${esc(m.title)}</h3>
             <div class="tags"><span class="pill">${esc(m.format)}</span><span class="pill ${ORIGIN_KIND[m.origin] || 'warn'}">${esc(m.origin)}</span></div>
             <div class="meta">${m.width}x${m.height} · ${(m.bytes / 1048576).toFixed(1)} MB · ${m.costUsd ? 'Costo ' + fmtMoney(m.costUsd, 'USD') : 'Sin costo'}<br>${esc(m.notes || '')}</div>
+            ${pubDone(m)}
             <div class="acts">
               <a href="#" data-dl="${esc(m.file)}">Descargar</a>
-              <button type="button" disabled title="Falta el permiso de publicación de Instagram en la app de Meta">Publicar en Instagram</button>
+              ${pubButton(m)}
             </div>
           </div></article>`).join('');
       for (const t of $('material').querySelectorAll('.thumb')) {
@@ -319,6 +355,7 @@
             : `<img src="${u}" alt="" loading="lazy">`;
         }).catch((e) => { t.innerHTML = `<span class="ph">No se pudo cargar (${esc(e.message)})</span>`; });
       }
+      for (const b of $('material').querySelectorAll('[data-pub]')) b.addEventListener('click', () => openPub(b.dataset.pub));
       for (const a of $('material').querySelectorAll('[data-dl]')) {
         a.addEventListener('click', async (e) => {
           e.preventDefault();
@@ -327,10 +364,79 @@
         });
       }
     }
+    // Instagram: estado (que se puede publicar desde este servidor) y publicaciones hechas.
+    let ig = null, pubItem = null;
+    function pubButton(m) {
+      if (!['imagen', 'video'].includes(m.kind)) return '';
+      if (m.kind === 'video' && !/^Reel/.test(m.format || '')) return '';
+      if (!ig || !ig.configured) return '<button type="button" disabled title="Falta configurar Instagram">Publicar en Instagram</button>';
+      if (m.kind === 'imagen' && !ig.images) return `<button type="button" disabled title="${esc(ig.imagesHint)}">Publicar en Instagram</button>`;
+      return `<button type="button" data-pub="${esc(m.file)}">Publicar en Instagram</button>`;
+    }
+    function pubDone(m) {
+      const p = ig && ig.published.find((x) => x.file === m.file);
+      if (!p) return '';
+      return `<div class="pubd">Publicado el ${fmtDate(p.publishedAt)} ${fmtTime(p.publishedAt)}${p.permalink ? ` · <a href="${esc(p.permalink)}" target="_blank" rel="noopener">ver en Instagram</a>` : ''}</div>`;
+    }
+    function pubCheck() {
+      const n = $('pubCaption').value.length;
+      $('pubCnt').textContent = `${n.toLocaleString('es-AR')} / 2.200`;
+      $('pubGo').disabled = !$('pubOk').checked || !pubItem;
+    }
+    async function openPub(file) {
+      pubItem = media.find((m) => m.file === file);
+      if (!pubItem) return;
+      const again = ig.published.find((x) => x.file === file);
+      const asWhat = pubItem.kind === 'video' ? 'Reel' : 'publicación con imagen';
+      $('pubWhat').textContent = `${pubItem.title} · se publica como ${asWhat} en @arvo.arman`;
+      $('pubCaption').value = pubItem.caption || '';
+      $('pubOk').checked = false; $('pubOk').disabled = false;
+      $('pubOkTxt').textContent = (again ? 'Esta pieza ya se publicó antes. ' : '') + 'Entiendo que se publica ahora mismo y queda visible para todos en Instagram.';
+      $('pubMsg').textContent = ''; $('pubMsg').className = 'msg';
+      $('pubCancel').textContent = 'Cancelar';
+      $('pubPrev').innerHTML = '<span class="ph">Cargando…</span>';
+      pubCheck();
+      $('pubDlg').showModal();
+      const u = await blobUrl(file).catch(() => null);
+      $('pubPrev').innerHTML = !u ? '<span class="ph">Sin vista previa</span>' : pubItem.kind === 'video'
+        ? `<video src="${u}" controls muted playsinline></video>` : `<img src="${u}" alt="Vista previa">`;
+    }
+    $('pubCaption').addEventListener('input', pubCheck);
+    $('pubOk').addEventListener('change', pubCheck);
+    $('pubCancel').addEventListener('click', () => $('pubDlg').close());
+    $('pubGo').addEventListener('click', async () => {
+      if (!pubItem || !$('pubOk').checked) return;
+      const go = $('pubGo');
+      go.disabled = true; $('pubCancel').disabled = true; $('pubOk').disabled = true;
+      $('pubMsg').className = 'msg';
+      $('pubMsg').textContent = pubItem.kind === 'video' ? 'Subiendo el video y esperando que Instagram lo procese. Puede tardar 1 o 2 minutos…' : 'Publicando…';
+      try {
+        const r = await fetch('/api/marketing/instagram/publish', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ file: pubItem.file, caption: $('pubCaption').value, confirm: true }),
+        });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(d.error || 'HTTP ' + r.status);
+        $('pubMsg').className = 'msg good';
+        $('pubMsg').innerHTML = 'Publicado.' + (d.permalink ? ` <a href="${esc(d.permalink)}" target="_blank" rel="noopener">Ver en Instagram</a>` : '');
+        $('pubCancel').textContent = 'Cerrar';
+        pubItem = null;
+        loadMaterial();
+      } catch (e) {
+        $('pubMsg').className = 'msg bad';
+        $('pubMsg').textContent = 'No se publicó: ' + e.message;
+        go.disabled = false; $('pubOk').disabled = false;
+      } finally {
+        $('pubCancel').disabled = false;
+      }
+    });
+
     async function loadMaterial() {
       try {
-        const r = await fetch('/api/marketing/media');
+        const [r, s] = await Promise.all([fetch('/api/marketing/media'), fetch('/api/marketing/instagram')]);
         if (!r.ok) throw new Error('HTTP ' + r.status);
+        ig = s.ok ? await s.json() : null;
+        if (ig && ig.imagesHint) $('igNote').textContent = 'Siempre se pide confirmación antes de publicar. ' + ig.imagesHint;
         media = (await r.json()).items;
         renderMaterial();
       } catch (e) { $('material').innerHTML = errLine(e.message); }
