@@ -39,6 +39,7 @@
     .tile.admin    {border-top:3px solid #d985ff}
     .tile.infra    {border-top:3px solid #ef7a4c}
     .tile.taskpilot{border-top:3px solid #3fb0a8}
+    .tile.marketing{border-top:3px solid #c46fd8}
     footer{margin-top:56px;color:#586a91;font-size:12px}
     footer a{color:#8aa0c8;text-decoration:none;margin:0 8px;cursor:pointer}
     .userbar{position:absolute;top:18px;right:24px;font-size:13px;color:#a6b6d6;display:flex;gap:14px;align-items:center}
@@ -93,6 +94,12 @@
       <h2>TaskPilot</h2>
       <p>Tareas de Redmine priorizadas por persona, resolución asistida con Claude y registro de horas en Excel y Redmine.</p>
     </a>
+
+    <a class="tile marketing" href="/marketing/">
+      <span class="tag">Publicidad</span>
+      <h2>Arman Marketing</h2>
+      <p>Campañas de Facebook e Instagram armadas con Claude, imágenes y videos con IA, y resultados en un solo lugar.</p>
+    </a>
   </div>
 
 
@@ -111,7 +118,8 @@
                   : t.classList.contains('paybridge') ? 'paybridge'
                   : t.classList.contains('admin') ? 'admin'
                   : t.classList.contains('infra') ? 'infra'
-                  : t.classList.contains('taskpilot') ? 'taskpilot' : null;
+                  : t.classList.contains('taskpilot') ? 'taskpilot'
+                  : t.classList.contains('marketing') ? 'marketing' : null;
           if (v && !allowed.includes(v)) t.style.display = 'none';
         });
       }

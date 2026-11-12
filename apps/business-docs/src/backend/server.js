@@ -74,6 +74,7 @@ app.get(['/admin', '/admin/'],         (req, res) => res.sendFile(path.join(PUBL
 app.get(['/infra', '/infra/'],         (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'infra', 'index.html')));
 app.get(['/taskpilot', '/taskpilot/'], (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'taskpilot', 'index.html')));
 app.get('/taskpilot/tarea',            (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'taskpilot', 'tarea.html')));
+app.get(['/marketing', '/marketing/'], (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'marketing', 'index.html')));
 
 app.use(express.static(PUBLIC_DIR, { etag: false, maxAge: 0, index: false }));
 
@@ -114,6 +115,7 @@ const arcaRoutes           = require('./routes/arca');
 const sysmetricsRoutes     = require('./routes/sysmetrics');
 const taskpilotRoutes      = require('./routes/taskpilot');
 const taskpilotRunnerRoutes = require('./routes/taskpilotRunner');
+const marketingRoutes      = require('./routes/marketing');
 
 // Quick cotizacion estado update (used by cotizador frontend)
 const dbPool = require('./utils/db');
@@ -271,6 +273,7 @@ app.use('/api/arca',      arcaRoutes);
 app.use('/api/sysmetrics', sysmetricsRoutes);
 app.use('/api/taskpilot',  taskpilotRoutes);
 app.use('/api/taskpilot-runner', taskpilotRunnerRoutes);
+app.use('/api/marketing', marketingRoutes);
 
 // ── WA Import — receives file as base64 or rows as JSON ──────────────────────
 app.post('/api/wa-import', async (req, res, next) => {
