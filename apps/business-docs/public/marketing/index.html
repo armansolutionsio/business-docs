@@ -145,6 +145,19 @@
     .msearch input{flex:1;min-width:180px}
     .msearch select{max-width:100%}
     .tbl td .d{color:var(--muted);font-size:11.5px;margin-top:2px;max-width:520px}
+    #gastosCards{margin-bottom:14px}
+    .bars{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+    .bar{display:grid;grid-template-columns:minmax(120px,220px) 1fr auto;gap:10px;align-items:center;font-size:12.5px;color:var(--ink-2)}
+    .bar .track{height:8px;background:var(--rail);border-radius:6px;overflow:hidden}
+    .bar .fill{height:100%;background:var(--brand);border-radius:6px}
+    .bar b{color:var(--ink);font-variant-numeric:tabular-nums}
+    @media (max-width:520px){.bar{grid-template-columns:1fr auto}.bar .track{grid-column:1 / -1;order:3}}
+    .tbl button.lnk{background:transparent;border:1px solid var(--line);color:var(--ink-2);border-radius:7px;padding:4px 9px;font:inherit;font-size:12px;cursor:pointer;white-space:nowrap}
+    .tbl button.lnk:hover{color:var(--ink);border-color:#5b7bd6}
+    .tbl .pq{color:var(--muted);font-size:11.5px;margin-top:2px;max-width:420px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    dialog.pub pre.prompt{white-space:pre-wrap;word-break:break-word;background:var(--rail);border:1px solid var(--line);border-radius:9px;padding:12px;font:13px/1.55 ui-monospace,Consolas,monospace;color:var(--ink);max-height:300px;overflow:auto}
+    dialog.pub .kvl{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:12.5px;color:var(--ink-2)}
+    dialog.pub .kvl b{color:var(--ink);font-weight:600;word-break:break-word}
     .media .tags{display:flex;flex-wrap:wrap;gap:5px}
     .media .meta{font-size:11.5px;color:var(--muted);line-height:1.45}
     .media .acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:auto;padding-top:6px}
@@ -162,7 +175,7 @@
     </div>
 
     <nav class="nav" aria-label="Secciones">
-      <a href="#resumen">Resumen</a><a href="#sec-cuentas">Cuentas</a><a href="#sec-campanias">Campañas</a><a href="#sec-material">Material</a><a href="#sec-estudio">Estudio</a>
+      <a href="#resumen">Resumen</a><a href="#sec-cuentas">Cuentas</a><a href="#sec-campanias">Campañas</a><a href="#sec-material">Material</a><a href="#sec-gastos">Gastos en IA</a><a href="#sec-estudio">Estudio</a>
       <div class="nav-actions">
         <span class="stamp" id="stamp">Cargando…</span>
         <button class="refresh" id="refresh" type="button"><span class="spin"></span>Actualizar</button>
@@ -196,6 +209,14 @@
       </div>
       <div class="gallery" id="material"></div>
       <div class="note" id="igNote">Las imágenes y los videos se pueden publicar en Instagram desde acá. Siempre se pide confirmación antes de publicar.</div>
+    </section>
+
+    <section class="panel" id="sec-gastos">
+      <h2>Gastos en IA</h2>
+      <p class="hint">Todo lo que se generó con fal.ai: qué modelo se usó, qué se le pidió, qué salió, cuánto costó y en qué pieza se usó. Los montos son los que cobró fal.ai.</p>
+      <div class="grid" id="gastosCards"></div>
+      <div id="gastosModelos"></div>
+      <div id="gastos"></div>
     </section>
 
     <section class="panel" id="sec-estudio">
@@ -270,6 +291,21 @@
       <div class="btns">
         <button type="button" class="sec" id="upCancel">Cancelar</button>
         <button type="button" class="primary" id="upGo" disabled>Subir</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog class="pub" id="prDlg" aria-labelledby="prTitle">
+    <div class="in">
+      <h2 id="prTitle">Qué se le pidió a la IA</h2>
+      <div class="sub" id="prWhat"></div>
+      <div class="prev" id="prPrev"></div>
+      <div class="kvl" id="prKv"></div>
+      <div><div class="sub-h" style="margin:0 0 6px">Prompt (la instrucción que recibió el modelo)</div><pre class="prompt" id="prText"></pre></div>
+      <div class="msg" id="prMsg" role="status"></div>
+      <div class="btns">
+        <button type="button" class="sec" id="prCopy">Copiar prompt</button>
+        <button type="button" class="primary" id="prClose">Cerrar</button>
       </div>
     </div>
   </dialog>
@@ -601,6 +637,62 @@
       }
     });
 
+    // Gastos en IA: historial de fal.ai con prompt, resultado, costo y pieza donde se uso.
+    let gastos = null;
+    const fmtUsd = (n) => n == null ? 'sin datos' : 'US$ ' + Number(n).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: n < 1 ? 4 : 2 });
+    const OUT_ES = { video: 'Video', imagen: 'Imagen', audio: 'Audio' };
+    function renderGastos() {
+      const g = gastos;
+      const last30 = g.requests.filter((r) => Date.now() - new Date(r.at) < 30 * 864e5 && r.cost).reduce((s, r) => s + r.cost, 0);
+      $('gastosCards').innerHTML =
+        card('Gastado en IA', fmtUsd(g.total), `Desde el ${fmtDate(g.since + 'T12:00:00Z')}`) +
+        card('Últimos 30 días', fmtUsd(last30), `${g.requests.filter((r) => r.ok).length} generaciones`) +
+        card('Saldo fal.ai', falData && falData.balance ? fmtUsd(falData.balance.amount) : 'sin datos', 'Disponible para generar');
+      const max = Math.max(...g.byModel.map((b) => b.cost), 0.0001);
+      $('gastosModelos').innerHTML = g.byModel.length ? '<div class="sub-h" style="margin-top:0">Por modelo</div><div class="bars">' + g.byModel.map((b) =>
+        `<div class="bar"><span>${esc(gastos.requests.find((r) => r.endpoint === b.endpoint)?.model || b.model)} · ${b.count} ${b.count === 1 ? 'generación' : 'generaciones'}</span><div class="track"><div class="fill" style="width:${(b.cost / max * 100).toFixed(1)}%"></div></div><b>${fmtUsd(b.cost)}</b></div>`).join('') + '</div>' : '';
+      if (!g.requests.length) { $('gastos').innerHTML = '<div class="empty">Todavía no se generó nada con IA.</div>'; return; }
+      $('gastos').innerHTML = '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Fecha</th><th>Modelo y pedido</th><th class="hide-sm">Resultado</th><th class="hide-sm">Usado en</th><th class="r">Costo</th><th></th></tr></thead><tbody>' +
+        g.requests.map((r, i) => `<tr>
+          <td>${fmtDate(r.at)}<br><span class="pq">${fmtTime(r.at)}</span></td>
+          <td><b>${esc(r.model)}</b><div class="pq">${esc((r.input && r.input.prompt) || '')}</div></td>
+          <td class="hide-sm">${r.ok ? (r.output ? esc(OUT_ES[r.output.type] || r.output.type) : 'sin datos') : `<span class="pill crit">Falló (${esc(r.status)})</span>`}${r.billed ? `<div class="pq">${esc(String(Math.round(r.billed.qty * 100) / 100))} ${esc(r.billed.unit)}${r.billed.qty === 1 ? '' : 's'}</div>` : ''}</td>
+          <td class="hide-sm">${r.usedIn.length ? r.usedIn.map((u) => esc(u.title)).join('<br>') : '<span class="pq">Sin usar</span>'}</td>
+          <td class="r"><b>${fmtUsd(r.cost)}</b>${r.cost != null && !r.costExact ? '<div class="pq">aprox.</div>' : ''}</td>
+          <td><button type="button" class="lnk" data-pr="${i}">Ver prompt</button></td></tr>`).join('') +
+        '</tbody></table></div><div class="note">El costo de cada fila sale de la facturación de fal.ai para ese modelo ese día. Si ese día hubo varias generaciones del mismo modelo, se reparte y se marca como aprox.</div>';
+    }
+    function openPrompt(i) {
+      const r = gastos.requests[i];
+      const inp = r.input || {};
+      $('prWhat').textContent = `${r.model} · ${fmtDate(r.at)} ${fmtTime(r.at)} · ${fmtUsd(r.cost)}`;
+      $('prText').textContent = inp.prompt || 'sin datos';
+      const rows = Object.entries(inp).filter(([k]) => k !== 'prompt')
+        .map(([k, v]) => `<span>${esc(k)}</span><b>${esc(typeof v === 'object' ? JSON.stringify(v) : v)}</b>`);
+      rows.push(`<span>Modelo</span><b>${esc(r.endpoint)}</b>`, `<span>Tardó</span><b>${r.seconds != null ? r.seconds + ' s' : 'sin datos'}</b>`,
+        `<span>Usado en</span><b>${r.usedIn.length ? r.usedIn.map((u) => esc(u.title)).join(', ') : 'Sin usar'}</b>`);
+      $('prKv').innerHTML = rows.join('');
+      const o = r.output;
+      $('prPrev').innerHTML = !o ? '<span class="ph">Sin resultado</span>' : o.type === 'video' ? `<video src="${esc(o.url)}" controls playsinline preload="metadata"></video>`
+        : o.type === 'imagen' ? `<img src="${esc(o.url)}" alt="Resultado">` : o.type === 'audio' ? `<audio src="${esc(o.url)}" controls></audio>` : '';
+      $('prMsg').textContent = ''; $('prMsg').className = 'msg';
+      $('prDlg').showModal();
+    }
+    $('gastos').addEventListener('click', (e) => { const b = e.target.closest('[data-pr]'); if (b) openPrompt(Number(b.dataset.pr)); });
+    $('prClose').addEventListener('click', () => { $('prPrev').innerHTML = ''; $('prDlg').close(); });
+    $('prCopy').addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText($('prText').textContent); $('prMsg').className = 'msg good'; $('prMsg').textContent = 'Prompt copiado.'; }
+      catch { $('prMsg').className = 'msg bad'; $('prMsg').textContent = 'No se pudo copiar: seleccioná el texto a mano.'; }
+    });
+    async function loadGastos(force) {
+      try {
+        const r = await fetch('/api/marketing/fal/history' + (force ? '?refresh=1' : ''));
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error || 'HTTP ' + r.status);
+        gastos = d; renderGastos();
+      } catch (e) { $('gastos').innerHTML = errLine(e.message); }
+    }
+
     async function loadMaterial() {
       try {
         const [r, s] = await Promise.all([fetch('/api/marketing/media'), fetch('/api/marketing/instagram')]);
@@ -641,8 +733,8 @@
     }
 
     if (user) {
-      $('refresh').addEventListener('click', () => { load(true); loadMaterial(); });
-      load(false);
+      $('refresh').addEventListener('click', () => { load(true).then(() => loadGastos(true)); loadMaterial(); });
+      load(false).then(() => loadGastos(false));
       loadMaterial();
       searchModels();
     }

@@ -61,6 +61,15 @@ router.get('/fal/catalog', async (req, res) => {
   }
 });
 
+// Gastos en IA: cuanto se gasto, en que modelo, que se pidio (prompt) y que salio. Solo lectura.
+router.get('/fal/history', async (req, res) => {
+  try {
+    res.json(await falAi.spendHistory({ force: req.query.refresh === '1', pieces: marketingMedia.list() }));
+  } catch (err) {
+    res.status(502).json({ error: err.message });
+  }
+});
+
 router.get('/instagram', (req, res) => {
   res.json({ ...instagram.status(), published: instagram.readLog() });
 });

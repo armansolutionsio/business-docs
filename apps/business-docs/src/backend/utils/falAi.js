@@ -224,4 +224,82 @@ async function searchCatalog({ q = '', category = '' } = {}) {
   };
 }
 
-module.exports = { overview, searchCatalog, GROUPS };
+// Historial de gastos: lo que fal.ai cobro (por modelo y por dia) y cada pedido con su prompt
+// y su resultado. Las imagenes de referencia que viajan en base64 se reemplazan por un texto corto.
+const HISTORY_TTL_MS = 5 * 60 * 1000;
+const history = { at: 0, data: null };
+
+function cleanInput(v) {
+  if (typeof v === 'string') return v.startsWith('data:') ? `[archivo adjunto, ${v.slice(5, v.indexOf(';')) || 'datos'}]` : v;
+  if (Array.isArray(v)) return v.map(cleanInput);
+  if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, cleanInput(x)]));
+  return v;
+}
+
+function outputOf(o) {
+  if (!o) return null;
+  if (o.video && o.video.url) return { type: 'video', url: o.video.url, bytes: o.video.file_size || null };
+  const img = (o.images && o.images[0]) || o.image;
+  if (img && img.url) return { type: 'imagen', url: img.url, bytes: img.file_size || null };
+  if (o.audio && o.audio.url) return { type: 'audio', url: o.audio.url, bytes: o.audio.file_size || null };
+  return null;
+}
+
+async function spendHistory({ days = 90, force = false, pieces = [] } = {}) {
+  const key = process.env.FAL_ADMIN_KEY;
+  if (!key) throw new Error('FAL_ADMIN_KEY no configurada');
+  if (!force && history.data && Date.now() - history.at < HISTORY_TTL_MS) return withPieces(history.data, pieces);
+  const start = new Date(Date.now() - days * 864e5).toISOString().slice(0, 10) + 'T00:00:00Z';
+  const usage = await falGet(`/models/usage?start=${start}&expand=time_series&timeframe=day`, key);
+
+  // Gasto por modelo y por dia (dato oficial de facturacion)
+  const buckets = [];
+  for (const b of usage.time_series || []) {
+    for (const r of b.results || []) buckets.push({ day: b.bucket.slice(0, 10), endpoint: r.endpoint_id, unit: r.unit, qty: r.quantity, cost: r.cost_total ?? r.cost, currency: r.currency });
+  }
+  const endpoints = [...new Set(buckets.map((b) => b.endpoint))];
+
+  // Pedidos de cada modelo usado, con prompt y resultado
+  const requests = [];
+  for (const ep of endpoints) {
+    try {
+      const d = await falGet(`/models/requests/by-endpoint?endpoint_id=${encodeURIComponent(ep)}&limit=50&start=${start}&expand=payloads`, key);
+      for (const it of d.items || []) {
+        requests.push({ id: it.request_id, endpoint: ep, at: it.started_at || it.sent_at, ok: it.status_code === 200, status: it.status_code,
+          seconds: it.duration != null ? Math.round(it.duration) : null, input: cleanInput(it.json_input || null), output: outputOf(it.json_output) });
+      }
+    } catch (e) {
+      log.warn('fal_requests_failed', { endpoint: ep, error: e.message });
+    }
+  }
+
+  // Costo por pedido: el gasto de ese modelo ese dia, repartido entre sus pedidos exitosos de ese dia.
+  for (const r of requests) {
+    const day = String(r.at || '').slice(0, 10);
+    const b = buckets.find((x) => x.endpoint === r.endpoint && x.day === day);
+    const same = requests.filter((x) => x.endpoint === r.endpoint && String(x.at || '').slice(0, 10) === day && x.ok);
+    r.cost = b && r.ok ? b.cost / same.length : r.ok ? null : 0;
+    r.costExact = Boolean(b) && same.length === 1;
+    r.currency = b ? b.currency : 'USD';
+    r.billed = b && same.length === 1 ? { qty: b.qty, unit: UNIT_ES[b.unit] || b.unit } : null;
+  }
+  requests.sort((a, b) => String(b.at).localeCompare(String(a.at)));
+
+  const names = { ...Object.fromEntries(GROUPS.flatMap((g) => g.models.map((m) => [m.id, m.label]))), 'fal-ai/veo3.1/fast': 'Veo 3.1 Fast (desde texto)' };
+  for (const r of requests) r.model = names[r.endpoint] || r.endpoint;
+  const byModel = endpoints.map((ep) => ({ endpoint: ep, model: names[ep] || ep,
+    cost: buckets.filter((b) => b.endpoint === ep).reduce((s, b) => s + b.cost, 0),
+    count: requests.filter((r) => r.endpoint === ep && r.ok).length })).sort((a, b) => b.cost - a.cost);
+  const total = buckets.reduce((s, b) => s + b.cost, 0);
+
+  history.data = { since: start.slice(0, 10), total, currency: 'USD', byModel, requests };
+  history.at = Date.now();
+  return withPieces(history.data, pieces);
+}
+
+// Cruza cada pedido con las piezas de la galeria que lo usaron (campo falRequests del manifest).
+function withPieces(data, pieces) {
+  return { ...data, requests: data.requests.map((r) => ({ ...r, usedIn: pieces.filter((p) => (p.falRequests || []).includes(r.id)).map((p) => ({ file: p.file, title: p.title })) })) };
+}
+
+module.exports = { overview, searchCatalog, spendHistory, GROUPS };
