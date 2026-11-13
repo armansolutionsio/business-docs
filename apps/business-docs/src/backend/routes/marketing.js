@@ -52,6 +52,15 @@ router.get('/media/file/:name', (req, res) => {
   res.sendFile(full);
 });
 
+// Buscador sobre el catalogo completo de fal.ai (solo lectura, con precio en vivo de los resultados).
+router.get('/fal/catalog', async (req, res) => {
+  try {
+    res.json(await falAi.searchCatalog({ q: String(req.query.q || '').slice(0, 80), category: String(req.query.category || '').slice(0, 40) }));
+  } catch (err) {
+    res.status(502).json({ error: err.message });
+  }
+});
+
 router.get('/instagram', (req, res) => {
   res.json({ ...instagram.status(), published: instagram.readLog() });
 });

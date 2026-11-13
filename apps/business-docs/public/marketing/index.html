@@ -129,6 +129,22 @@
     dialog.pub .fld input[type=text],dialog.pub .fld select{width:100%;background:var(--rail);border:1px solid var(--line);color:var(--ink);border-radius:9px;padding:8px 10px;font:inherit;font-size:13px}
     dialog.pub .fld input[type=file]{width:100%;font-size:12.5px;color:var(--ink-2)}
     dialog.pub textarea.short{min-height:90px}
+    .mods{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+    .mod{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:6px;min-width:0}
+    .mod.use{border-color:rgba(196,111,216,.6)}
+    .mod h4{font-size:13.5px;font-weight:600;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+    .mod .by{color:var(--muted);font-size:11.5px}
+    .mod .u{color:var(--ink-2);font-size:12.5px;line-height:1.45}
+    .mod .n{color:var(--muted);font-size:12px;line-height:1.45}
+    .mod .pr{margin-top:auto;padding-top:8px;border-top:1px solid var(--line);font-size:12.5px;color:var(--ink-2);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+    .mod .pr b{color:var(--ink);font-variant-numeric:tabular-nums}
+    .pill.use{color:var(--brand);border-color:rgba(196,111,216,.55)}
+    .grp-what{color:var(--ink-2);font-size:12.5px;margin:-4px 0 12px}
+    .msearch{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+    .msearch input,.msearch select{background:var(--rail);border:1px solid var(--line);color:var(--ink);border-radius:9px;padding:7px 10px;font:inherit;font-size:13px}
+    .msearch input{flex:1;min-width:180px}
+    .msearch select{max-width:100%}
+    .tbl td .d{color:var(--muted);font-size:11.5px;margin-top:2px;max-width:520px}
     .media .tags{display:flex;flex-wrap:wrap;gap:5px}
     .media .meta{font-size:11.5px;color:var(--muted);line-height:1.45}
     .media .acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:auto;padding-top:6px}
@@ -199,8 +215,17 @@
           <button class="primary" type="button" disabled>Proponer campaña</button>
         </div>
       </div>
-      <h3 class="sub-h">Modelos de imagen disponibles</h3>
+      <h3 class="sub-h" id="sec-modelos">Modelos de IA</h3>
+      <p class="hint">Los que conviene usar para cada tipo de pieza, con el precio de hoy en fal.ai y cuánto sale una pieza típica. Nada se genera desde acá sin tu aprobación.</p>
+      <div class="tog" id="mdTog" role="group" aria-label="Tipo de modelo"></div>
       <div id="modelos"></div>
+      <h3 class="sub-h">Buscar en todo el catálogo de fal.ai</h3>
+      <div class="msearch">
+        <input type="search" id="mdQ" placeholder="Ej: lipsync, música, kling, avatar" aria-label="Buscar modelo">
+        <select id="mdCat" aria-label="Categoría"><option value="">Todas las categorías</option></select>
+        <button type="button" class="refresh" id="mdGo">Buscar</button>
+      </div>
+      <div id="mdRes"></div>
     </section>
   </div>
 
@@ -348,14 +373,52 @@
         }).join('') + `</tbody></table></div>`;
     }
 
+    // Modelos de IA: seleccion por uso (precio en vivo + costo de una pieza tipica) y buscador del catalogo.
+    let falData = null, mdGroup = 'imagen';
+    const priceTxt = (p) => p ? `${esc(p.currency === 'USD' ? 'US$' : p.currency)} ${Number(p.amount).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })} por ${esc(p.unitEs)}` : 'sin datos';
     function renderModelos(fal) {
-      const rows = fal.models.map((m) => {
-        const price = m.price ? `${fmtMoney(m.price.amount, m.price.currency)} por ${m.price.unit === 'images' ? 'imagen' : m.price.unit === 'processed megapixels' ? 'megapíxel' : esc(m.price.unit)}` : 'sin datos';
-        return `<tr><td><b>${esc(m.label)}</b></td><td class="hide-sm">${esc(m.use)}</td><td class="r">${price}</td></tr>`;
-      }).join('');
-      $('modelos').innerHTML = `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Modelo</th><th class="hide-sm">Para qué sirve</th><th class="r">Precio actual</th></tr></thead><tbody>${rows}</tbody></table></div>` +
-        (fal.pricesError ? errLine(fal.pricesError) : '<div class="note">Precios leídos en vivo de fal.ai.</div>');
+      falData = fal;
+      if (!fal.groups || !fal.groups.length) { $('modelos').innerHTML = errLine(fal.pricesError || 'sin datos'); return; }
+      if (!fal.groups.some((g) => g.key === mdGroup)) mdGroup = fal.groups[0].key;
+      $('mdTog').innerHTML = fal.groups.map((g) => `<button type="button" data-g="${g.key}" class="${g.key === mdGroup ? 'on' : ''}">${esc(g.title)}</button>`).join('');
+      const g = fal.groups.find((x) => x.key === mdGroup);
+      $('modelos').innerHTML = `<div class="grp-what">${esc(g.what)} Pieza típica para comparar: ${esc(g.sample)}.</div><div class="mods">` +
+        g.models.map((m) => `<div class="mod${m.inUse ? ' use' : ''}">
+          <h4>${esc(m.label)}${m.inUse ? '<span class="pill use">En uso</span>' : ''}</h4>
+          <div class="by">${esc(m.by)}</div>
+          <div class="u">${esc(m.use)}</div>
+          <div class="n">${esc(m.note || '')}</div>
+          <div class="pr"><span>${priceTxt(m.price)}</span><span>${m.estimate != null ? `Pieza típica <b>${fmtMoney(m.estimate, 'USD')}</b>` : m.price ? 'Pieza típica: fal no aclara la unidad' : ''}</span></div>
+        </div>`).join('') + '</div>' +
+        (fal.pricesError ? errLine(fal.pricesError) : '<div class="note">Precios leídos en vivo de fal.ai. Algunos modelos cobran distinto según la resolución o la duración: el número es el precio base.</div>');
     }
+    $('mdTog').addEventListener('click', (e) => {
+      const b = e.target.closest('button'); if (!b || !falData) return;
+      mdGroup = b.dataset.g; renderModelos(falData);
+    });
+    async function searchModels() {
+      const q = $('mdQ').value.trim(), cat = $('mdCat').value;
+      $('mdRes').innerHTML = '<div class="note">Buscando…</div>';
+      try {
+        const r = await fetch(`/api/marketing/fal/catalog?q=${encodeURIComponent(q)}&category=${encodeURIComponent(cat)}`);
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error || 'HTTP ' + r.status);
+        if ($('mdCat').options.length <= 1) {
+          $('mdCat').insertAdjacentHTML('beforeend', d.categories.map((c) => `<option value="${esc(c.key)}">${esc(c.label)} (${c.count})</option>`).join(''));
+          $('mdCat').value = cat;
+        }
+        $('mdQ').placeholder = `Buscar entre ${d.total.toLocaleString('es-AR')} modelos (ej: lipsync, música, kling)`;
+        if (!q && !cat) { $('mdRes').innerHTML = ''; return; }
+        if (!d.results.length) { $('mdRes').innerHTML = '<div class="empty">No hay modelos que coincidan.</div>'; return; }
+        $('mdRes').innerHTML = `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Modelo</th><th class="hide-sm">Tipo</th><th class="r">Precio actual</th></tr></thead><tbody>` +
+          d.results.map((m) => `<tr><td><b>${esc(m.name)}</b><div class="d">${esc(m.id)}${m.description ? ' · ' + esc(m.description.slice(0, 160)) + (m.description.length > 160 ? '…' : '') : ''}</div></td>
+            <td class="hide-sm">${esc(m.categoryEs)}</td><td class="r">${priceTxt(m.price)}</td></tr>`).join('') +
+          `</tbody></table></div><div class="note">${d.matches > d.results.length ? `Se muestran los ${d.results.length} más nuevos de ${d.matches} que coinciden.` : `${d.matches} modelos coinciden.`} Las descripciones vienen de fal.ai, en inglés.</div>`;
+      } catch (e) { $('mdRes').innerHTML = errLine(e.message); }
+    }
+    $('mdGo').addEventListener('click', searchModels);
+    $('mdQ').addEventListener('keydown', (e) => { if (e.key === 'Enter') searchModels(); });
+    $('mdCat').addEventListener('change', searchModels);
 
     // Galeria: los archivos piden el JWT, asi que se bajan con fetch y se muestran como blob.
     let media = [], matFilter = '';
@@ -581,6 +644,7 @@
       $('refresh').addEventListener('click', () => { load(true); loadMaterial(); });
       load(false);
       loadMaterial();
+      searchModels();
     }
   </script>
 </body>
