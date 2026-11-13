@@ -44,7 +44,7 @@ const GROUPS = [
       { id: 'fal-ai/veo3.1/fast/image-to-video', label: 'Veo 3.1 Fast', by: 'Google', inUse: true,
         use: 'Parte de una foto y genera a la persona hablando con su voz, hasta 8 s.', note: 'Lo usamos para la almacenera. Escribir "Arvo" (no "ARVO") para que no lo deletree.' },
       { id: 'google/gemini-omni-flash/v1.2/image-to-video', label: 'Gemini Omni Flash 1.2', by: 'Google',
-        use: 'Anima una foto con audio sincronizado, de 3 a 15 s.', note: 'Mucho más barato que Veo. Falta probar la voz en español.' },
+        use: 'Anima una foto con audio sincronizado, de 3 a 15 s.', note: 'El precio mostrado es a 360p (sirve para probar). A 720p cobra USD 0,0819/s: 8 s = USD 0,66. Probado el 13/11 a 360p.' },
       { id: 'bytedance/omnihuman/v2', label: 'OmniHuman v2', by: 'ByteDance',
         use: 'Hace hablar a la persona de una foto con un audio que le damos (por ejemplo, una voz en off).', note: 'Sirve para usar siempre la misma voz. Sin probar todavía.' },
       { id: 'heygen/heygen-video/image-to-video', label: 'HeyGen Video', by: 'HeyGen',
