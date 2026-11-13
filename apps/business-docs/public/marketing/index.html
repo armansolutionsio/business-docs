@@ -129,6 +129,52 @@
     dialog.pub .fld input[type=text],dialog.pub .fld select{width:100%;background:var(--rail);border:1px solid var(--line);color:var(--ink);border-radius:9px;padding:8px 10px;font:inherit;font-size:13px}
     dialog.pub .fld input[type=file]{width:100%;font-size:12.5px;color:var(--ink-2)}
     dialog.pub textarea.short{min-height:90px}
+    .mods{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+    .mod{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:6px;min-width:0}
+    .mod.use{border-color:rgba(196,111,216,.6)}
+    .mod h4{font-size:13.5px;font-weight:600;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+    .mod .by{color:var(--muted);font-size:11.5px}
+    .mod .u{color:var(--ink-2);font-size:12.5px;line-height:1.45}
+    .mod .n{color:var(--muted);font-size:12px;line-height:1.45}
+    .mod .pr{margin-top:auto;padding-top:8px;border-top:1px solid var(--line);font-size:12.5px;color:var(--ink-2);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+    .mod .pr b{color:var(--ink);font-variant-numeric:tabular-nums}
+    .pill.use{color:var(--brand);border-color:rgba(196,111,216,.55)}
+    .grp-what{color:var(--ink-2);font-size:12.5px;margin:-4px 0 12px}
+    .msearch{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+    .msearch input,.msearch select{background:var(--rail);border:1px solid var(--line);color:var(--ink);border-radius:9px;padding:7px 10px;font:inherit;font-size:13px}
+    .msearch input{flex:1;min-width:180px}
+    .msearch select{max-width:100%}
+    .tbl td .d{color:var(--muted);font-size:11.5px;margin-top:2px;max-width:520px}
+    #gastosCards{margin-bottom:14px}
+    .bars{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+    .bar{display:grid;grid-template-columns:minmax(120px,220px) 1fr auto;gap:10px;align-items:center;font-size:12.5px;color:var(--ink-2)}
+    .bar .track{height:8px;background:var(--rail);border-radius:6px;overflow:hidden}
+    .bar .fill{height:100%;background:var(--brand);border-radius:6px}
+    .bar b{color:var(--ink);font-variant-numeric:tabular-nums}
+    @media (max-width:520px){.bar{grid-template-columns:1fr auto}.bar .track{grid-column:1 / -1;order:3}}
+    .tbl button.lnk{background:transparent;border:1px solid var(--line);color:var(--ink-2);border-radius:7px;padding:4px 9px;font:inherit;font-size:12px;cursor:pointer;white-space:nowrap}
+    .tbl button.lnk:hover{color:var(--ink);border-color:#5b7bd6}
+    .tbl .pq{color:var(--muted);font-size:11.5px;margin-top:2px;max-width:420px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    dialog.pub pre.prompt{white-space:pre-wrap;word-break:break-word;background:var(--rail);border:1px solid var(--line);border-radius:9px;padding:12px;font:13px/1.55 ui-monospace,Consolas,monospace;color:var(--ink);max-height:300px;overflow:auto}
+    dialog.pub .kvl{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:12.5px;color:var(--ink-2)}
+    dialog.pub .kvl b{color:var(--ink);font-weight:600;word-break:break-word}
+    .mod.pick{cursor:pointer}
+    .mod.pick.on{border-color:var(--brand);box-shadow:0 0 0 1px var(--brand) inset}
+    .gnform{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:14px 0}
+    .gnform .full{grid-column:1 / -1}
+    .gnform label{display:block;font-size:12px;color:var(--ink-2);margin-bottom:4px}
+    .gnform input[type=text],.gnform input[type=number],.gnform select,.gnform textarea{width:100%;background:var(--rail);border:1px solid var(--line);color:var(--ink);border-radius:9px;padding:8px 10px;font:inherit;font-size:13px}
+    .gnform textarea{min-height:70px;resize:vertical;line-height:1.5}
+    .gnform textarea.prompt{min-height:170px;font:12.5px/1.5 ui-monospace,Consolas,monospace}
+    .gnform details summary{cursor:pointer;color:var(--ink-2);font-size:12.5px}
+    .refs{display:flex;gap:8px;flex-wrap:wrap}
+    .refs button{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:4px;cursor:pointer;width:86px;color:var(--ink-2);font-size:10.5px;line-height:1.25}
+    .refs button.on{border-color:var(--brand);box-shadow:0 0 0 1px var(--brand) inset;color:var(--ink)}
+    .refs img{width:100%;height:110px;object-fit:cover;border-radius:6px;display:block;margin-bottom:3px;background:#070a12}
+    .gncost{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px}
+    .gncost .big{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums}
+    .gncost .row2{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center}
+    .gncost label.ok{display:flex;gap:8px;align-items:flex-start;font-size:13px;color:var(--ink-2);line-height:1.45}
     .media .tags{display:flex;flex-wrap:wrap;gap:5px}
     .media .meta{font-size:11.5px;color:var(--muted);line-height:1.45}
     .media .acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:auto;padding-top:6px}
@@ -146,7 +192,7 @@
     </div>
 
     <nav class="nav" aria-label="Secciones">
-      <a href="#resumen">Resumen</a><a href="#sec-cuentas">Cuentas</a><a href="#sec-campanias">Campañas</a><a href="#sec-material">Material</a><a href="#sec-estudio">Estudio</a>
+      <a href="#resumen">Resumen</a><a href="#sec-cuentas">Cuentas</a><a href="#sec-campanias">Campañas</a><a href="#sec-material">Material</a><a href="#sec-gastos">Gastos en IA</a><a href="#sec-estudio">Estudio</a>
       <div class="nav-actions">
         <span class="stamp" id="stamp">Cargando…</span>
         <button class="refresh" id="refresh" type="button"><span class="spin"></span>Actualizar</button>
@@ -174,7 +220,7 @@
       <div class="matbar">
       <div class="tog" id="matTog" role="group" aria-label="Filtrar material">
         <button type="button" class="on" data-k="">Todo</button><button type="button" data-k="imagen">Imágenes</button>
-        <button type="button" data-k="video">Videos</button><button type="button" data-k="captura">Capturas</button>
+        <button type="button" data-k="video">Videos</button><button type="button" data-k="captura">Capturas</button><button type="button" data-k="referencia">Referencias</button><button type="button" data-k="audio">Audios</button>
       </div>
       <button type="button" class="primary" id="upOpen">Subir material</button>
       </div>
@@ -182,8 +228,27 @@
       <div class="note" id="igNote">Las imágenes y los videos se pueden publicar en Instagram desde acá. Siempre se pide confirmación antes de publicar.</div>
     </section>
 
+    <section class="panel" id="sec-gastos">
+      <h2>Gastos en IA</h2>
+      <p class="hint">Todo lo que se generó con fal.ai: qué modelo se usó, qué se le pidió, qué salió, cuánto costó y en qué pieza se usó. Los montos son los que cobró fal.ai.</p>
+      <div class="grid" id="gastosCards"></div>
+      <div id="gastosModelos"></div>
+      <div id="gastos"></div>
+    </section>
+
     <section class="panel" id="sec-estudio">
-      <h2>Estudio de campañas</h2>
+      <h2>Estudio de contenido</h2>
+      <p class="hint">Generá imágenes, videos con una persona hablando o voz en off con IA. Antes de gastar ves el costo estimado y confirmás; el resultado queda en la galería y en Gastos en IA.</p>
+      <h3 class="sub-h" style="margin-top:4px">Generar con IA</h3>
+      <div class="tog" id="gnTog" role="group" aria-label="Qué querés generar"></div>
+      <div class="hint" id="gnWhat" style="margin-top:-6px"></div>
+      <div class="mods" id="gnModels" role="radiogroup" aria-label="Modelo"></div>
+      <div class="gnform" id="gnForm"></div>
+      <div class="gncost" id="gnCost"></div>
+      <h3 class="sub-h">Generaciones</h3>
+      <div id="gnJobs"></div>
+
+      <h3 class="sub-h">Próximo: campañas con Claude</h3>
       <p class="hint">Así va a funcionar el armado de una campaña con Claude. Nada se publica ni gasta plata sin tu aprobación.</p>
       <div class="steps">
         <div class="step"><b>Contás qué querés</b>Qué promocionar, a quién y con cuánto presupuesto.</div>
@@ -199,8 +264,17 @@
           <button class="primary" type="button" disabled>Proponer campaña</button>
         </div>
       </div>
-      <h3 class="sub-h">Modelos de imagen disponibles</h3>
+      <h3 class="sub-h" id="sec-modelos">Modelos de IA</h3>
+      <p class="hint">Los que conviene usar para cada tipo de pieza, con el precio de hoy en fal.ai y cuánto sale una pieza típica. Nada se genera desde acá sin tu aprobación.</p>
+      <div class="tog" id="mdTog" role="group" aria-label="Tipo de modelo"></div>
       <div id="modelos"></div>
+      <h3 class="sub-h">Buscar en todo el catálogo de fal.ai</h3>
+      <div class="msearch">
+        <input type="search" id="mdQ" placeholder="Ej: lipsync, música, kling, avatar" aria-label="Buscar modelo">
+        <select id="mdCat" aria-label="Categoría"><option value="">Todas las categorías</option></select>
+        <button type="button" class="refresh" id="mdGo">Buscar</button>
+      </div>
+      <div id="mdRes"></div>
     </section>
   </div>
 
@@ -227,12 +301,12 @@
     <div class="in">
       <h2 id="upTitle">Subir material</h2>
       <div class="sub">Imágenes (JPG, PNG, WEBP) o videos (MP4) de hasta 300 MB. Quedan guardados en la galería.</div>
-      <div class="fld"><label for="upFile">Archivo</label><input type="file" id="upFile" accept="image/jpeg,image/png,image/webp,video/mp4"></div>
+      <div class="fld"><label for="upFile">Archivo</label><input type="file" id="upFile" accept="image/jpeg,image/png,image/webp,video/mp4,audio/mpeg"></div>
       <div class="prev" id="upPrev"><span class="ph">Elegí un archivo para ver la vista previa</span></div>
       <div class="fld"><label for="upTitleIn">Título</label><input type="text" id="upTitleIn" maxlength="120" placeholder="Ej: Cerrá la caja en un minuto"></div>
       <div class="grid2">
         <div class="fld"><label for="upKind">Tipo</label>
-          <select id="upKind"><option value="imagen">Imagen</option><option value="video">Video</option><option value="captura">Captura de pantalla</option></select></div>
+          <select id="upKind"><option value="imagen">Imagen</option><option value="video">Video</option><option value="captura">Captura de pantalla</option><option value="referencia">Foto de referencia (para la IA)</option><option value="audio">Audio</option></select></div>
         <div class="fld"><label for="upFormat">Formato</label>
           <select id="upFormat"><option>Feed 4:5</option><option>Feed 1:1</option><option>Reel / Historia 9:16</option><option>Pantalla de celular</option><option>Otro</option></select></div>
       </div>
@@ -245,6 +319,21 @@
       <div class="btns">
         <button type="button" class="sec" id="upCancel">Cancelar</button>
         <button type="button" class="primary" id="upGo" disabled>Subir</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog class="pub" id="prDlg" aria-labelledby="prTitle">
+    <div class="in">
+      <h2 id="prTitle">Qué se le pidió a la IA</h2>
+      <div class="sub" id="prWhat"></div>
+      <div class="prev" id="prPrev"></div>
+      <div class="kvl" id="prKv"></div>
+      <div><div class="sub-h" style="margin:0 0 6px">Prompt (la instrucción que recibió el modelo)</div><pre class="prompt" id="prText"></pre></div>
+      <div class="msg" id="prMsg" role="status"></div>
+      <div class="btns">
+        <button type="button" class="sec" id="prCopy">Copiar prompt</button>
+        <button type="button" class="primary" id="prClose">Cerrar</button>
       </div>
     </div>
   </dialog>
@@ -348,14 +437,52 @@
         }).join('') + `</tbody></table></div>`;
     }
 
+    // Modelos de IA: seleccion por uso (precio en vivo + costo de una pieza tipica) y buscador del catalogo.
+    let falData = null, mdGroup = 'imagen';
+    const priceTxt = (p) => p ? `${esc(p.currency === 'USD' ? 'US$' : p.currency)} ${Number(p.amount).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })} por ${esc(p.unitEs)}` : 'sin datos';
     function renderModelos(fal) {
-      const rows = fal.models.map((m) => {
-        const price = m.price ? `${fmtMoney(m.price.amount, m.price.currency)} por ${m.price.unit === 'images' ? 'imagen' : m.price.unit === 'processed megapixels' ? 'megapíxel' : esc(m.price.unit)}` : 'sin datos';
-        return `<tr><td><b>${esc(m.label)}</b></td><td class="hide-sm">${esc(m.use)}</td><td class="r">${price}</td></tr>`;
-      }).join('');
-      $('modelos').innerHTML = `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Modelo</th><th class="hide-sm">Para qué sirve</th><th class="r">Precio actual</th></tr></thead><tbody>${rows}</tbody></table></div>` +
-        (fal.pricesError ? errLine(fal.pricesError) : '<div class="note">Precios leídos en vivo de fal.ai.</div>');
+      falData = fal;
+      if (!fal.groups || !fal.groups.length) { $('modelos').innerHTML = errLine(fal.pricesError || 'sin datos'); return; }
+      if (!fal.groups.some((g) => g.key === mdGroup)) mdGroup = fal.groups[0].key;
+      $('mdTog').innerHTML = fal.groups.map((g) => `<button type="button" data-g="${g.key}" class="${g.key === mdGroup ? 'on' : ''}">${esc(g.title)}</button>`).join('');
+      const g = fal.groups.find((x) => x.key === mdGroup);
+      $('modelos').innerHTML = `<div class="grp-what">${esc(g.what)} Pieza típica para comparar: ${esc(g.sample)}.</div><div class="mods">` +
+        g.models.map((m) => `<div class="mod${m.inUse ? ' use' : ''}">
+          <h4>${esc(m.label)}${m.inUse ? '<span class="pill use">En uso</span>' : ''}</h4>
+          <div class="by">${esc(m.by)}</div>
+          <div class="u">${esc(m.use)}</div>
+          <div class="n">${esc(m.note || '')}</div>
+          <div class="pr"><span>${priceTxt(m.price)}</span><span>${m.estimate != null ? `Pieza típica <b>${fmtMoney(m.estimate, 'USD')}</b>` : m.price ? 'Pieza típica: fal no aclara la unidad' : ''}</span></div>
+        </div>`).join('') + '</div>' +
+        (fal.pricesError ? errLine(fal.pricesError) : '<div class="note">Precios leídos en vivo de fal.ai. Algunos modelos cobran distinto según la resolución o la duración: el número es el precio base.</div>');
     }
+    $('mdTog').addEventListener('click', (e) => {
+      const b = e.target.closest('button'); if (!b || !falData) return;
+      mdGroup = b.dataset.g; renderModelos(falData);
+    });
+    async function searchModels() {
+      const q = $('mdQ').value.trim(), cat = $('mdCat').value;
+      $('mdRes').innerHTML = '<div class="note">Buscando…</div>';
+      try {
+        const r = await fetch(`/api/marketing/fal/catalog?q=${encodeURIComponent(q)}&category=${encodeURIComponent(cat)}`);
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error || 'HTTP ' + r.status);
+        if ($('mdCat').options.length <= 1) {
+          $('mdCat').insertAdjacentHTML('beforeend', d.categories.map((c) => `<option value="${esc(c.key)}">${esc(c.label)} (${c.count})</option>`).join(''));
+          $('mdCat').value = cat;
+        }
+        $('mdQ').placeholder = `Buscar entre ${d.total.toLocaleString('es-AR')} modelos (ej: lipsync, música, kling)`;
+        if (!q && !cat) { $('mdRes').innerHTML = ''; return; }
+        if (!d.results.length) { $('mdRes').innerHTML = '<div class="empty">No hay modelos que coincidan.</div>'; return; }
+        $('mdRes').innerHTML = `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Modelo</th><th class="hide-sm">Tipo</th><th class="r">Precio actual</th></tr></thead><tbody>` +
+          d.results.map((m) => `<tr><td><b>${esc(m.name)}</b><div class="d">${esc(m.id)}${m.description ? ' · ' + esc(m.description.slice(0, 160)) + (m.description.length > 160 ? '…' : '') : ''}</div></td>
+            <td class="hide-sm">${esc(m.categoryEs)}</td><td class="r">${priceTxt(m.price)}</td></tr>`).join('') +
+          `</tbody></table></div><div class="note">${d.matches > d.results.length ? `Se muestran los ${d.results.length} más nuevos de ${d.matches} que coinciden.` : `${d.matches} modelos coinciden.`} Las descripciones vienen de fal.ai, en inglés.</div>`;
+      } catch (e) { $('mdRes').innerHTML = errLine(e.message); }
+    }
+    $('mdGo').addEventListener('click', searchModels);
+    $('mdQ').addEventListener('keydown', (e) => { if (e.key === 'Enter') searchModels(); });
+    $('mdCat').addEventListener('change', searchModels);
 
     // Galeria: los archivos piden el JWT, asi que se bajan con fetch y se muestran como blob.
     let media = [], matFilter = '';
@@ -377,7 +504,7 @@
           <div class="body">
             <h3>${esc(m.title)}</h3>
             <div class="tags"><span class="pill">${esc(m.format)}</span><span class="pill ${ORIGIN_KIND[m.origin] || 'warn'}">${esc(m.origin)}</span></div>
-            <div class="meta">${m.width}x${m.height} · ${(m.bytes / 1048576).toFixed(1)} MB · ${m.costUsd ? 'Costo ' + fmtMoney(m.costUsd, 'USD') : 'Sin costo'}<br>${esc(m.notes || '')}</div>
+            <div class="meta">${m.width ? m.width + 'x' + m.height + ' · ' : ''}${(m.bytes / 1048576).toFixed(1)} MB · ${m.costUsd ? 'Costo ' + fmtMoney(m.costUsd, 'USD') : 'Sin costo'}<br>${esc(m.notes || '')}</div>
             ${pubDone(m)}
             <div class="acts">
               <a href="#" data-dl="${esc(m.file)}">Descargar</a>
@@ -386,7 +513,7 @@
           </div></article>`).join('');
       for (const t of $('material').querySelectorAll('.thumb')) {
         blobUrl(t.dataset.file).then((u) => {
-          t.innerHTML = t.dataset.kind === 'video'
+          t.innerHTML = t.dataset.kind === 'audio' ? `<audio src="${u}" controls preload="metadata" style="width:90%"></audio>` : t.dataset.kind === 'video'
             ? `<video src="${u}" controls muted playsinline preload="metadata"></video>`
             : `<img src="${u}" alt="" loading="lazy">`;
         }).catch((e) => { t.innerHTML = `<span class="ph">No se pudo cargar (${esc(e.message)})</span>`; });
@@ -538,6 +665,191 @@
       }
     });
 
+    // Gastos en IA: historial de fal.ai con prompt, resultado, costo y pieza donde se uso.
+    let gastos = null;
+    const fmtUsd = (n) => n == null ? 'sin datos' : 'US$ ' + Number(n).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: n < 1 ? 4 : 2 });
+    const OUT_ES = { video: 'Video', imagen: 'Imagen', audio: 'Audio' };
+    function renderGastos() {
+      const g = gastos;
+      const last30 = g.requests.filter((r) => Date.now() - new Date(r.at) < 30 * 864e5 && r.cost).reduce((s, r) => s + r.cost, 0);
+      $('gastosCards').innerHTML =
+        card('Gastado en IA', fmtUsd(g.total), `Desde el ${fmtDate(g.since + 'T12:00:00Z')}`) +
+        card('Últimos 30 días', fmtUsd(last30), `${g.requests.filter((r) => r.ok).length} generaciones`) +
+        card('Saldo fal.ai', falData && falData.balance ? fmtUsd(falData.balance.amount) : 'sin datos', 'Disponible para generar');
+      const max = Math.max(...g.byModel.map((b) => b.cost), 0.0001);
+      $('gastosModelos').innerHTML = g.byModel.length ? '<div class="sub-h" style="margin-top:0">Por modelo</div><div class="bars">' + g.byModel.map((b) =>
+        `<div class="bar"><span>${esc(gastos.requests.find((r) => r.endpoint === b.endpoint)?.model || b.model)} · ${b.count} ${b.count === 1 ? 'generación' : 'generaciones'}</span><div class="track"><div class="fill" style="width:${(b.cost / max * 100).toFixed(1)}%"></div></div><b>${fmtUsd(b.cost)}</b></div>`).join('') + '</div>' : '';
+      if (!g.requests.length) { $('gastos').innerHTML = '<div class="empty">Todavía no se generó nada con IA.</div>'; return; }
+      $('gastos').innerHTML = '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Fecha</th><th>Modelo y pedido</th><th class="hide-sm">Resultado</th><th class="hide-sm">Usado en</th><th class="r">Costo</th><th></th></tr></thead><tbody>' +
+        g.requests.map((r, i) => `<tr>
+          <td>${fmtDate(r.at)}<br><span class="pq">${fmtTime(r.at)}</span></td>
+          <td><b>${esc(r.model)}</b><div class="pq">${esc((r.input && r.input.prompt) || '')}</div></td>
+          <td class="hide-sm">${r.ok ? (r.output ? esc(OUT_ES[r.output.type] || r.output.type) : 'sin datos') : `<span class="pill crit">Falló (${esc(r.status)})</span>`}${r.billed ? `<div class="pq">${esc(String(Math.round(r.billed.qty * 100) / 100))} ${esc(r.billed.unit)}${r.billed.qty === 1 ? '' : 's'}</div>` : ''}</td>
+          <td class="hide-sm">${r.usedIn.length ? r.usedIn.map((u) => esc(u.title)).join('<br>') : '<span class="pq">Sin usar</span>'}</td>
+          <td class="r"><b>${fmtUsd(r.cost)}</b>${r.cost != null && !r.costExact ? '<div class="pq">aprox.</div>' : ''}</td>
+          <td><button type="button" class="lnk" data-pr="${i}">Ver prompt</button></td></tr>`).join('') +
+        '</tbody></table></div><div class="note">El costo de cada fila sale de la facturación de fal.ai para ese modelo ese día. Si ese día hubo varias generaciones del mismo modelo, se reparte y se marca como aprox.</div>';
+    }
+    function openPrompt(i) {
+      const r = gastos.requests[i];
+      const inp = r.input || {};
+      $('prWhat').textContent = `${r.model} · ${fmtDate(r.at)} ${fmtTime(r.at)} · ${fmtUsd(r.cost)}`;
+      $('prText').textContent = inp.prompt || 'sin datos';
+      const rows = Object.entries(inp).filter(([k]) => k !== 'prompt')
+        .map(([k, v]) => `<span>${esc(k)}</span><b>${esc(typeof v === 'object' ? JSON.stringify(v) : v)}</b>`);
+      rows.push(`<span>Modelo</span><b>${esc(r.endpoint)}</b>`, `<span>Tardó</span><b>${r.seconds != null ? r.seconds + ' s' : 'sin datos'}</b>`,
+        `<span>Usado en</span><b>${r.usedIn.length ? r.usedIn.map((u) => esc(u.title)).join(', ') : 'Sin usar'}</b>`);
+      $('prKv').innerHTML = rows.join('');
+      const o = r.output;
+      $('prPrev').innerHTML = !o ? '<span class="ph">Sin resultado</span>' : o.type === 'video' ? `<video src="${esc(o.url)}" controls playsinline preload="metadata"></video>`
+        : o.type === 'imagen' ? `<img src="${esc(o.url)}" alt="Resultado">` : o.type === 'audio' ? `<audio src="${esc(o.url)}" controls></audio>` : '';
+      $('prMsg').textContent = ''; $('prMsg').className = 'msg';
+      $('prDlg').showModal();
+    }
+    $('gastos').addEventListener('click', (e) => { const b = e.target.closest('[data-pr]'); if (b) openPrompt(Number(b.dataset.pr)); });
+    $('prClose').addEventListener('click', () => { $('prPrev').innerHTML = ''; $('prDlg').close(); });
+    $('prCopy').addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText($('prText').textContent); $('prMsg').className = 'msg good'; $('prMsg').textContent = 'Prompt copiado.'; }
+      catch { $('prMsg').className = 'msg bad'; $('prMsg').textContent = 'No se pudo copiar: seleccioná el texto a mano.'; }
+    });
+    async function loadGastos(force) {
+      try {
+        const r = await fetch('/api/marketing/fal/history' + (force ? '?refresh=1' : ''));
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error || 'HTTP ' + r.status);
+        gastos = d; renderGastos();
+      } catch (e) { $('gastos').innerHTML = errLine(e.message); }
+    }
+
+    // ── Generar con IA ──────────────────────────────────────────────
+    let gn = null, gnGroup = 'habla', gnModel = null, gnRefs = [], gnEst = null, gnTimer = null, gnPoll = null;
+    const gnModelObj = () => gn && gn.groups.flatMap((g) => g.models).find((m) => m.key === gnModel);
+    function gnOptions() {
+      const o = {};
+      for (const el of $('gnForm').querySelectorAll('[data-op]')) o[el.dataset.op] = el.value;
+      return o;
+    }
+    function gnRender() {
+      $('gnTog').innerHTML = gn.groups.map((g) => `<button type="button" data-g="${g.key}" class="${g.key === gnGroup ? 'on' : ''}">${esc(g.title)}</button>`).join('');
+      const g = gn.groups.find((x) => x.key === gnGroup);
+      $('gnWhat').textContent = g.what + ' Elegí el modelo:';
+      if (!g.models.some((m) => m.key === gnModel)) gnModel = g.models[0].key;
+      $('gnModels').innerHTML = g.models.map((m) => `<div class="mod pick${m.key === gnModel ? ' on' : ''}" role="radio" tabindex="0" aria-checked="${m.key === gnModel}" data-m="${m.key}">
+          <h4>${esc(m.label)}<span class="pill ${m.status === 'En uso' ? 'use' : m.status === 'Probado' ? 'ok' : ''}">${esc(m.status)}</span></h4>
+          <div class="by">${esc(m.by)}</div><div class="u">${esc(m.use)}</div><div class="n">${esc(m.note)}</div></div>`).join('');
+      const m = gnModelObj();
+      gnRefs = [];
+      const opts = m.options.map((op) => {
+        if (op.type === 'images') {
+          const refs = gn.refs;
+          return `<div class="full"><label>${esc(op.label)}${op.max > 1 ? ` (hasta ${op.max})` : ''}</label>
+            ${refs.length ? `<div class="refs" data-max="${op.max}">${refs.map((r) => `<button type="button" data-ref="${esc(r.file)}" title="${esc(r.title)}"><img alt="" data-src="${esc(r.file)}">${esc(r.title.slice(0, 34))}</button>`).join('')}</div>`
+              : '<div class="empty">No hay imágenes en la galería. Subí una foto o captura con "Subir material".</div>'}</div>`;
+        }
+        if (op.type === 'select') return `<div><label for="op-${op.key}">${esc(op.label)}</label><select id="op-${op.key}" data-op="${op.key}">${op.choices.map(([v, l]) => `<option value="${esc(v)}"${v === op.default ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select></div>`;
+        if (op.type === 'number') return `<div><label for="op-${op.key}">${esc(op.label)} (${op.min} a ${op.max})</label><input type="number" id="op-${op.key}" data-op="${op.key}" min="${op.min}" max="${op.max}" value="${op.default}"></div>`;
+        return `<div class="full"><label for="op-${op.key}">${esc(op.label)}</label><textarea id="op-${op.key}" data-op="${op.key}">${esc(op.default)}</textarea></div>`;
+      }).join('');
+      $('gnForm').innerHTML = opts +
+        `<div class="full"><label for="gnTitle">Título en la galería</label><input type="text" id="gnTitle" maxlength="120" value="${esc(m.label + ' ' + new Date().toLocaleDateString('es-AR'))}"></div>` +
+        (m.template ? `<div class="full"><details><summary>Ver o editar el prompt completo (la instrucción que recibe la IA)</summary>
+          <textarea class="prompt" id="gnPrompt" style="margin-top:8px">${esc(m.template)}</textarea>
+          <div class="note">{{FRASE}} y {{IDEA}} se reemplazan por lo que escribiste arriba. Está en inglés porque los modelos lo entienden mejor; lo que dice la persona va en español.</div></details></div>` : '');
+      for (const img of $('gnForm').querySelectorAll('img[data-src]')) blobUrl(img.dataset.src).then((u) => { img.src = u; }).catch(() => {});
+      gnEstimate();
+    }
+    function gnEstimateSoon() { clearTimeout(gnTimer); gnTimer = setTimeout(gnEstimate, 250); }
+    async function gnEstimate() {
+      const m = gnModelObj();
+      try {
+        const r = await fetch('/api/marketing/generate/estimate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: m.key, options: gnOptions() }) });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error || 'HTTP ' + r.status);
+        gnEst = d;
+      } catch (e) { gnEst = null; $('gnCost').innerHTML = errLine(e.message); return; }
+      const bal = falData && falData.balance ? falData.balance.amount : null;
+      const imgOp = m.options.find((x) => x.type === 'images');
+      const needRefs = imgOp && gnRefs.length < imgOp.min;
+      const overCap = gnEst.max > gnEst.cap, noBal = bal != null && bal < gnEst.max;
+      const qty = gnEst.unit === 'segundo' ? `${gnEst.qty} s` : gnEst.unit === '1.000 letras' ? `${Math.round(gnEst.qty * 1000)} letras` : `${gnEst.qty} ${gnEst.unit}`;
+      $('gnCost').innerHTML = `
+        <div class="row2"><div><div class="lbl" style="font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted)">Costo estimado</div>
+          <div class="big">${fmtUsd(gnEst.amount)}${gnEst.max > gnEst.amount ? ` <small style="font-size:13px;color:var(--ink-2);font-weight:500">hasta ${fmtUsd(gnEst.max)}</small>` : ''}</div>
+          <div class="pq">${esc(qty)} × ${fmtUsd(gnEst.perUnit)} por ${esc(gnEst.unit)} · precios de fal.ai al ${esc(gnEst.pricesRead)}</div></div>
+          <div class="kv" style="margin:0;min-width:200px"><span>Saldo fal.ai</span><b>${bal != null ? fmtUsd(bal) : 'sin datos'}</b><span>Tope por generación</span><b>${fmtUsd(gnEst.cap)}</b></div></div>
+        ${gnEst.note ? `<div class="note" style="margin:0">${esc(gnEst.note)}</div>` : ''}
+        ${overCap ? alertBox('crit', 'Tope', 'Supera el tope por generación. Bajá la duración o la resolución.') : ''}
+        ${noBal ? alertBox('crit', 'Saldo', 'El saldo de fal.ai no alcanza para esta generación.') : ''}
+        ${needRefs ? '<div class="note" style="margin:0;color:var(--warn)">Elegí la imagen de base arriba.</div>' : ''}
+        <label class="ok"><input type="checkbox" id="gnOk"> <span>Entiendo que esto gasta hasta ${fmtUsd(gnEst.max)} del saldo de fal.ai.</span></label>
+        <div class="row2"><span class="msg" id="gnMsg" role="status"></span><button type="button" class="primary" id="gnGo" disabled>Generar por ${fmtUsd(gnEst.max)}</button></div>`;
+      const sync = () => { $('gnGo').disabled = !$('gnOk').checked || overCap || noBal || needRefs; };
+      $('gnOk').addEventListener('change', sync);
+      sync();
+      $('gnGo').addEventListener('click', gnGenerate);
+    }
+    async function gnGenerate() {
+      const m = gnModelObj();
+      $('gnGo').disabled = true; $('gnOk').disabled = true;
+      $('gnMsg').className = 'msg'; $('gnMsg').textContent = 'Enviando a fal.ai…';
+      try {
+        const r = await fetch('/api/marketing/generate', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model: m.key, options: gnOptions(), refs: gnRefs, title: $('gnTitle').value,
+            prompt: $('gnPrompt') ? $('gnPrompt').value : null, confirm: true, expectedUsd: gnEst.max }),
+        });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(d.error || 'HTTP ' + r.status);
+        $('gnMsg').className = 'msg good'; $('gnMsg').textContent = 'Generando. Va a aparecer en la lista de abajo y en la galería cuando termine.';
+        loadJobs();
+      } catch (e) {
+        $('gnMsg').className = 'msg bad'; $('gnMsg').textContent = 'No se generó: ' + e.message;
+        $('gnOk').disabled = false; $('gnGo').disabled = !$('gnOk').checked;
+      }
+    }
+    $('gnTog').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; gnGroup = b.dataset.g; gnModel = null; gnRender(); });
+    $('gnModels').addEventListener('click', (e) => { const c = e.target.closest('[data-m]'); if (!c || c.dataset.m === gnModel) return; gnModel = c.dataset.m; gnRender(); });
+    $('gnModels').addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { const c = e.target.closest('[data-m]'); if (c) { e.preventDefault(); c.click(); } } });
+    $('gnForm').addEventListener('input', gnEstimateSoon);
+    $('gnForm').addEventListener('change', gnEstimateSoon);
+    $('gnForm').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-ref]'); if (!b) return;
+      const max = Number(b.parentElement.dataset.max) || 1, f = b.dataset.ref;
+      if (gnRefs.includes(f)) gnRefs = gnRefs.filter((x) => x !== f);
+      else gnRefs = max === 1 ? [f] : [...gnRefs, f].slice(-max);
+      for (const x of b.parentElement.querySelectorAll('[data-ref]')) x.classList.toggle('on', gnRefs.includes(x.dataset.ref));
+      gnEstimate();
+    });
+    const ST_ES = { en_cola: ['En cola', ''], generando: ['Generando…', 'warn'], listo: ['Listo', 'ok'], error: ['Error', 'crit'] };
+    async function loadJobs() {
+      try {
+        const r = await fetch('/api/marketing/generate/jobs');
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error || 'HTTP ' + r.status);
+        const items = d.items;
+        $('gnJobs').innerHTML = !items.length ? '<div class="empty">Todavía no se generó nada desde acá.</div>' :
+          '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Fecha</th><th>Pieza</th><th>Estado</th><th class="r">Estimado</th><th class="r">Cobrado</th></tr></thead><tbody>' +
+          items.map((j) => `<tr><td>${fmtDate(j.created_at)}<br><span class="pq">${fmtTime(j.created_at)}</span></td>
+            <td><b>${esc(j.title)}</b><div class="pq">${esc((gn && gn.groups.flatMap((g) => g.models).find((m) => m.key === j.model_key) || {}).label || j.endpoint)}${j.user_email ? ' · ' + esc(j.user_email) : ''}</div>${j.error ? `<div class="pq" style="color:var(--crit);white-space:normal">${esc(j.error)}</div>` : ''}</td>
+            <td><span class="pill ${(ST_ES[j.status] || ['', ''])[1]}">${esc((ST_ES[j.status] || [j.status])[0])}</span>${j.output_file ? '<div class="pq">En la galería</div>' : ''}</td>
+            <td class="r">${fmtUsd(j.estimate_max_usd)}</td><td class="r">${j.cost_usd != null ? fmtUsd(j.cost_usd) : j.status === 'listo' ? '<span class="pq">se ve en Gastos en IA</span>' : '-'}</td></tr>`).join('') +
+          '</tbody></table></div>';
+        const active = items.some((j) => j.status === 'generando' || j.status === 'en_cola');
+        clearTimeout(gnPoll);
+        if (active) gnPoll = setTimeout(loadJobs, 5000);
+        else if (items.some((j) => j.status === 'listo') && $('gnJobs').dataset.active === '1') { loadMaterial(); loadGastos(true); }
+        $('gnJobs').dataset.active = active ? '1' : '0';
+      } catch (e) { $('gnJobs').innerHTML = errLine(e.message); }
+    }
+    async function loadGen() {
+      try {
+        const r = await fetch('/api/marketing/generate/options');
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error || 'HTTP ' + r.status);
+        gn = d; gnRender(); loadJobs();
+      } catch (e) { $('gnForm').innerHTML = errLine(e.message); }
+    }
+
     async function loadMaterial() {
       try {
         const [r, s] = await Promise.all([fetch('/api/marketing/media'), fetch('/api/marketing/instagram')]);
@@ -578,9 +890,10 @@
     }
 
     if (user) {
-      $('refresh').addEventListener('click', () => { load(true); loadMaterial(); });
-      load(false);
+      $('refresh').addEventListener('click', () => { load(true).then(() => loadGastos(true)); loadMaterial(); });
+      load(false).then(() => { loadGastos(false); loadGen(); });
       loadMaterial();
+      searchModels();
     }
   </script>
 </body>

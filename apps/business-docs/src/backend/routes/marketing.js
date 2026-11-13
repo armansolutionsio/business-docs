@@ -10,6 +10,9 @@ const metaAds = require('../utils/metaAds');
 const falAi = require('../utils/falAi');
 const marketingMedia = require('../utils/marketingMedia');
 const instagram = require('../utils/instagramPublish');
+const generate = require('../utils/marketingGenerate');
+
+generate.resume();
 
 const router = express.Router();
 router.use(requireVertical('marketing'));
@@ -50,6 +53,54 @@ router.get('/media/file/:name', (req, res) => {
   const full = marketingMedia.resolveFile(req.params.name);
   if (!full) return res.status(404).json({ error: 'Archivo no encontrado' });
   res.sendFile(full);
+});
+
+// Buscador sobre el catalogo completo de fal.ai (solo lectura, con precio en vivo de los resultados).
+router.get('/fal/catalog', async (req, res) => {
+  try {
+    res.json(await falAi.searchCatalog({ q: String(req.query.q || '').slice(0, 80), category: String(req.query.category || '').slice(0, 40) }));
+  } catch (err) {
+    res.status(502).json({ error: err.message });
+  }
+});
+
+// Gastos en IA: cuanto se gasto, en que modelo, que se pidio (prompt) y que salio. Solo lectura.
+router.get('/fal/history', async (req, res) => {
+  try {
+    res.json(await falAi.spendHistory({ force: req.query.refresh === '1', pieces: marketingMedia.list() }));
+  } catch (err) {
+    res.status(502).json({ error: err.message });
+  }
+});
+
+// Generar con IA: opciones, costo estimado, generar (gasta plata: confirm + costo visto) y registro.
+router.get('/generate/options', (req, res) => {
+  res.json({ groups: generate.publicModels(), cap: generate.MAX_USD(), refs: marketingMedia.list().filter((m) => ['imagen', 'captura', 'referencia'].includes(m.kind)).map((m) => ({ file: m.file, title: m.title, kind: m.kind })) });
+});
+
+router.post('/generate/estimate', (req, res) => {
+  try { res.json(generate.estimate(req.body && req.body.model, req.body && req.body.options)); }
+  catch (err) { res.status(err.status || 500).json({ error: err.message }); }
+});
+
+router.post('/generate', async (req, res) => {
+  try {
+    const row = await generate.start({ ...(req.body || {}), user: req.user && req.user.email });
+    res.json(row);
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message });
+  }
+});
+
+router.get('/generate/jobs', async (req, res) => {
+  try {
+    const rows = await generate.listRows(50);
+    const needCost = rows.some((r) => r.status === 'listo' && r.cost_usd == null);
+    const hist = needCost ? await falAi.spendHistory({ pieces: marketingMedia.list() }).catch(() => null) : null;
+    res.json({ items: await generate.withRealCost(rows, hist) });
+  } catch (err) {
+    res.status(502).json({ error: err.message });
+  }
 });
 
 router.get('/instagram', (req, res) => {

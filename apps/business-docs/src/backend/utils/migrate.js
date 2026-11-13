@@ -288,6 +288,10 @@ async function runMigrations() {
     try { await require('./taskpilotDb').ensureSchema(); }
     catch (e) { log.error('migrate_taskpilot_failed', { error: e.message, stack: e.stack }); }
 
+    // ─── Arman Marketing: registro de generaciones con IA ──────────────────
+    try { await require('./marketingGenerate').ensureTable(); }
+    catch (e) { log.warn('migrate_marketing_gen_failed', { error: e.message }); }
+
     // ─── Identidad global de cliente cross-vertical ───────────────────────
     try {
       await db.query(`ALTER TABLE public.contactos ADD COLUMN IF NOT EXISTS global_customer_id UUID`);
