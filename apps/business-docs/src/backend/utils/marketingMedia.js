@@ -7,7 +7,7 @@ const fs = require('fs');
 const path = require('path');
 
 const DIR = process.env.MARKETING_MEDIA_DIR || path.join(__dirname, '../../../uploads/marketing');
-const MIME = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.mp4': 'video/mp4' };
+const MIME = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.mp4': 'video/mp4', '.mp3': 'audio/mpeg' };
 
 function readManifest() {
   try { return JSON.parse(fs.readFileSync(path.join(DIR, 'manifest.json'), 'utf8')); }
@@ -34,7 +34,8 @@ function resolveFile(name) {
   return fs.existsSync(full) ? full : null;
 }
 
-const KINDS = ['imagen', 'video', 'captura'];
+const KINDS = ['imagen', 'video', 'captura', 'referencia', 'audio'];
+const KIND_OF_EXT = (ext) => (ext === '.mp4' ? 'video' : ext === '.mp3' ? 'audio' : 'imagen');
 const MAX_BYTES = 300 * 1024 * 1024;
 
 // Nombre de archivo seguro: minusculas, sin acentos ni espacios, y sin pisar uno existente.
@@ -48,14 +49,17 @@ function safeName(original, ext) {
 }
 
 // Guarda una pieza nueva y la agrega al principio del manifest.
-function add(buffer, meta = {}) {
+// "trusted" solo lo pasa el servidor (generaciones con IA): costo y pedido de fal.ai. Lo que manda el
+// navegador al subir un archivo nunca puede fijar esos campos.
+function add(buffer, meta = {}, trusted = {}) {
   const ext = path.extname(String(meta.originalName || '')).toLowerCase();
-  if (!MIME[ext]) throw Object.assign(new Error('Formato no permitido. Usá JPG, PNG, WEBP o MP4.'), { status: 400 });
+  if (!MIME[ext]) throw Object.assign(new Error('Formato no permitido. Usá JPG, PNG, WEBP, MP4 o MP3.'), { status: 400 });
   if (!buffer || !buffer.length) throw Object.assign(new Error('El archivo está vacío'), { status: 400 });
   if (buffer.length > MAX_BYTES) throw Object.assign(new Error('El archivo supera los 300 MB'), { status: 400 });
-  const isVideo = ext === '.mp4';
-  const kind = KINDS.includes(meta.kind) ? meta.kind : (isVideo ? 'video' : 'imagen');
-  if ((kind === 'video') !== isVideo) throw Object.assign(new Error('El tipo elegido no coincide con el archivo'), { status: 400 });
+  const natural = KIND_OF_EXT(ext);
+  const kind = KINDS.includes(meta.kind) ? meta.kind : natural;
+  const okKind = natural === 'imagen' ? ['imagen', 'captura', 'referencia'].includes(kind) : kind === natural;
+  if (!okKind) throw Object.assign(new Error('El tipo elegido no coincide con el archivo'), { status: 400 });
   const title = String(meta.title || '').trim().slice(0, 120);
   if (!title) throw Object.assign(new Error('Falta el título'), { status: 400 });
 
@@ -68,13 +72,14 @@ function add(buffer, meta = {}) {
     format: String(meta.format || '').trim().slice(0, 40) || 'Sin formato',
     width: int(meta.width), height: int(meta.height),
     origin: String(meta.origin || 'Subido a mano').trim().slice(0, 60),
-    costUsd: 0,
+    costUsd: Number(trusted.costUsd) > 0 ? Number(trusted.costUsd) : 0,
     createdAt: new Date().toISOString().slice(0, 10),
     notes: String(meta.notes || '').trim().slice(0, 500),
   };
   const caption = String(meta.caption || '').trim().slice(0, 2200);
   if (caption) entry.caption = caption;
   if (meta.by) entry.uploadedBy = String(meta.by);
+  if (Array.isArray(trusted.falRequests) && trusted.falRequests.length) entry.falRequests = trusted.falRequests.map(String);
   const all = readManifest();
   all.unshift(entry);
   fs.writeFileSync(path.join(DIR, 'manifest.json'), JSON.stringify(all, null, 2));
